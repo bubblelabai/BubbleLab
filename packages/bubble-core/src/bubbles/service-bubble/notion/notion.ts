@@ -1195,19 +1195,14 @@ export class NotionBubble<
   }
 
   public async testCredential(): Promise<boolean> {
-    try {
-      const token = this.chooseCredential();
-      if (!token) {
-        return false;
-      }
-
-      // Test by listing users
-      await this.makeNotionApiCall('users', {}, 'GET');
-      return true;
-    } catch (error) {
-      console.error('Notion credential test failed:', error);
+    const token = this.chooseCredential();
+    if (!token) {
       return false;
     }
+
+    // Test by listing users — let errors propagate for vendor-specific messages
+    await this.makeNotionApiCall('users', {}, 'GET');
+    return true;
   }
 
   protected chooseCredential(): string | undefined {

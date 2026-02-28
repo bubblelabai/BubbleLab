@@ -507,12 +507,11 @@ export class AGIIncBubble<
 > {
   public async testCredential(): Promise<boolean> {
     // Make a test API call to list sessions
-    try {
-      const response = await this.makeAGIApiCall('sessions', {}, 'GET');
-      return Array.isArray(response);
-    } catch {
-      return false;
+    const response = await this.makeAGIApiCall('sessions', {}, 'GET');
+    if (!Array.isArray(response)) {
+      throw new Error('Unexpected response from AGI API');
     }
+    return true;
   }
 
   static readonly type = 'service' as const;

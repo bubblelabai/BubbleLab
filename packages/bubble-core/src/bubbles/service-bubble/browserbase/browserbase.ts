@@ -327,13 +327,9 @@ export class BrowserBaseBubble<
       return false;
     }
 
-    try {
-      // Test by listing projects (simple API call)
-      await this.browserbaseApi('/projects');
-      return true;
-    } catch {
-      return false;
-    }
+    // Test by listing projects (simple API call) — let errors propagate
+    await this.browserbaseApi('/projects');
+    return true;
   }
 
   protected async performAction(

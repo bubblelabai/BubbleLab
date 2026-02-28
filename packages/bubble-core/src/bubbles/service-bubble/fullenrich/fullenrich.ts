@@ -118,21 +118,23 @@ export class FullEnrichBubble<
       return false;
     }
 
-    try {
-      const response = await fetch(
-        `${FullEnrichBubble.BASE_URL}/account/keys/verify`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${credential}`,
-            'Content-Type': 'application/json',
-          },
-        }
+    const response = await fetch(
+      `${FullEnrichBubble.BASE_URL}/account/keys/verify`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${credential}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(
+        `FullEnrich API key verification failed (${response.status}): ${errorText}`
       );
-      return response.ok;
-    } catch {
-      return false;
     }
+    return true;
   }
 
   /**

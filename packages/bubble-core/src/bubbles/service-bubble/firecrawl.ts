@@ -1181,19 +1181,11 @@ export class FirecrawlBubble<
   public async testCredential(): Promise<boolean> {
     const apiKey = this.chooseCredential();
     if (!apiKey) {
-      return false;
+      throw new Error('Firecrawl API key is required');
     }
     const firecrawl = new Firecrawl({ apiKey });
-    try {
-      const _ = await firecrawl.getConcurrency();
-      if (_) {
-        // suppress ts(6133)
-      }
-      return true;
-    } catch (error) {
-      console.error('Firecrawl credential test failed:', error);
-      return false;
-    }
+    await firecrawl.getConcurrency();
+    return true;
   }
 
   protected chooseCredential(): string | undefined {

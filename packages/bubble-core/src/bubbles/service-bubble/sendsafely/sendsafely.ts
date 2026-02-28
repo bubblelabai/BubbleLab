@@ -94,14 +94,10 @@ export class SendSafelyBubble<
       return false;
     }
 
-    try {
-      const creds = parseSendSafelyCredential(credential);
-      const client = createClient(creds);
-      await verifyCredentials(client);
-      return true;
-    } catch {
-      return false;
-    }
+    const creds = parseSendSafelyCredential(credential);
+    const client = createClient(creds);
+    await verifyCredentials(client);
+    return true;
   }
 
   protected async performAction(

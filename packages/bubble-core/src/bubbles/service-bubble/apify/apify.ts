@@ -241,18 +241,20 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
       return false;
     }
 
-    try {
-      // Test the credential by making a simple API call to get user info
-      const response = await fetch('https://api.apify.com/v2/users/me', {
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-        },
-      });
+    // Test the credential by making a simple API call to get user info
+    const response = await fetch('https://api.apify.com/v2/users/me', {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+      },
+    });
 
-      return response.ok;
-    } catch {
-      return false;
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(
+        `Apify API key validation failed (${response.status}): ${errorText}`
+      );
     }
+    return true;
   }
 
   protected async performAction(

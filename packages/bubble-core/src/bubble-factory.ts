@@ -176,6 +176,7 @@ export class BubbleFactory {
       'linear',
       'attio',
       'hubspot',
+      's3-storage',
     ];
   }
 
@@ -404,6 +405,7 @@ export class BubbleFactory {
     const { HubSpotBubble } = await import(
       './bubbles/service-bubble/hubspot/index.js'
     );
+    const { S3Bubble } = await import('./bubbles/service-bubble/s3/index.js');
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -562,6 +564,7 @@ export class BubbleFactory {
     this.register('linear', LinearBubble as BubbleClassWithMetadata);
     this.register('attio', AttioBubble as BubbleClassWithMetadata);
     this.register('hubspot', HubSpotBubble as BubbleClassWithMetadata);
+    this.register('s3-storage', S3Bubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
@@ -865,6 +868,7 @@ import {
   LinearBubble, // bubble name: 'linear'
   AttioBubble, // bubble name: 'attio'
   HubSpotBubble, // bubble name: 'hubspot'
+  S3Bubble, // bubble name: 's3-storage'
 
   // Tool Bubbles (Perform useful actions)
   ResearchAgentTool, // bubble name: 'research-agent-tool'

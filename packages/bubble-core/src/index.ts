@@ -103,6 +103,15 @@ export {
   type SendSafelyParamsInput,
   type SendSafelyResult,
 } from './bubbles/service-bubble/sendsafely/index.js';
+export {
+  S3Bubble,
+  S3ParamsSchema,
+  S3ResultSchema,
+  type S3Params,
+  type S3ParamsInput,
+  type S3Result,
+  type S3OperationResult,
+} from './bubbles/service-bubble/s3/index.js';
 export type { FirecrawlParamsInput } from './bubbles/service-bubble/firecrawl.js';
 export { FirecrawlBubble } from './bubbles/service-bubble/firecrawl.js';
 export { InsForgeDbBubble } from './bubbles/service-bubble/insforge-db.js';

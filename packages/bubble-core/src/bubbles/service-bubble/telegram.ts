@@ -799,10 +799,12 @@ export class TelegramBubble<
   public async testCredential(): Promise<boolean> {
     // Make a test API call to the Telegram API
     const response = await this.makeTelegramApiCall('getMe', {});
-    if (response.ok) {
-      return true;
+    if (!response.ok) {
+      throw new Error(
+        `Telegram API error: ${response.error_code} - ${response.description}`
+      );
     }
-    return false;
+    return true;
   }
 
   static readonly type = 'service' as const;

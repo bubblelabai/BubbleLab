@@ -532,10 +532,10 @@ export class AIAgentBubble extends ServiceBubble<
     const llm = this.initializeModel(this.params.model);
 
     const response = await llm.invoke(['Hello, how are you?']);
-    if (response.content) {
-      return true;
+    if (!response.content) {
+      throw new Error('Model returned empty response');
     }
-    return false;
+    return true;
   }
 
   /**

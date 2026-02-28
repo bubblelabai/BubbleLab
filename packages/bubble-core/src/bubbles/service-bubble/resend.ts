@@ -314,21 +314,17 @@ export class ResendBubble<
   }
 
   public async testCredential(): Promise<boolean> {
-    try {
-      // Test the API key by making a simple API call
-      const apiKey = this.chooseCredential();
+    // Test the API key by making a simple API call
+    const apiKey = this.chooseCredential();
 
-      // Clear cache if credentials changed (resend client will be recreated)
-      if (this.resend) {
-        this.verifiedDomains = undefined;
-      }
-
-      this.resend = new Resend(apiKey);
-      await this.resend?.domains.list();
-      return true;
-    } catch {
-      return false;
+    // Clear cache if credentials changed (resend client will be recreated)
+    if (this.resend) {
+      this.verifiedDomains = undefined;
     }
+
+    this.resend = new Resend(apiKey);
+    await this.resend?.domains.list();
+    return true;
   }
 
   protected async performAction(

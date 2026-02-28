@@ -33,6 +33,7 @@ export interface CredentialField {
   label: string;
   placeholder: string;
   type?: 'text' | 'password'; // default 'password'
+  required?: boolean; // default true
 }
 
 /**
@@ -443,6 +444,43 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
         },
       ],
     },
+    [CredentialType.S3_CRED]: {
+      label: 'Amazon S3',
+      description:
+        'S3-compatible storage credentials (AWS S3, MinIO, DigitalOcean Spaces, etc.)',
+      placeholder: '',
+      namePlaceholder: 'My S3 Storage',
+      credentialConfigurations: {},
+      fields: [
+        {
+          key: 'accessKeyId',
+          label: 'Access Key ID',
+          placeholder: 'AKIA...',
+          type: 'password',
+        },
+        {
+          key: 'secretAccessKey',
+          label: 'Secret Access Key',
+          placeholder: 'Your secret access key',
+          type: 'password',
+        },
+        {
+          key: 'endpoint',
+          label: 'Endpoint',
+          placeholder:
+            'https://s3.us-east-1.amazonaws.com (leave empty for AWS)',
+          type: 'text',
+          required: false,
+        },
+        {
+          key: 'region',
+          label: 'Region',
+          placeholder: 'us-east-1',
+          type: 'text',
+          required: false,
+        },
+      ],
+    },
     [CredentialType.LINEAR_CRED]: {
       label: 'Linear',
       description:
@@ -534,6 +572,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.CONFLUENCE_CRED]: '', // OAuth credential, no env var
   [CredentialType.POSTHOG_API_KEY]: 'POSTHOG_API_KEY',
   [CredentialType.SENDSAFELY_CRED]: '', // Multi-field credential (host + apiKey + apiSecret), no single env var
+  [CredentialType.S3_CRED]: '', // Multi-field credential (accessKeyId + secretAccessKey + endpoint + region), no single env var
   [CredentialType.LINEAR_CRED]: '', // OAuth credential, no env var
   [CredentialType.HUBSPOT_CRED]: '', // OAuth credential, no env var
   [CredentialType.ATTIO_CRED]: '', // OAuth credential, no env var
@@ -1885,6 +1924,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   stripe: [CredentialType.STRIPE_CRED],
   confluence: [CredentialType.CONFLUENCE_CRED],
   sendsafely: [CredentialType.SENDSAFELY_CRED],
+  's3-storage': [CredentialType.S3_CRED],
   'yc-scraper-tool': [CredentialType.APIFY_CRED],
   posthog: [CredentialType.POSTHOG_API_KEY],
   linear: [CredentialType.LINEAR_CRED],

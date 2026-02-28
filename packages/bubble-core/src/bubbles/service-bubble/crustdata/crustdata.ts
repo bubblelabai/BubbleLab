@@ -90,23 +90,23 @@ export class CrustdataBubble<
       return false;
     }
 
-    try {
-      // Test the credentials by calling identify with a known company
-      const response = await fetch(`${CRUSTDATA_BASE_URL}/screener/identify/`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Token ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query_company_website: 'stripe.com',
-          count: 1,
-        }),
-      });
-      return response.ok;
-    } catch {
-      return false;
+    // Test the credentials by calling identify with a known company
+    const response = await fetch(`${CRUSTDATA_BASE_URL}/screener/identify/`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query_company_website: 'stripe.com',
+        count: 1,
+      }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(`Crustdata API error (${response.status}): ${errorText}`);
     }
+    return true;
   }
 
   protected async performAction(

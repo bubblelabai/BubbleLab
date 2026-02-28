@@ -69,6 +69,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.CONFLUENCE_CRED]: {},
   [CredentialType.POSTHOG_API_KEY]: {},
   [CredentialType.SENDSAFELY_CRED]: {},
+  [CredentialType.S3_CRED]: {},
   [CredentialType.LINEAR_CRED]: {},
   [CredentialType.ATTIO_CRED]: {},
   [CredentialType.HUBSPOT_CRED]: {},

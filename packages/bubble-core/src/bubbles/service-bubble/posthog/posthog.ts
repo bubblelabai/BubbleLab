@@ -110,29 +110,31 @@ export class PosthogBubble<
    * Test if the credential is valid by listing projects
    */
   async testCredential(): Promise<boolean> {
-    try {
-      const apiKey = this.chooseCredential();
-      if (!apiKey) {
-        return false;
-      }
-
-      const params = this.params as PosthogParams;
-      const host =
-        (params as PosthogListEventsParams).host || 'https://us.posthog.com';
-
-      // Use the /api/users/@me endpoint to validate the key
-      const response = await fetch(`${host}/api/users/@me/`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      return response.ok;
-    } catch {
+    const apiKey = this.chooseCredential();
+    if (!apiKey) {
       return false;
     }
+
+    const params = this.params as PosthogParams;
+    const host =
+      (params as PosthogListEventsParams).host || 'https://us.posthog.com';
+
+    // Use the /api/users/@me endpoint to validate the key
+    const response = await fetch(`${host}/api/users/@me/`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(
+        `PostHog API key validation failed (${response.status}): ${errorText}`
+      );
+    }
+    return true;
   }
 
   /**

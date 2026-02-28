@@ -120,18 +120,17 @@ export class AshbyBubble<
    * Test if the credential is valid by making a simple API call
    */
   async testCredential(): Promise<boolean> {
-    try {
-      const apiKey = this.chooseCredential();
-      if (!apiKey) {
-        return false;
-      }
-
-      // Use API key info endpoint to validate credential
-      const response = await this.makeAshbyRequest('apiKey.info', {});
-      return response.success === true;
-    } catch {
+    const apiKey = this.chooseCredential();
+    if (!apiKey) {
       return false;
     }
+
+    // Use API key info endpoint to validate credential
+    const response = await this.makeAshbyRequest('apiKey.info', {});
+    if (response.success !== true) {
+      throw new Error('Ashby API key validation failed');
+    }
+    return true;
   }
 
   /**

@@ -233,20 +233,22 @@ export class ElevenLabsBubble extends ServiceBubble<
 
   public async testCredential(): Promise<boolean> {
     const apiKey = this.chooseCredential();
-    if (!apiKey) return false;
-    // Simple test: try to get user info (requires a valid key but invalid agent ID might still return 404,
-    // so we just check if we can make a request that doesn't return 401)
-    try {
-      const response = await fetch('https://api.elevenlabs.io/v1/user', {
-        method: 'GET',
-        headers: {
-          'xi-api-key': apiKey,
-        },
-      });
-      return response.ok;
-    } catch {
-      return false;
+    if (!apiKey) {
+      throw new Error('Eleven Labs API key is required');
     }
+    const response = await fetch('https://api.elevenlabs.io/v1/user', {
+      method: 'GET',
+      headers: {
+        'xi-api-key': apiKey,
+      },
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Eleven Labs API error: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+    return true;
   }
 
   private async getSignedUrl(

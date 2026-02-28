@@ -135,7 +135,7 @@ export class InsForgeDbBubble extends ServiceBubble<
     const { credentials } = this.params;
 
     if (!credentials || typeof credentials !== 'object') {
-      return false;
+      throw new Error('No InsForge credentials provided');
     }
 
     const baseUrl = credentials[CredentialType.INSFORGE_BASE_URL]?.replace(
@@ -146,14 +146,16 @@ export class InsForgeDbBubble extends ServiceBubble<
 
     // If only base URL provided, check if server is reachable
     if (baseUrl && !apiKey) {
-      try {
-        const response = await fetch(`${baseUrl}/api/health`, {
-          method: 'GET',
-        });
-        return response.ok;
-      } catch {
-        return false;
+      const response = await fetch(`${baseUrl}/api/health`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `InsForge health check failed: ${response.status} - ${errorText}`
+        );
       }
+      return true;
     }
 
     // If only API key provided, can't validate without URL - return true
@@ -164,28 +166,30 @@ export class InsForgeDbBubble extends ServiceBubble<
 
     // If both provided, do full validation
     if (baseUrl && apiKey) {
-      try {
-        const response = await fetch(
-          `${baseUrl}/api/database/advance/rawsql/unrestricted`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              query: 'SELECT 1 as test',
-              params: [],
-            }),
-          }
+      const response = await fetch(
+        `${baseUrl}/api/database/advance/rawsql/unrestricted`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            query: 'SELECT 1 as test',
+            params: [],
+          }),
+        }
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `InsForge credential validation failed: ${response.status} - ${errorText}`
         );
-        return response.ok;
-      } catch {
-        return false;
       }
+      return true;
     }
 
-    return false;
+    throw new Error('InsForge requires at least a base URL or API key');
   }
 
   protected chooseCredential(): string | undefined {

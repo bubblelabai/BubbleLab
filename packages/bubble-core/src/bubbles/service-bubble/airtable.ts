@@ -738,22 +738,20 @@ export class AirtableBubble<
     //
     // The best we can do is verify the token format is valid.
     // Actual access will be validated when the user makes their first API call.
-    try {
-      const credential = this.chooseCredential();
-      if (!credential) {
-        return false;
-      }
-
-      // Verify the token format looks like an Airtable PAT
-      // Format: patXXXXXXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-      if (!credential.startsWith('pat') || credential.length < 50) {
-        return false;
-      }
-
-      return true;
-    } catch {
-      return false;
+    const credential = this.chooseCredential();
+    if (!credential) {
+      throw new Error('Airtable credential is required');
     }
+
+    // Verify the token format looks like an Airtable PAT
+    // Format: patXXXXXXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    if (!credential.startsWith('pat') || credential.length < 50) {
+      throw new Error(
+        'Invalid Airtable PAT format. Expected format: patXXXX.XXXX (at least 50 characters)'
+      );
+    }
+
+    return true;
   }
 
   static readonly type = 'service' as const;

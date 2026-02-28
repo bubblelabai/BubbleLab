@@ -26,6 +26,7 @@ export enum CredentialType {
   CLOUDFLARE_R2_ACCESS_KEY = 'CLOUDFLARE_R2_ACCESS_KEY',
   CLOUDFLARE_R2_SECRET_KEY = 'CLOUDFLARE_R2_SECRET_KEY',
   CLOUDFLARE_R2_ACCOUNT_ID = 'CLOUDFLARE_R2_ACCOUNT_ID',
+  S3_CRED = 'S3_CRED',
   // Scraping Credentials
   APIFY_CRED = 'APIFY_CRED',
 
@@ -132,6 +133,7 @@ export type BubbleName =
   | 'bubbleflow-validation-tool'
   | 'code-edit-tool'
   | 'storage'
+  | 's3-storage'
   | 'google-drive'
   | 'gmail'
   | 'google-sheets'

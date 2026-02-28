@@ -401,20 +401,22 @@ export class GoogleCalendarBubble<
     if (!credential) {
       throw new Error('Google Calendar credentials are required');
     }
-    try {
-      const resp = await fetch(
-        'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1',
-        {
-          headers: {
-            Authorization: `Bearer ${credential}`,
-            'Content-Type': 'application/json',
-          },
-        }
+    const resp = await fetch(
+      'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1',
+      {
+        headers: {
+          Authorization: `Bearer ${credential}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      throw new Error(
+        `Google Calendar API error: ${resp.status} ${resp.statusText} - ${errorText}`
       );
-      return resp.ok;
-    } catch {
-      return false;
     }
+    return true;
   }
 
   // Extracts Google Drive file IDs from event attachments

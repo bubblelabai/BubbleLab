@@ -95,13 +95,12 @@ export class StripeBubble<
       return false;
     }
 
-    try {
-      // Test by fetching account balance (minimal API call)
-      const response = await this.makeStripeRequest('/v1/balance', 'GET');
-      return response !== null && typeof response === 'object';
-    } catch {
-      return false;
+    // Test by fetching account balance (minimal API call)
+    const response = await this.makeStripeRequest('/v1/balance', 'GET');
+    if (response === null || typeof response !== 'object') {
+      throw new Error('Stripe API returned an invalid response');
     }
+    return true;
   }
 
   private async makeStripeRequest(

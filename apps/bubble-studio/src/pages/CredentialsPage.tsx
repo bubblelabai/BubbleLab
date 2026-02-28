@@ -99,6 +99,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.CONFLUENCE_CRED]: 'Confluence',
     [CredentialType.POSTHOG_API_KEY]: 'PostHog',
     [CredentialType.SENDSAFELY_CRED]: 'SendSafely',
+    [CredentialType.S3_CRED]: 'Amazon S3',
     [CredentialType.LINEAR_CRED]: 'Linear',
     [CredentialType.ATTIO_CRED]: 'Attio',
     [CredentialType.HUBSPOT_CRED]: 'HubSpot',

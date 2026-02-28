@@ -1063,19 +1063,21 @@ export class FollowUpBossBubble<
 
   public async testCredential(): Promise<boolean> {
     const credential = this.chooseCredential();
-    try {
-      const response = await fetch('https://api.followupboss.com/v1/me', {
-        headers: {
-          Authorization: `Bearer ${credential}`,
-          'Content-Type': 'application/json',
-          'X-System': process.env.FUB_SYSTEM_NAME || 'Bubble-Lab',
-          'X-System-Key': process.env.FUB_SYSTEM_KEY || '',
-        },
-      });
-      return response.ok;
-    } catch {
-      return false;
+    const response = await fetch('https://api.followupboss.com/v1/me', {
+      headers: {
+        Authorization: `Bearer ${credential}`,
+        'Content-Type': 'application/json',
+        'X-System': process.env.FUB_SYSTEM_NAME || 'Bubble-Lab',
+        'X-System-Key': process.env.FUB_SYSTEM_KEY || '',
+      },
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Follow Up Boss API error: ${response.status} ${response.statusText} - ${errorText}`
+      );
     }
+    return true;
   }
 
   private async makeFUBApiRequest(

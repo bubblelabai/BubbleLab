@@ -970,21 +970,24 @@ export class GoogleDriveBubble<
     if (!credential) {
       throw new Error('Google Drive credentials are required');
     }
-    try {
-      // Test the credentials by making a simple API call
-      const response = await fetch(
-        'https://www.googleapis.com/drive/v3/about?fields=user&supportsAllDrives=true',
-        {
-          headers: {
-            Authorization: `Bearer ${credential}`,
-            'Content-Type': 'application/json',
-          },
-        }
+
+    // Test the credentials by making a simple API call
+    const response = await fetch(
+      'https://www.googleapis.com/drive/v3/about?fields=user&supportsAllDrives=true',
+      {
+        headers: {
+          Authorization: `Bearer ${credential}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(
+        `Google Drive API error (${response.status}): ${errorText}`
       );
-      return response.ok;
-    } catch {
-      return false;
     }
+    return true;
   }
 
   private async makeGoogleApiRequest(
