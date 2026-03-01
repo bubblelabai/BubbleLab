@@ -505,6 +505,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Attio Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.ASSEMBLED_CRED]: {
+      label: 'Assembled',
+      description:
+        'API key for Assembled workforce management (schedules, agents, time off)',
+      placeholder: 'sk_live_...',
+      namePlaceholder: 'My Assembled API Key',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -577,6 +585,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.HUBSPOT_CRED]: '', // OAuth credential, no env var
   [CredentialType.ATTIO_CRED]: '', // OAuth credential, no env var
   [CredentialType.SORTLY_API_KEY]: 'SORTLY_API_KEY',
+  [CredentialType.ASSEMBLED_CRED]: 'ASSEMBLED_API_KEY',
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -1930,6 +1939,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   linear: [CredentialType.LINEAR_CRED],
   attio: [CredentialType.ATTIO_CRED],
   hubspot: [CredentialType.HUBSPOT_CRED],
+  assembled: [CredentialType.ASSEMBLED_CRED],
 };
 
 export interface CredentialSiblingEntry {

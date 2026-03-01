@@ -98,6 +98,9 @@ export enum CredentialType {
 
   // Sortly Credentials
   SORTLY_API_KEY = 'SORTLY_API_KEY',
+
+  // Assembled Credentials
+  ASSEMBLED_CRED = 'ASSEMBLED_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -173,4 +176,5 @@ export type BubbleName =
   | 'posthog'
   | 'linear'
   | 'attio'
-  | 'hubspot';
+  | 'hubspot'
+  | 'assembled';

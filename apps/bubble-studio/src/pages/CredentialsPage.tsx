@@ -104,6 +104,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.ATTIO_CRED]: 'Attio',
     [CredentialType.HUBSPOT_CRED]: 'HubSpot',
     [CredentialType.SORTLY_API_KEY]: 'Sortly',
+    [CredentialType.ASSEMBLED_CRED]: 'Assembled',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

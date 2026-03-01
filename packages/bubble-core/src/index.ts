@@ -129,6 +129,14 @@ export {
 export { CrustdataBubble } from './bubbles/service-bubble/crustdata/index.js';
 export { PosthogBubble } from './bubbles/service-bubble/posthog/index.js';
 export type { PosthogParamsInput } from './bubbles/service-bubble/posthog/index.js';
+export {
+  AssembledBubble,
+  AssembledParamsSchema,
+  AssembledResultSchema,
+  type AssembledParams,
+  type AssembledParamsInput,
+  type AssembledResult,
+} from './bubbles/service-bubble/assembled/index.js';
 export type {
   CrustdataParams,
   CrustdataParamsInput,
