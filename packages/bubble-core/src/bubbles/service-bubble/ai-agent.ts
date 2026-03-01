@@ -666,6 +666,23 @@ export class AIAgentBubble extends ServiceBubble<
     // and passed via executionMeta. This keeps all memory logic out of OSS.
     const isCapabilityAgent = this.params.name?.startsWith('Capability Agent:');
 
+    // Custom capability model override for sub-agents (master applies its own at detection time)
+    if (isCapabilityAgent) {
+      const customModelOverride = execMeta?._customCapModelOverride as
+        | {
+            masterModel: string;
+            delegateModel: string;
+            reasoningEffort?: 'low' | 'medium' | 'high';
+          }
+        | undefined;
+      if (customModelOverride) {
+        (this.params.model as Record<string, unknown>).model =
+          customModelOverride.delegateModel;
+        this.params.model.reasoningEffort =
+          customModelOverride.reasoningEffort ?? undefined;
+      }
+    }
+
     // Inject Slack channel context into system prompt
     // Skip for capability agents (e.g. memory) — they only need their own prompt
     if (!isCapabilityAgent) {
@@ -791,6 +808,71 @@ export class AIAgentBubble extends ServiceBubble<
         | undefined;
       if (capabilitySystemPrompt) {
         this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\n\n${capabilitySystemPrompt}`;
+      }
+    }
+
+    // Custom capability detection — /name pattern in message injects stored prompt
+    const customCaps = execMeta?._availableCustomCapabilities as
+      | Record<
+          string,
+          {
+            systemPrompt: string;
+            name: string;
+            effort?: 'none' | 'low' | 'medium' | 'high';
+          }
+        >
+      | undefined;
+    if (customCaps && !isCapabilityAgent) {
+      // Match /command at start of message (optionally preceded by Slack mention)
+      const match = this.params.message.match(
+        /^(?:<@[A-Z0-9]+>\s*)?\/([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)\b\s*([\s\S]*)$/
+      );
+      if (match) {
+        const cap = customCaps[match[1]];
+        if (cap) {
+          this.params.systemPrompt += `\n\n---\n\n[Custom Capability: ${match[1]}]\n${cap.systemPrompt}`;
+          this.params.message =
+            match[2].trim() || `(user invoked /${match[1]})`;
+
+          // Set model override based on effort level
+          const effort = cap.effort || 'medium';
+          const effortPresets: Record<
+            string,
+            {
+              masterModel: string;
+              delegateModel: string;
+              reasoningEffort?: 'low' | 'medium' | 'high';
+            }
+          > = {
+            none: {
+              masterModel: RECOMMENDED_MODELS.ANTHROPIC_FAST,
+              delegateModel: RECOMMENDED_MODELS.GOOGLE_FAST,
+            },
+            low: {
+              masterModel: RECOMMENDED_MODELS.ANTHROPIC_FAST,
+              delegateModel: RECOMMENDED_MODELS.ANTHROPIC_FAST,
+            },
+            medium: {
+              masterModel: RECOMMENDED_MODELS.ANTHROPIC_FLAGSHIP,
+              delegateModel: RECOMMENDED_MODELS.GOOGLE_FLAGSHIP,
+              reasoningEffort: 'medium',
+            },
+            high: {
+              masterModel: RECOMMENDED_MODELS.ANTHROPIC_BEST,
+              delegateModel: RECOMMENDED_MODELS.GOOGLE_BEST,
+              reasoningEffort: 'high',
+            },
+          };
+          const preset = effortPresets[effort];
+          execMeta!._customCapModelOverride = preset;
+
+          // Apply master model override immediately (sub-agents apply theirs in their own beforeAction)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (this.params.model as Record<string, unknown>).model =
+            preset.masterModel;
+          this.params.model.reasoningEffort =
+            preset.reasoningEffort ?? undefined;
+        }
       }
     }
   }
