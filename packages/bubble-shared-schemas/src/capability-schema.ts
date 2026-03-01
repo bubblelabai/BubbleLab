@@ -38,7 +38,8 @@ export type CapabilityId =
   | 'hubspot-assistant'
   | 'flow-assistant'
   | 'research-assistant'
-  | 'sortly-assistant';
+  | 'sortly-assistant'
+  | 'assembled-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.

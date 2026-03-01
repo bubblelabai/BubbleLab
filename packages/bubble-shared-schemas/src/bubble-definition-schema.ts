@@ -74,6 +74,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.ATTIO_CRED]: {},
   [CredentialType.HUBSPOT_CRED]: {},
   [CredentialType.SORTLY_API_KEY]: {},
+  [CredentialType.ASSEMBLED_CRED]: {},
   [CredentialType.CREDENTIAL_WILDCARD]: {}, // Wildcard marker, not a real credential
 };
 
