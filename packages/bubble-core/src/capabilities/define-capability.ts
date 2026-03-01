@@ -20,6 +20,8 @@ export interface CapabilityRuntimeContext {
   credentials: Partial<Record<CredentialType, string>>;
   inputs: Record<string, string | number | boolean | string[]>;
   bubbleContext?: BubbleContext;
+  /** Free-text context from the capability config, injected into the subagent system prompt. */
+  context?: string;
 }
 
 /** A single capability tool function that accepts parsed parameters and returns a result. */

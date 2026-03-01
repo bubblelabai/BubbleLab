@@ -286,6 +286,12 @@ const CapabilityConfigSchema = z.object({
     .default({})
     .optional()
     .describe('Capability-specific credentials (injected at runtime)'),
+  context: z
+    .string()
+    .optional()
+    .describe(
+      'Free-text context injected into this capability subagent system prompt (e.g., workspace-specific details, naming conventions, project prefixes)'
+    ),
 });
 
 // Define the parameters schema for the AI Agent bubble
@@ -760,6 +766,32 @@ export class AIAgentBubble extends ServiceBubble<
       this.params.customTools.push(imageTool);
 
       this.params.systemPrompt += `\n\n**Image Reading:** When users share images, the message will include \`[Attached files: ...]\` with image URLs. Use the \`read_image\` tool with these URLs to see and describe the image contents.`;
+    }
+
+    // Inject capability management tools (e.g., Pearl self-management)
+    if (!isCapabilityAgent) {
+      const capabilityTools = execMeta?.capabilityTools as
+        | Array<{
+            name: string;
+            description: string;
+            schema: z.ZodTypeAny;
+            func: (input: Record<string, unknown>) => Promise<string>;
+          }>
+        | undefined;
+
+      if (capabilityTools?.length) {
+        if (!this.params.customTools) {
+          this.params.customTools = [];
+        }
+        this.params.customTools.push(...capabilityTools);
+      }
+
+      const capabilitySystemPrompt = execMeta?.capabilitySystemPrompt as
+        | string
+        | undefined;
+      if (capabilitySystemPrompt) {
+        this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\n\n${capabilitySystemPrompt}`;
+      }
     }
   }
 
