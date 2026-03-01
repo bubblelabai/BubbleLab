@@ -18,7 +18,10 @@ import {
 } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import { AvailableModels } from '@bubblelab/shared-schemas';
+import {
+  AvailableModels,
+  type AvailableModel,
+} from '@bubblelab/shared-schemas';
 import {
   AvailableTools,
   type AvailableTool,
@@ -718,6 +721,8 @@ export class AIAgentBubble extends ServiceBubble<
         | ((callLLM: (prompt: string) => Promise<string>) => void)
         | undefined;
       if (memoryCallLLMInit) {
+        const memoryModel = ((execMeta?.memoryCallLLMModel as string) ||
+          RECOMMENDED_MODELS.PRO) as AvailableModel;
         const callLLM = async (prompt: string): Promise<string> => {
           const memoryAgent = new AIAgentBubble(
             {
@@ -726,7 +731,7 @@ export class AIAgentBubble extends ServiceBubble<
                 'Respond concisely. Follow the instructions in the user message.',
               name: 'Capability Agent: Memory',
               model: {
-                model: RECOMMENDED_MODELS.FAST,
+                model: memoryModel,
                 temperature: 0,
                 maxTokens: 4096,
                 maxRetries: 2,
