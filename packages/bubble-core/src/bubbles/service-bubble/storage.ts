@@ -534,12 +534,14 @@ export class StorageBubble<
       fileName: params.fileName,
       contentType: params.contentType,
     });
-    // Generate secure filename with timestamp and optional userId for isolation
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    // Generate secure filename with short random prefix (16 hex chars = 64-bit entropy)
+    const randomPrefix = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
     const fileExtension = params.fileName.split('.').pop() || 'bin';
     const baseName = params.fileName.replace(/\.[^/.]+$/, ''); // Remove extension
     const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9-_]/g, '_');
-    const secureFileName = `${timestamp}-${crypto.randomUUID()}-${sanitizedBaseName}.${fileExtension}`;
+    const secureFileName = `${randomPrefix}-${sanitizedBaseName}.${fileExtension}`;
 
     // Handle base64 encoded content
     let bodyContent: Buffer | string;
