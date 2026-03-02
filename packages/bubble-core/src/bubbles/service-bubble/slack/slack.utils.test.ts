@@ -996,6 +996,81 @@ Want me to add a 7-day rolling average?`;
     expect(highlightsBlock).toBeDefined();
   });
 
+  it('should not break table rows containing # as a column value', () => {
+    const md = `:bust_in_silhouette: *Last 5 Users*
+| # | Name | Email | Joined (PT) |
+|---|------|-------|-------------|
+| 1 | Alice | alice@example.com | Mar 1, 2026 |
+| 2 | Bob | bob@example.com | Mar 1, 2026 |`;
+
+    const blocks = markdownToBlocks(md);
+
+    const tableBlock = blocks.find(
+      (b) => b.type === 'table'
+    ) as SlackTableBlock;
+    expect(tableBlock).toBeDefined();
+
+    // The header row with # should be part of the table, not parsed as a markdown heading
+    // 1 header + 2 data rows = 3 rows
+    expect(tableBlock.rows).toHaveLength(3);
+    expect(tableBlock.rows[0]).toHaveLength(4);
+    expect(tableBlock.rows[0][0]).toEqual({ type: 'raw_text', text: '#' });
+    expect(tableBlock.rows[0][1]).toEqual({ type: 'raw_text', text: 'Name' });
+    expect(tableBlock.rows[0][2]).toEqual({ type: 'raw_text', text: 'Email' });
+    expect(tableBlock.rows[0][3]).toEqual({
+      type: 'raw_text',
+      text: 'Joined (PT)',
+    });
+  });
+
+  it('should not split table cells on pipe characters inside angle-bracket links', () => {
+    const md = `| Name | Email | Joined (PT) |
+|------|-------|-------------|
+| (no name) | <mailto:tanyanigam93@gmail.com|tanyanigam93@gmail.com> | Mar 1, 2026, 12:51 PM |
+| Rituparna Mohanty | <mailto:mohanty.rituparna80@gmail.com|mohanty.rituparna80@gmail.com> | Mar 1, 2026, 9:17 AM |
+| (no name) | <mailto:madhurigupta543@gmail.com|madhurigupta543@gmail.com> | Mar 1, 2026, 9:01 AM |`;
+
+    const blocks = markdownToBlocks(md);
+
+    const tableBlock = blocks.find(
+      (b) => b.type === 'table'
+    ) as SlackTableBlock;
+    expect(tableBlock).toBeDefined();
+
+    // Should have 3 columns, not 4 (the | inside <mailto:...|display> is NOT a column delimiter)
+    expect(tableBlock.rows[0]).toHaveLength(3);
+    expect(tableBlock.rows[0][0]).toEqual({ type: 'raw_text', text: 'Name' });
+    expect(tableBlock.rows[0][1]).toEqual({ type: 'raw_text', text: 'Email' });
+    expect(tableBlock.rows[0][2]).toEqual({
+      type: 'raw_text',
+      text: 'Joined (PT)',
+    });
+
+    // Data rows should have 3 columns with angle-bracket links stripped to display text
+    expect(tableBlock.rows[1]).toHaveLength(3);
+    expect(tableBlock.rows[1][0]).toEqual({
+      type: 'raw_text',
+      text: '(no name)',
+    });
+    // raw_text cells can't render links — should show just the display text, not <mailto:...|...>
+    expect(tableBlock.rows[1][1]).toEqual({
+      type: 'raw_text',
+      text: 'tanyanigam93@gmail.com',
+    });
+    expect(tableBlock.rows[1][2].text).toContain('Mar 1, 2026');
+
+    // Second row
+    expect(tableBlock.rows[2][1]).toEqual({
+      type: 'raw_text',
+      text: 'mohanty.rituparna80@gmail.com',
+    });
+
+    // All 3 data rows should have exactly 3 columns
+    for (let i = 1; i <= 3; i++) {
+      expect(tableBlock.rows[i]).toHaveLength(3);
+    }
+  });
+
   it('should not break link URLs containing triple underscores into divider blocks', () => {
     const md = `Check out [this report](https://example.com/reports/daily___users___report.html) for details.`;
 

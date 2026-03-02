@@ -243,6 +243,17 @@ function normalizeMarkdownNewlines(markdown: string): string {
     return `${LINK_SENTINEL}${idx}${LINK_SENTINEL_END}`;
   });
 
+  // Protect table rows (lines starting with |) from normalization.
+  // Table cells can contain # which looks like a heading to the header regex.
+  const TABLE_SENTINEL = '<<__TABLE_ROW_';
+  const TABLE_SENTINEL_END = '__>>';
+  const tableRowPlaceholders: string[] = [];
+  result = result.replace(/^(\|.+)$/gm, (match) => {
+    const idx = tableRowPlaceholders.length;
+    tableRowPlaceholders.push(match);
+    return `${TABLE_SENTINEL}${idx}${TABLE_SENTINEL_END}`;
+  });
+
   // Add newlines before headers (### Header) if not already at line start
   // Exclude # so multi-hash headers like ### don't get split into # + \n##
   result = result.replace(/([^\n#])(#{1,6}\s+\S)/g, '$1\n$2');
@@ -269,7 +280,43 @@ function normalizeMarkdownNewlines(markdown: string): string {
     (_, idx) => linkPlaceholders[Number(idx)]
   );
 
+  // Restore table row placeholders
+  result = result.replace(
+    /<<__TABLE_ROW_(\d+)__>>/g,
+    (_, idx) => tableRowPlaceholders[Number(idx)]
+  );
+
   return result;
+}
+
+/**
+ * Splits a markdown table row on `|` delimiters, but ignores `|` inside
+ * angle-bracket expressions like `<mailto:x@y.com|x@y.com>` or `<url|label>`.
+ */
+function splitTableRow(line: string): string[] {
+  // Strip leading/trailing |
+  const inner = line.replace(/^\|/, '').replace(/\|$/, '');
+  const cells: string[] = [];
+  let current = '';
+  let angleBracketDepth = 0;
+
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i];
+    if (ch === '<') {
+      angleBracketDepth++;
+      current += ch;
+    } else if (ch === '>' && angleBracketDepth > 0) {
+      angleBracketDepth--;
+      current += ch;
+    } else if (ch === '|' && angleBracketDepth === 0) {
+      cells.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  cells.push(current);
+  return cells;
 }
 
 /**
@@ -291,7 +338,9 @@ function stripMarkdownFormatting(text: string): string {
     .replace(/(?<!_)_([^_]+)_(?!_)/g, '$1') // _italic_
     .replace(/~~([^~]+)~~/g, '$1') // ~~strike~~
     .replace(/`([^`]+)`/g, '$1') // `code`
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1'); // [text](url)
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // [text](url)
+    .replace(/<[^|>]+\|([^>]+)>/g, '$1') // <mailto:x|y> or <url|label> → display text
+    .replace(/<((?:mailto:|https?:\/\/)[^>]+)>/g, '$1'); // <mailto:x> or <url> with no display text
 
   // Restore emoji shortcodes
   return result.replace(
@@ -482,12 +531,11 @@ function parseMarkdownBlocks(markdown: string): ParsedBlock[] {
       const trimmed = tl.trim();
       // Skip separator rows like |---|---|
       if (/^\|[\s\-:|]+\|$/.test(trimmed)) continue;
-      // Parse cells, stripping markdown since table cells use raw_text
-      const cells = trimmed
-        .replace(/^\|/, '')
-        .replace(/\|$/, '')
-        .split('|')
-        .map((c) => stripMarkdownFormatting(c.trim()));
+      // Parse cells, stripping markdown since table cells use raw_text.
+      // Use smart split that ignores | inside angle brackets (e.g. <mailto:x|y>, <url|text>)
+      const cells = splitTableRow(trimmed).map((c) =>
+        stripMarkdownFormatting(c.trim())
+      );
       parsedRows.push(cells);
     }
     if (parsedRows.length > 0) {
@@ -1178,6 +1226,11 @@ export function containsMarkdown(text: string): boolean {
 
   // Check for strikethrough (~~text~~)
   if (/~~[^~]+~~/.test(text)) {
+    return true;
+  }
+
+  // Check for tables (| col1 | col2 |)
+  if (/^\|.+\|$/m.test(text)) {
     return true;
   }
 

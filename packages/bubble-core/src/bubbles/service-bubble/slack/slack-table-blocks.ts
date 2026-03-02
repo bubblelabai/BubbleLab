@@ -19,6 +19,8 @@ export const BLOCKS = {
   calendarAnnouncement: load('calendar-announcement.md'),
   pricingComparisonCharts: load('pricing-comparison-charts.md'),
   dauChartHighlights: load('dau-chart-highlights.md'),
+  last5UsersSlackFormat: load('last-5-users-slack-format.md'),
+  last5UsersPlainEmail: load('last-5-users-plain-email.md'),
 } as const;
 
 export const BATCH_BLOCKS = [1, 2, 3, 4, 5].map((i) =>
