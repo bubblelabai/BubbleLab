@@ -21,6 +21,8 @@ export const BLOCKS = {
   dauChartHighlights: load('dau-chart-highlights.md'),
   last5UsersSlackFormat: load('last-5-users-slack-format.md'),
   last5UsersPlainEmail: load('last-5-users-plain-email.md'),
+  noToolDriveInstructions: load('no-tool-drive-instructions.md'),
+  sortlySearchResults: load('sortly-search-results.md'),
 } as const;
 
 export const BATCH_BLOCKS = [1, 2, 3, 4, 5].map((i) =>

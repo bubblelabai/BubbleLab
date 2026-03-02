@@ -45,7 +45,21 @@ export function buildReadImageTool(
         }
 
         const buffer = await response.arrayBuffer();
-        const mimeType = response.headers.get('content-type') || 'image/png';
+        // Prefer response header, but fall back to URL extension if not an image type
+        let mimeType = response.headers.get('content-type') || '';
+        if (!mimeType.startsWith('image/')) {
+          const ext = url.match(/\.(png|gif|webp|svg)/i)?.[1]?.toLowerCase();
+          mimeType =
+            ext === 'png'
+              ? 'image/png'
+              : ext === 'gif'
+                ? 'image/gif'
+                : ext === 'webp'
+                  ? 'image/webp'
+                  : ext === 'svg'
+                    ? 'image/svg+xml'
+                    : 'image/jpeg';
+        }
         const base64 = Buffer.from(buffer).toString('base64');
 
         const { AIAgentBubble } = await import('./ai-agent.js');

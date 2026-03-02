@@ -166,6 +166,32 @@ describe('Slack table block integration', () => {
     expect(result.data?.ts).toBeDefined();
   });
 
+  it('should send message with no-tool drive instructions (numbered list, code block, links)', async () => {
+    if (!SLACK_BOT_TOKEN || !SLACK_CHANNEL) {
+      console.log(
+        'Skipping: SLACK_BOT_TOKEN or SLACK_REMINDER_CHANNEL not set'
+      );
+      return;
+    }
+    const result = await runSlackTest(BLOCKS.noToolDriveInstructions);
+    expect(result.success).toBe(true);
+    expect(result.data?.ok).toBe(true);
+    expect(result.data?.ts).toBeDefined();
+  });
+
+  it('should send message with Sortly search results table', async () => {
+    if (!SLACK_BOT_TOKEN || !SLACK_CHANNEL) {
+      console.log(
+        'Skipping: SLACK_BOT_TOKEN or SLACK_REMINDER_CHANNEL not set'
+      );
+      return;
+    }
+    const result = await runSlackTest(BLOCKS.sortlySearchResults);
+    expect(result.success).toBe(true);
+    expect(result.data?.ok).toBe(true);
+    expect(result.data?.ts).toBeDefined();
+  });
+
   it('should replace a thinking placeholder with pricing comparison (delete + post)', async () => {
     if (!SLACK_BOT_TOKEN || !SLACK_CHANNEL) {
       console.log(
