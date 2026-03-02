@@ -1651,8 +1651,9 @@ export class AIAgentBubble extends ServiceBubble<
                 'use-capability',
                 `snapshotted master state before delegating`,
                 {
-                  masterMsgCount: this._currentGraphMessages.length,
+                  masterMessageCount: this._currentGraphMessages.length,
                   capabilityId,
+                  capabilityTask: task,
                 }
               );
             }
@@ -2064,6 +2065,21 @@ export class AIAgentBubble extends ServiceBubble<
           bubbleContext: this.context,
         });
 
+        // Trace hook result
+        if (beforeHook) {
+          this._trace('hook', `beforeToolCall:${toolCall.name}`, {
+            toolName: toolCall.name,
+            shouldSkip: hookResult_before?.shouldSkip ?? false,
+            messagesModified: !!hookResult_before?.messages,
+          });
+        }
+
+        this._trace('tool', `start:${toolCall.name}`, {
+          toolName: toolCall.name,
+          toolCallId: toolCall.id ?? '',
+          input: toolCall.args,
+        });
+
         this.streamingCallback?.({
           type: 'tool_call_start',
           data: {
@@ -2090,6 +2106,14 @@ export class AIAgentBubble extends ServiceBubble<
 
           // If hook requests skipping, create synthetic ToolMessage and stop agent loop
           if (hookResult_before.shouldSkip) {
+            this._trace('tool', `skipped:${toolCall.name}`, {
+              toolName: toolCall.name,
+              toolCallId: toolCall.id ?? '',
+              input: toolCall.args,
+              skipMessage:
+                hookResult_before.skipMessage || 'Tool execution was skipped.',
+              reason: 'beforeToolCall hook requested skip',
+            });
             const skipMsg = new ToolMessage({
               content:
                 hookResult_before.skipMessage || 'Tool execution was skipped.',
@@ -2123,6 +2147,16 @@ export class AIAgentBubble extends ServiceBubble<
         toolMessages.push(toolMessage);
         currentMessages = [...currentMessages, toolMessage];
 
+        const toolDurationMs = Date.now() - startTime;
+
+        this._trace('tool', `complete:${toolCall.name}`, {
+          toolName: toolCall.name,
+          toolCallId: toolCall.id ?? '',
+          input: toolCall.args,
+          output: toolOutput,
+          durationMs: toolDurationMs,
+        });
+
         // Call afterToolCall hook — capability-scoped hook takes priority, then global
         const afterHook =
           this.capabilityAfterHooks.get(toolCall.name) ??
@@ -2134,6 +2168,15 @@ export class AIAgentBubble extends ServiceBubble<
           messages: currentMessages,
           bubbleContext: this.context,
         });
+
+        // Trace hook result
+        if (afterHook) {
+          this._trace('hook', `afterToolCall:${toolCall.name}`, {
+            toolName: toolCall.name,
+            shouldStop: hookResult_after?.shouldStop ?? false,
+            messagesModified: !!hookResult_after?.messages,
+          });
+        }
 
         // If hook returns modified messages, update current messages
         if (hookResult_after) {
@@ -2153,13 +2196,22 @@ export class AIAgentBubble extends ServiceBubble<
             input: toolCall.args as { input: string },
             tool: toolCall.name,
             output: toolOutput,
-            duration: Date.now() - startTime,
+            duration: toolDurationMs,
             variableId: this.context?.variableId,
           },
         });
       } catch (error) {
         console.error(`Error executing tool ${toolCall.name}:`, error);
         const errorContent = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+
+        this._trace('tool', `error:${toolCall.name}`, {
+          toolName: toolCall.name,
+          toolCallId: toolCall.id ?? '',
+          input: toolCall.args,
+          error: errorContent,
+          durationMs: Date.now() - startTime,
+        });
+
         const errorMessage = new ToolMessage({
           content: errorContent,
           tool_call_id: toolCall.id!,
@@ -2209,17 +2261,34 @@ export class AIAgentBubble extends ServiceBubble<
     // Define the agent node
     const agentNode = async ({ messages }: typeof MessagesAnnotation.State) => {
       this._trace('agentNode', `LLM CALL`, {
-        msgCount: messages.length,
-        lastMsgType: messages[messages.length - 1]?._getType(),
-        lastMsgPreview: (() => {
-          const last = messages[messages.length - 1];
-          if (!last) return '';
+        model: this.params.model.model,
+        temperature: this.params.model.temperature,
+        messageCount: messages.length,
+        messages: messages.map((m) => {
+          const role = m._getType();
           const content =
-            typeof last.content === 'string'
-              ? last.content
-              : JSON.stringify(last.content);
-          return content.slice(0, 120);
-        })(),
+            typeof m.content === 'string'
+              ? m.content
+              : JSON.stringify(m.content);
+          const entry: Record<string, unknown> = { role, content };
+          if (
+            'tool_calls' in m &&
+            Array.isArray(m.tool_calls) &&
+            m.tool_calls.length > 0
+          ) {
+            entry.toolCalls = m.tool_calls.map(
+              (tc: Record<string, unknown>) => ({
+                name: tc.name,
+                id: tc.id,
+                args: tc.args,
+              })
+            );
+          }
+          if ('tool_call_id' in m) {
+            entry.toolCallId = m.tool_call_id;
+          }
+          return entry;
+        }),
       });
       // systemPrompt is already enhanced by beforeAction() if expectedOutputSchema was provided
       // Use cache_control for Anthropic models to cache the system prompt across iterations
@@ -2353,10 +2422,52 @@ export class AIAgentBubble extends ServiceBubble<
             ],
           });
 
+          this._trace('agentNode', 'LLM RESPONSE', {
+            content:
+              typeof response.content === 'string'
+                ? response.content
+                : JSON.stringify(response.content),
+            toolCalls:
+              'tool_calls' in response && Array.isArray(response.tool_calls)
+                ? response.tool_calls.map((tc: Record<string, unknown>) => ({
+                    name: tc.name,
+                    id: tc.id,
+                    args: tc.args,
+                  }))
+                : undefined,
+            tokenUsage: response.usage_metadata
+              ? {
+                  inputTokens: response.usage_metadata.input_tokens,
+                  outputTokens: response.usage_metadata.output_tokens,
+                  totalTokens: response.usage_metadata.total_tokens,
+                }
+              : undefined,
+          });
           return { messages: [response] };
         } else {
           // Non-streaming fallback
           const response = await modelWithTools.invoke(allMessages);
+          this._trace('agentNode', 'LLM RESPONSE', {
+            content:
+              typeof response.content === 'string'
+                ? response.content
+                : JSON.stringify(response.content),
+            toolCalls:
+              'tool_calls' in response && Array.isArray(response.tool_calls)
+                ? response.tool_calls.map((tc: Record<string, unknown>) => ({
+                    name: tc.name,
+                    id: tc.id,
+                    args: tc.args,
+                  }))
+                : undefined,
+            tokenUsage: response.usage_metadata
+              ? {
+                  inputTokens: response.usage_metadata.input_tokens,
+                  outputTokens: response.usage_metadata.output_tokens,
+                  totalTokens: response.usage_metadata.total_tokens,
+                }
+              : undefined,
+          });
           return { messages: [response] };
         }
       } catch (error) {
@@ -2484,13 +2595,18 @@ export class AIAgentBubble extends ServiceBubble<
       // Check if the last AI message has tool calls
       if (lastAIMessage?.tool_calls && lastAIMessage.tool_calls.length > 0) {
         this._trace('afterLLMCheck', `→ tools`, {
+          result: 'tools',
+          toolCallCount: lastAIMessage.tool_calls.length,
           toolCalls: lastAIMessage.tool_calls
             .map((tc) => `${tc.name}(${tc.id?.slice(-8)})`)
             .join(', '),
         });
         return 'tools';
       }
-      this._trace('afterLLMCheck', `→ __end__ (no tool calls)`);
+      this._trace('afterLLMCheck', `→ __end__ (no tool calls)`, {
+        result: '__end__',
+        reason: 'no tool calls',
+      });
       return '__end__';
     };
 
@@ -2498,14 +2614,19 @@ export class AIAgentBubble extends ServiceBubble<
     const shouldContinueAfterTools = () => {
       const execMeta = this.context?.executionMeta;
       this._trace('shouldContinueAfterTools', `CHECK`, {
-        shouldStop: this.shouldStopAfterTools,
+        shouldStopAfterTools: this.shouldStopAfterTools,
         pendingApproval: !!execMeta?._pendingApproval,
       });
       // Check if the afterToolCall hook requested stopping
       if (this.shouldStopAfterTools) {
         this._trace(
           'shouldContinueAfterTools',
-          `→ __end__ (shouldStopAfterTools)`
+          `→ __end__ (shouldStopAfterTools)`,
+          {
+            result: '__end__',
+            reason: 'shouldStopAfterTools',
+            shouldStopAfterTools: true,
+          }
         );
         return '__end__';
       }
@@ -2513,12 +2634,18 @@ export class AIAgentBubble extends ServiceBubble<
       // In multi-capability mode the master and sub-agent share the same BubbleContext,
       // so a sub-agent setting _pendingApproval is visible here.
       if (execMeta?._pendingApproval) {
-        this._trace('shouldContinueAfterTools', `→ __end__ (pendingApproval)`);
+        this._trace('shouldContinueAfterTools', `→ __end__ (pendingApproval)`, {
+          result: '__end__',
+          reason: 'pendingApproval',
+          pendingApproval: true,
+        });
         this.shouldStopAfterTools = true;
         return '__end__';
       }
       // Otherwise continue back to agent
-      this._trace('shouldContinueAfterTools', `→ agent (continue)`);
+      this._trace('shouldContinueAfterTools', `→ agent (continue)`, {
+        result: 'agent',
+      });
       return 'agent';
     };
 
@@ -2705,13 +2832,47 @@ export class AIAgentBubble extends ServiceBubble<
           shouldStopAfterTools: this.shouldStopAfterTools,
         });
         // If a new approval was triggered during V2 resume (subagent set _pendingApproval),
-        // we should stop the master loop immediately to avoid re-executing.
+        // skip the agent loop entirely. The subagent is blocked on approval — running the
+        // master LLM would just see an empty response and re-delegate, creating duplicate
+        // approvals. Return the last AI message from the repaired messages as the response.
         if (resumeExecMeta?._pendingApproval) {
+          const approval = resumeExecMeta._pendingApproval as {
+            action?: string;
+            targetFlowName?: string;
+          };
           this._trace(
             'v2-resume',
-            `_pendingApproval detected — will stop master loop`
+            `_pendingApproval detected — skipping agent loop`,
+            {
+              action: approval.action,
+              targetFlowName: approval.targetFlowName,
+            }
           );
-          this.shouldStopAfterTools = true;
+          // Use the subagent's last AI text (captured in _pendingApproval)
+          // as the response. Do NOT use the master's original AI text — that
+          // would cause the same stale message to be posted to Slack on every resume.
+          const lastAIText = (
+            resumeExecMeta._pendingApproval as { lastAIText?: string }
+          ).lastAIText;
+          const action = approval.action ?? 'proceed';
+          const flowName = approval.targetFlowName;
+          const resumeResponse = lastAIText
+            ? lastAIText
+            : flowName
+              ? `Requesting approval to **${action}** "${flowName}".`
+              : `Requesting approval to **${action}**.`;
+          const formattedResult = formatFinalResponse(
+            resumeResponse,
+            modelConfig.model,
+            jsonMode
+          );
+          return {
+            response: formattedResult.response,
+            toolCalls: [],
+            iterations: 0,
+            error: '',
+            success: true,
+          };
         }
         initialMessages.push(...repairedMessages);
       } else if (
@@ -2719,10 +2880,6 @@ export class AIAgentBubble extends ServiceBubble<
         Array.isArray(resumeState) &&
         resumeState.length > 0
       ) {
-        this._trace(
-          'v1-resume',
-          `restoring ${resumeState.length} messages (single-cap/subagent path)`
-        );
         const { mapStoredMessagesToChatMessages } = await import(
           '@langchain/core/messages'
         );
@@ -2731,6 +2888,35 @@ export class AIAgentBubble extends ServiceBubble<
             typeof mapStoredMessagesToChatMessages
           >[0]
         );
+        this._trace('v1-resume', `START`, {
+          savedMessageCount: resumeState.length,
+          restoredMessageCount: restored.length,
+          restoredMessages: restored.map((m) => {
+            const role = m._getType();
+            const content =
+              typeof m.content === 'string'
+                ? m.content
+                : JSON.stringify(m.content);
+            const entry: Record<string, unknown> = { role, content };
+            if (
+              'tool_calls' in m &&
+              Array.isArray(m.tool_calls) &&
+              m.tool_calls.length > 0
+            ) {
+              entry.toolCalls = m.tool_calls.map(
+                (tc: Record<string, unknown>) => ({
+                  name: tc.name,
+                  id: tc.id,
+                  args: tc.args,
+                })
+              );
+            }
+            if ('tool_call_id' in m) {
+              entry.toolCallId = m.tool_call_id;
+            }
+            return entry;
+          }),
+        });
         // Collect existing tool_call_ids that already have ToolMessage responses
         const existingToolResultIds = new Set<string>();
         for (const msg of restored) {
@@ -2781,6 +2967,13 @@ export class AIAgentBubble extends ServiceBubble<
             if (i === approvalAiMsgIndex && toolsByName.has(tc.name)) {
               // This is the approval-triggering AIMessage — execute the tool directly
               // This bypasses beforeToolCall (no re-approval check) and gives real results
+              const resumeStartTime = Date.now();
+              this._trace('tool', `start:${tc.name}`, {
+                toolName: tc.name,
+                toolCallId: tc.id ?? '',
+                input: tc.args,
+                resumeDirect: true,
+              });
               try {
                 console.log(
                   `[AIAgent] Resume: executing approved tool "${tc.name}" directly`
@@ -2794,6 +2987,14 @@ export class AIAgentBubble extends ServiceBubble<
                     content.slice(0, AIAgentBubble.MAX_TOOL_RESULT_CHARS) +
                     `\n\n[... truncated — result was ${content.length} chars, limit is ${AIAgentBubble.MAX_TOOL_RESULT_CHARS}]`;
                 }
+                this._trace('tool', `complete:${tc.name}`, {
+                  toolName: tc.name,
+                  toolCallId: tc.id ?? '',
+                  input: tc.args,
+                  output: result,
+                  durationMs: Date.now() - resumeStartTime,
+                  resumeDirect: true,
+                });
                 repairedMessages.push(
                   new ToolMessage({ content, tool_call_id: tc.id! })
                 );
@@ -2802,6 +3003,14 @@ export class AIAgentBubble extends ServiceBubble<
                   `[AIAgent] Resume: direct tool execution failed for "${tc.name}":`,
                   err
                 );
+                this._trace('tool', `error:${tc.name}`, {
+                  toolName: tc.name,
+                  toolCallId: tc.id ?? '',
+                  input: tc.args,
+                  error: err instanceof Error ? err.message : String(err),
+                  durationMs: Date.now() - resumeStartTime,
+                  resumeDirect: true,
+                });
                 repairedMessages.push(
                   new ToolMessage({
                     content: `Tool execution failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -2829,6 +3038,11 @@ export class AIAgentBubble extends ServiceBubble<
         if (approvalAiMsgIndex >= 0 && resumeExecMeta?._approvedAction) {
           delete resumeExecMeta._approvedAction;
         }
+
+        this._trace('v1-resume', `DONE`, {
+          repairedMessageCount: repairedMessages.length,
+          types: repairedMessages.map((m) => m._getType()).join(','),
+        });
 
         initialMessages.push(...repairedMessages);
       } else if (conversationHistory && conversationHistory.length > 0) {
@@ -2951,10 +3165,9 @@ export class AIAgentBubble extends ServiceBubble<
       }
 
       this._trace('agent-loop', `STARTING graph.invoke`, {
-        initialMsgCount: initialMessages.length,
-        initialMsgTypes: initialMessages.map((m) => m._getType()).join(','),
-        shouldStopAfterTools: this.shouldStopAfterTools,
+        initialMessageCount: initialMessages.length,
         maxIterations,
+        model: this.params.model.model,
       });
 
       const result = await graph.invoke(
@@ -2965,6 +3178,7 @@ export class AIAgentBubble extends ServiceBubble<
       this._trace('agent-loop', `graph.invoke COMPLETED`, {
         totalMessages: result.messages.length,
         pendingApproval: !!this.context?.executionMeta?._pendingApproval,
+        model: this.params.model.model,
       });
       console.log('[AIAgent] Graph execution completed');
       console.log('[AIAgent] Total messages:', result.messages.length);

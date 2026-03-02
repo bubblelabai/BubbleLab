@@ -9,6 +9,8 @@ export interface PendingApproval {
   targetFlowName?: string;
   aiReasoning?: string;
   toolInputSummary?: string;
+  /** Subagent's last AI text before approval — used as Slack response on V2 resume */
+  lastAIText?: string;
 }
 
 export interface MemoryToolDef {
