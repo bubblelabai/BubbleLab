@@ -105,6 +105,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.HUBSPOT_CRED]: 'HubSpot',
     [CredentialType.SORTLY_API_KEY]: 'Sortly',
     [CredentialType.ASSEMBLED_CRED]: 'Assembled',
+    [CredentialType.RAMP_CRED]: 'Ramp',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

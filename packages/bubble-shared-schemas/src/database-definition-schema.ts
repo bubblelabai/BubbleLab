@@ -177,6 +177,17 @@ export const linearOAuthMetadataSchema = z.object({
 export type LinearOAuthMetadata = z.infer<typeof linearOAuthMetadataSchema>;
 
 /**
+ * Ramp OAuth metadata - stored after OAuth callback with business info
+ */
+export const rampOAuthMetadataSchema = z.object({
+  businessName: z.string().optional(),
+  /** Human-readable display name for the credential */
+  displayName: z.string().optional(),
+});
+
+export type RampOAuthMetadata = z.infer<typeof rampOAuthMetadataSchema>;
+
+/**
  * Base preference fields that can be added to any credential metadata.
  * These are used for default credential selection and usage tracking.
  */
@@ -251,5 +262,6 @@ export type CredentialMetadata =
   | ConfluenceOAuthMetadata
   | StripeOAuthMetadata
   | LinearOAuthMetadata
+  | RampOAuthMetadata
   | BrowserSessionMetadata
   | CredentialPreferences;

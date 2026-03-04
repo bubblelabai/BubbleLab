@@ -10,6 +10,7 @@ import {
   confluenceOAuthMetadataSchema,
   stripeOAuthMetadataSchema,
   linearOAuthMetadataSchema,
+  rampOAuthMetadataSchema,
   credentialPreferencesSchema,
   browserSessionMetadataSchema,
 } from './database-definition-schema.js';
@@ -513,6 +514,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Assembled API Key',
       credentialConfigurations: {},
     },
+    [CredentialType.RAMP_CRED]: {
+      label: 'Ramp',
+      description:
+        'OAuth connection to Ramp for corporate card and expense management',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Ramp Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -586,6 +595,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.ATTIO_CRED]: '', // OAuth credential, no env var
   [CredentialType.SORTLY_API_KEY]: 'SORTLY_API_KEY',
   [CredentialType.ASSEMBLED_CRED]: 'ASSEMBLED_API_KEY',
+  [CredentialType.RAMP_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -630,7 +640,8 @@ export type OAuthProvider =
   | 'airtable'
   | 'linear'
   | 'attio'
-  | 'hubspot';
+  | 'hubspot'
+  | 'ramp';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -1585,6 +1596,78 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       prompt: 'consent',
     },
   },
+  ramp: {
+    name: 'ramp',
+    displayName: 'Ramp',
+    credentialTypes: {
+      [CredentialType.RAMP_CRED]: {
+        displayName: 'Ramp',
+        defaultScopes: [
+          'transactions:read',
+          'cards:read',
+          'users:read',
+          'reimbursements:read',
+          'departments:read',
+          'vendors:read',
+          'business:read',
+          'statements:read',
+          'offline_access',
+        ],
+        description: 'Access Ramp for corporate card and expense management',
+        scopeDescriptions: [
+          {
+            scope: 'transactions:read',
+            description: 'View transactions',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'cards:read',
+            description: 'View cards',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'users:read',
+            description: 'View users',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'reimbursements:read',
+            description: 'View reimbursements',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'departments:read',
+            description: 'View departments',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'vendors:read',
+            description: 'View vendors',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'business:read',
+            description: 'View business info',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'statements:read',
+            description: 'View billing statements',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'offline_access',
+            description:
+              'Maintain access when you are not actively using the app',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+    authorizationParams: {
+      prompt: 'consent',
+    },
+  },
 };
 
 /**
@@ -1940,6 +2023,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   attio: [CredentialType.ATTIO_CRED],
   hubspot: [CredentialType.HUBSPOT_CRED],
   assembled: [CredentialType.ASSEMBLED_CRED],
+  ramp: [CredentialType.RAMP_CRED],
 };
 
 export interface CredentialSiblingEntry {
@@ -2098,13 +2182,14 @@ export const credentialResponseSchema = z
         confluenceOAuthMetadataSchema,
         stripeOAuthMetadataSchema,
         linearOAuthMetadataSchema,
+        rampOAuthMetadataSchema,
         browserSessionMetadataSchema,
         credentialPreferencesSchema,
       ])
       .optional()
       .openapi({
         description:
-          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, AirtableOAuthMetadata, GoogleOAuthMetadata, NotionOAuthMetadata, ConfluenceOAuthMetadata, StripeOAuthMetadata, LinearOAuthMetadata, or CredentialPreferences)',
+          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, AirtableOAuthMetadata, GoogleOAuthMetadata, NotionOAuthMetadata, ConfluenceOAuthMetadata, StripeOAuthMetadata, LinearOAuthMetadata, RampOAuthMetadata, or CredentialPreferences)',
       }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
 

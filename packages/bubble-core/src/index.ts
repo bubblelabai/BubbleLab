@@ -137,6 +137,8 @@ export {
   type AssembledParamsInput,
   type AssembledResult,
 } from './bubbles/service-bubble/assembled/index.js';
+export { RampBubble } from './bubbles/service-bubble/ramp/index.js';
+export type { RampParamsInput } from './bubbles/service-bubble/ramp/index.js';
 export type {
   CrustdataParams,
   CrustdataParamsInput,
