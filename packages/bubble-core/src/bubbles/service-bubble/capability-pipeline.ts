@@ -26,20 +26,30 @@ export async function applyCapabilityPreprocessing(
 ): Promise<AIAgentParamsParsed> {
   const caps = params.capabilities ?? [];
   if (caps.length > 1) {
-    // Multi-capability delegator: use Gemini 3 Pro for reliable tool-calling / routing.
+    // Multi-capability delegator: use Sonnet for reliable tool-calling / routing.
     // Sub-agents apply their own modelConfigOverride in single-cap mode.
     params.model.model = RECOMMENDED_MODELS.CHAT as typeof params.model.model;
-    params.model.reasoningEffort = 'low';
+    params.model.reasoningEffort = 'medium';
   } else {
-    // Single-cap: apply that capability's model override directly
+    // Single-cap: sub-agents (multi-cap delegation) default to Gemini 3 Flash + no thinking
+    const isSubAgent = params.name?.startsWith('Capability Agent: ');
+    if (isSubAgent) {
+      params.model.model =
+        RECOMMENDED_MODELS.GOOGLE_FLAGSHIP as typeof params.model.model;
+      params.model.reasoningEffort = undefined;
+    }
+    // Apply capability modelConfigOverride on top (capabilities can override model/thinking)
     for (const capConfig of caps) {
       const capDef = getCapability(capConfig.id);
       const override = capDef?.metadata.modelConfigOverride;
       if (!override) continue;
       if (override.model)
         params.model.model = override.model as typeof params.model.model;
-      if (override.reasoningEffort)
-        params.model.reasoningEffort = override.reasoningEffort;
+      if (override.reasoningEffort !== undefined)
+        params.model.reasoningEffort =
+          override.reasoningEffort === 'none'
+            ? undefined
+            : override.reasoningEffort;
       if (override.maxTokens)
         params.model.maxTokens = Math.max(
           params.model.maxTokens ?? 0,
