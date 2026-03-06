@@ -513,6 +513,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Assembled API Key',
       credentialConfigurations: {},
     },
+    [CredentialType.XERO_CRED]: {
+      label: 'Xero',
+      description:
+        'OAuth connection to Xero for accounting, invoicing, and financial management',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Xero Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -586,6 +594,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.ATTIO_CRED]: '', // OAuth credential, no env var
   [CredentialType.SORTLY_API_KEY]: 'SORTLY_API_KEY',
   [CredentialType.ASSEMBLED_CRED]: 'ASSEMBLED_API_KEY',
+  [CredentialType.XERO_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -630,7 +639,8 @@ export type OAuthProvider =
   | 'airtable'
   | 'linear'
   | 'attio'
-  | 'hubspot';
+  | 'hubspot'
+  | 'xero';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -1585,6 +1595,90 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       prompt: 'consent',
     },
   },
+  xero: {
+    name: 'xero',
+    displayName: 'Xero',
+    credentialTypes: {
+      [CredentialType.XERO_CRED]: {
+        displayName: 'Xero',
+        defaultScopes: [
+          'openid',
+          'offline_access',
+          'accounting.invoices',
+          'accounting.contacts',
+          'accounting.settings',
+          'accounting.reports.balancesheet.read',
+          'accounting.reports.profitandloss.read',
+          'accounting.reports.trialbalance.read',
+          'accounting.reports.banksummary.read',
+          'accounting.reports.executivesummary.read',
+          'accounting.reports.budgetsummary.read',
+          'accounting.reports.aged.read',
+        ],
+        description:
+          'Access Xero for accounting, invoicing, and financial management',
+        scopeDescriptions: [
+          {
+            scope: 'accounting.invoices',
+            description:
+              'View and create invoices, bills, and other transactions',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'accounting.contacts',
+            description: 'View and manage customers and suppliers',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'accounting.settings',
+            description: 'View accounting settings and chart of accounts',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'accounting.reports.balancesheet.read',
+            description: 'View Balance Sheet reports',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'accounting.reports.profitandloss.read',
+            description: 'View Profit & Loss reports',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'accounting.reports.trialbalance.read',
+            description: 'View Trial Balance reports',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'accounting.reports.banksummary.read',
+            description: 'View Bank Summary (cash balances and movements)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'accounting.reports.executivesummary.read',
+            description: 'View Executive Summary (business KPIs and ratios)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'accounting.reports.budgetsummary.read',
+            description: 'View Budget Summary (budget vs actual)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'accounting.reports.aged.read',
+            description: 'View Aged Receivables and Aged Payables reports',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'offline_access',
+            description:
+              'Maintain access when you are not actively using the app',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+  },
 };
 
 /**
@@ -1940,6 +2034,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   attio: [CredentialType.ATTIO_CRED],
   hubspot: [CredentialType.HUBSPOT_CRED],
   assembled: [CredentialType.ASSEMBLED_CRED],
+  xero: [CredentialType.XERO_CRED],
 };
 
 export interface CredentialSiblingEntry {
