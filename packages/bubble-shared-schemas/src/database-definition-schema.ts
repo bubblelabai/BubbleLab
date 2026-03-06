@@ -177,6 +177,19 @@ export const linearOAuthMetadataSchema = z.object({
 export type LinearOAuthMetadata = z.infer<typeof linearOAuthMetadataSchema>;
 
 /**
+ * Xero OAuth metadata - stored after OAuth callback with tenantId for API calls
+ */
+export const xeroOAuthMetadataSchema = z.object({
+  tenantId: z.string(),
+  tenantName: z.string().optional(),
+  tenantType: z.string().optional(),
+  /** Human-readable display name for the credential */
+  displayName: z.string().optional(),
+});
+
+export type XeroOAuthMetadata = z.infer<typeof xeroOAuthMetadataSchema>;
+
+/**
  * Base preference fields that can be added to any credential metadata.
  * These are used for default credential selection and usage tracking.
  */

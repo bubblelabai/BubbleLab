@@ -101,6 +101,9 @@ export enum CredentialType {
 
   // Assembled Credentials
   ASSEMBLED_CRED = 'ASSEMBLED_CRED',
+
+  // Xero Credentials
+  XERO_CRED = 'XERO_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -177,4 +180,5 @@ export type BubbleName =
   | 'linear'
   | 'attio'
   | 'hubspot'
-  | 'assembled';
+  | 'assembled'
+  | 'xero';

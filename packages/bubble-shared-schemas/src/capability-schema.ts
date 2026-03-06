@@ -39,7 +39,8 @@ export type CapabilityId =
   | 'flow-assistant'
   | 'research-assistant'
   | 'sortly-assistant'
-  | 'assembled-assistant';
+  | 'assembled-assistant'
+  | 'xero-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.

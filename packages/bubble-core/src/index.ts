@@ -81,6 +81,8 @@ export { AttioBubble } from './bubbles/service-bubble/attio/index.js';
 export type { AttioParamsInput } from './bubbles/service-bubble/attio/index.js';
 export { HubSpotBubble } from './bubbles/service-bubble/hubspot/index.js';
 export type { HubSpotParamsInput } from './bubbles/service-bubble/hubspot/index.js';
+export { XeroBubble } from './bubbles/service-bubble/xero/index.js';
+export type { XeroParamsInput } from './bubbles/service-bubble/xero/index.js';
 export { ConfluenceBubble } from './bubbles/service-bubble/confluence/index.js';
 export type { ConfluenceParamsInput } from './bubbles/service-bubble/confluence/index.js';
 export { AshbyBubble } from './bubbles/service-bubble/ashby/index.js';
