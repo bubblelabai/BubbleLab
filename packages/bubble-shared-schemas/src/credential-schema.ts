@@ -529,6 +529,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Ramp Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.ZENDESK_CRED]: {
+      label: 'Zendesk',
+      description:
+        'OAuth connection to Zendesk for tickets, users, and help center',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Zendesk Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -604,6 +612,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.ASSEMBLED_CRED]: 'ASSEMBLED_API_KEY',
   [CredentialType.XERO_CRED]: '', // OAuth credential, no env var
   [CredentialType.RAMP_CRED]: '', // OAuth credential, no env var
+  [CredentialType.ZENDESK_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -650,7 +659,8 @@ export type OAuthProvider =
   | 'attio'
   | 'hubspot'
   | 'xero'
-  | 'ramp';
+  | 'ramp'
+  | 'zendesk';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -1781,6 +1791,32 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       },
     },
   },
+  zendesk: {
+    name: 'zendesk',
+    displayName: 'Zendesk',
+    credentialTypes: {
+      [CredentialType.ZENDESK_CRED]: {
+        displayName: 'Zendesk',
+        defaultScopes: ['read', 'write'],
+        description:
+          'Access Zendesk for ticket management, users, organizations, and help center',
+        scopeDescriptions: [
+          {
+            scope: 'read',
+            description:
+              'Read access to all Zendesk resources (tickets, users, organizations, help center)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'write',
+            description:
+              'Create and update tickets, users, organizations, and articles',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+  },
 };
 
 /**
@@ -2138,6 +2174,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   assembled: [CredentialType.ASSEMBLED_CRED],
   xero: [CredentialType.XERO_CRED],
   ramp: [CredentialType.RAMP_CRED],
+  zendesk: [CredentialType.ZENDESK_CRED],
 };
 
 export interface CredentialSiblingEntry {
