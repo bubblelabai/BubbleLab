@@ -106,6 +106,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.SORTLY_API_KEY]: 'Sortly',
     [CredentialType.ASSEMBLED_CRED]: 'Assembled',
     [CredentialType.XERO_CRED]: 'Xero',
+    [CredentialType.ZENDESK_CRED]: 'Zendesk',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

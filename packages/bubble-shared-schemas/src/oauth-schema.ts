@@ -21,6 +21,11 @@ export const oauthInitiateRequestSchema = z
           'Optional OAuth scopes to request (defaults based on credential type)',
         example: ['https://www.googleapis.com/auth/drive.readonly'],
       }),
+    subdomain: z.string().optional().openapi({
+      description:
+        'Subdomain for providers that require subdomain-scoped OAuth (e.g. Zendesk)',
+      example: 'mycompany',
+    }),
   })
   .openapi('OAuthInitiateRequest');
 

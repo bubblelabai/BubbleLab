@@ -179,6 +179,7 @@ export class BubbleFactory {
       's3-storage',
       'assembled',
       'xero',
+      'zendesk',
     ];
   }
 
@@ -414,6 +415,9 @@ export class BubbleFactory {
     const { XeroBubble } = await import(
       './bubbles/service-bubble/xero/index.js'
     );
+    const { ZendeskBubble } = await import(
+      './bubbles/service-bubble/zendesk/index.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -575,6 +579,7 @@ export class BubbleFactory {
     this.register('s3-storage', S3Bubble as BubbleClassWithMetadata);
     this.register('assembled', AssembledBubble as BubbleClassWithMetadata);
     this.register('xero', XeroBubble as BubbleClassWithMetadata);
+    this.register('zendesk', ZendeskBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {

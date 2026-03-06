@@ -104,6 +104,9 @@ export enum CredentialType {
 
   // Xero Credentials
   XERO_CRED = 'XERO_CRED',
+
+  // Zendesk Credentials
+  ZENDESK_CRED = 'ZENDESK_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -181,4 +184,5 @@ export type BubbleName =
   | 'attio'
   | 'hubspot'
   | 'assembled'
-  | 'xero';
+  | 'xero'
+  | 'zendesk';

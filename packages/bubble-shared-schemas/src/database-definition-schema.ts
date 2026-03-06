@@ -190,6 +190,17 @@ export const xeroOAuthMetadataSchema = z.object({
 export type XeroOAuthMetadata = z.infer<typeof xeroOAuthMetadataSchema>;
 
 /**
+ * Zendesk OAuth metadata - stored after OAuth callback with subdomain for API calls
+ */
+export const zendeskOAuthMetadataSchema = z.object({
+  subdomain: z.string(),
+  /** Human-readable display name for the credential */
+  displayName: z.string().optional(),
+});
+
+export type ZendeskOAuthMetadata = z.infer<typeof zendeskOAuthMetadataSchema>;
+
+/**
  * Base preference fields that can be added to any credential metadata.
  * These are used for default credential selection and usage tracking.
  */
