@@ -222,6 +222,8 @@ interface ParsedBlock {
   language?: string; // For code blocks
   tableHeaders?: string[]; // For table blocks
   tableRows?: string[][]; // For table blocks
+  tableRawHeaders?: string[]; // Un-stripped headers (for mrkdwn fallback when links detected)
+  tableRawRows?: string[][]; // Un-stripped rows (for mrkdwn fallback when links detected)
 }
 
 /**
@@ -274,17 +276,21 @@ function normalizeMarkdownNewlines(markdown: string): string {
   // But only after sentence-ending punctuation to avoid false positives
   result = result.replace(/([.!?])(\s+)([-*]\s+)(?!\*)/g, '$1\n$3');
 
-  // Restore link placeholders
+  // Restore link placeholders in the main text
   result = result.replace(
     /<<__LINK_PLACEHOLDER_(\d+)__>>/g,
     (_, idx) => linkPlaceholders[Number(idx)]
   );
 
-  // Restore table row placeholders
-  result = result.replace(
-    /<<__TABLE_ROW_(\d+)__>>/g,
-    (_, idx) => tableRowPlaceholders[Number(idx)]
-  );
+  // Restore table row placeholders, also restoring any link placeholders within them
+  result = result.replace(/<<__TABLE_ROW_(\d+)__>>/g, (_, idx) => {
+    let row = tableRowPlaceholders[Number(idx)];
+    row = row.replace(
+      /<<__LINK_PLACEHOLDER_(\d+)__>>/g,
+      (__, linkIdx) => linkPlaceholders[Number(linkIdx)]
+    );
+    return row;
+  });
 
   return result;
 }
@@ -347,6 +353,42 @@ function stripMarkdownFormatting(text: string): string {
     /\u00ABE(\d+)\u00BB/g,
     (_, idx) => emojiPlaceholders[parseInt(idx)]
   );
+}
+
+/** Checks if any cell contains a markdown link `[text](url)` or an unrestored link placeholder */
+function tableHasLinks(rows: string[][]): boolean {
+  const linkPattern = /\[[^\]]+\]\([^)]+\)/;
+  const linkPlaceholderPattern = /<<__LINK_PLACEHOLDER_\d+__>>/;
+  return rows.some((row) =>
+    row.some(
+      (cell) => linkPattern.test(cell) || linkPlaceholderPattern.test(cell)
+    )
+  );
+}
+
+/**
+ * Renders a table as mrkdwn section blocks with key-value rows.
+ * Each data row becomes: *Col1:* val1 · *Col2:* val2 · *Col3:* <url|text>
+ * Used when cells contain links (Slack table blocks only support raw_text).
+ */
+function createTableMrkdwnFallback(
+  rawHeaders: string[],
+  rawRows: string[][]
+): SlackBlock[] {
+  const blocks: SlackBlock[] = [];
+  for (const row of rawRows) {
+    const parts = rawHeaders.map((h, i) => {
+      const header = stripMarkdownFormatting(h.trim());
+      const cell = markdownToMrkdwn((row[i] ?? '').trim());
+      return `*${header}:* ${cell}`;
+    });
+    const rowText = parts.join(' · ');
+    blocks.push({
+      type: 'section',
+      text: { type: 'mrkdwn' as const, text: rowText },
+    });
+  }
+  return blocks;
 }
 
 function parseMarkdownBlocks(markdown: string): ParsedBlock[] {
@@ -527,20 +569,26 @@ function parseMarkdownBlocks(markdown: string): ParsedBlock[] {
     if (block.type !== 'table') continue;
     const tableLines = block.content.split('\n');
     const parsedRows: string[][] = [];
+    const rawRows: string[][] = [];
     for (const tl of tableLines) {
       const trimmed = tl.trim();
       // Skip separator rows like |---|---|
       if (/^\|[\s\-:|]+\|$/.test(trimmed)) continue;
-      // Parse cells, stripping markdown since table cells use raw_text.
       // Use smart split that ignores | inside angle brackets (e.g. <mailto:x|y>, <url|text>)
-      const cells = splitTableRow(trimmed).map((c) =>
-        stripMarkdownFormatting(c.trim())
-      );
+      const rawCells = splitTableRow(trimmed).map((c) => c.trim());
+      rawRows.push(rawCells);
+      // Strip markdown since table cells use raw_text
+      const cells = rawCells.map((c) => stripMarkdownFormatting(c));
       parsedRows.push(cells);
     }
     if (parsedRows.length > 0) {
       block.tableHeaders = parsedRows[0];
       block.tableRows = parsedRows.slice(1);
+      // If any cell contains a markdown link, store raw cells for mrkdwn fallback
+      if (tableHasLinks(rawRows)) {
+        block.tableRawHeaders = rawRows[0];
+        block.tableRawRows = rawRows.slice(1);
+      }
     }
   }
 
@@ -687,18 +735,32 @@ export function markdownToBlocks(
           block.tableRows &&
           block.tableRows.length > 0
         ) {
-          const result = createTableBlock(block.tableHeaders, block.tableRows);
-          slackBlocks.push(result.tableBlock);
-          if (result.wasTruncated) {
-            slackBlocks.push({
-              type: 'context',
-              elements: [
-                {
-                  type: 'mrkdwn' as const,
-                  text: `Showing ${SLACK_TABLE_MAX_ROWS - 1} of ${result.originalRowCount} rows`,
-                },
-              ],
-            });
+          // If cells contain markdown links, fall back to mrkdwn key-value rows
+          // so links remain clickable (table blocks only support raw_text)
+          if (block.tableRawHeaders && block.tableRawRows) {
+            slackBlocks.push(
+              ...createTableMrkdwnFallback(
+                block.tableRawHeaders,
+                block.tableRawRows
+              )
+            );
+          } else {
+            const result = createTableBlock(
+              block.tableHeaders,
+              block.tableRows
+            );
+            slackBlocks.push(result.tableBlock);
+            if (result.wasTruncated) {
+              slackBlocks.push({
+                type: 'context',
+                elements: [
+                  {
+                    type: 'mrkdwn' as const,
+                    text: `Showing ${SLACK_TABLE_MAX_ROWS - 1} of ${result.originalRowCount} rows`,
+                  },
+                ],
+              });
+            }
           }
         } else {
           // Failed to parse table: render as code block

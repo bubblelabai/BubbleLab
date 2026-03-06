@@ -1147,6 +1147,74 @@ Skipped as before: all \`[TEST]\` and \`[Integration Test]\` issues.`;
     expect(introBlock.text.text).toContain('`[TEST]`');
     expect(introBlock.text.text).toContain('`[Integration Test]`');
   });
+
+  it('should render table without links as a native table block', () => {
+    const md = `| Name | Age |
+| --- | --- |
+| Alice | 30 |
+| Bob | 25 |`;
+    const blocks = markdownToBlocks(md);
+    expect(blocks.find((b) => b.type === 'table')).toBeDefined();
+    expect(blocks.filter((b) => b.type === 'section')).toHaveLength(0);
+  });
+
+  it('should fall back to mrkdwn key-value rows when table cells contain markdown links', () => {
+    const md = `| Invoice | Amount | Link |
+| --- | --- | --- |
+| INV-001 | $500 | [Open](https://example.com/inv/001) |
+| INV-002 | $750 | [Open](https://example.com/inv/002) |`;
+    const blocks = markdownToBlocks(md);
+
+    // Should NOT have a native table block
+    expect(blocks.find((b) => b.type === 'table')).toBeUndefined();
+
+    // Each data row becomes a key-value section block
+    const sectionBlocks = blocks.filter(
+      (b): b is SlackSectionBlock => b.type === 'section'
+    );
+    expect(sectionBlocks).toHaveLength(2);
+
+    // Row 1: *Invoice:* INV-001 · *Amount:* $500 · *Link:* <url|Open>
+    expect(sectionBlocks[0].text.text).toContain('*Invoice:*');
+    expect(sectionBlocks[0].text.text).toContain('INV-001');
+    expect(sectionBlocks[0].text.text).toContain('*Amount:*');
+    expect(sectionBlocks[0].text.text).toContain('$500');
+    expect(sectionBlocks[0].text.text).toContain(
+      '<https://example.com/inv/001|Open>'
+    );
+
+    // Row 2
+    expect(sectionBlocks[1].text.text).toContain('INV-002');
+    expect(sectionBlocks[1].text.text).toContain(
+      '<https://example.com/inv/002|Open>'
+    );
+
+    // Fields separated by ·
+    expect(sectionBlocks[0].text.text).toContain(' · ');
+  });
+
+  it('should preserve links in mixed content tables with surrounding text', () => {
+    const md = `Here are your invoices:
+
+| Name | Link |
+| --- | --- |
+| Report | [View](https://example.com/report) |
+
+Let me know if you need more.`;
+    const blocks = markdownToBlocks(md);
+
+    expect(blocks.find((b) => b.type === 'table')).toBeUndefined();
+
+    // Find the key-value section with the clickable link
+    const linkSection = blocks.find(
+      (b): b is SlackSectionBlock =>
+        b.type === 'section' &&
+        b.text.text.includes('<https://example.com/report|View>')
+    );
+    expect(linkSection).toBeDefined();
+    expect(linkSection!.text.text).toContain('*Name:*');
+    expect(linkSection!.text.text).toContain('Report');
+  });
 });
 
 describe('splitBlocksByTable', () => {
