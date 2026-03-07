@@ -179,6 +179,7 @@ export class BubbleFactory {
       's3-storage',
       'assembled',
       'xero',
+      'ramp',
     ];
   }
 
@@ -414,6 +415,9 @@ export class BubbleFactory {
     const { XeroBubble } = await import(
       './bubbles/service-bubble/xero/index.js'
     );
+    const { RampBubble } = await import(
+      './bubbles/service-bubble/ramp/index.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -575,6 +579,7 @@ export class BubbleFactory {
     this.register('s3-storage', S3Bubble as BubbleClassWithMetadata);
     this.register('assembled', AssembledBubble as BubbleClassWithMetadata);
     this.register('xero', XeroBubble as BubbleClassWithMetadata);
+    this.register('ramp', RampBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
@@ -880,6 +885,7 @@ import {
   HubSpotBubble, // bubble name: 'hubspot'
   S3Bubble, // bubble name: 's3-storage'
   AssembledBubble, // bubble name: 'assembled'
+  RampBubble, // bubble name: 'ramp'
 
   // Tool Bubbles (Perform useful actions)
   ResearchAgentTool, // bubble name: 'research-agent-tool'
