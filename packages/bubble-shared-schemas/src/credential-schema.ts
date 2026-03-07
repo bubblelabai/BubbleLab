@@ -521,6 +521,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Xero Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.RAMP_CRED]: {
+      label: 'Ramp',
+      description:
+        'OAuth connection to Ramp for corporate expense and spend management',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Ramp Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -595,6 +603,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.SORTLY_API_KEY]: 'SORTLY_API_KEY',
   [CredentialType.ASSEMBLED_CRED]: 'ASSEMBLED_API_KEY',
   [CredentialType.XERO_CRED]: '', // OAuth credential, no env var
+  [CredentialType.RAMP_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -640,7 +649,8 @@ export type OAuthProvider =
   | 'linear'
   | 'attio'
   | 'hubspot'
-  | 'xero';
+  | 'xero'
+  | 'ramp';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -1595,6 +1605,98 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       prompt: 'consent',
     },
   },
+  ramp: {
+    name: 'ramp',
+    displayName: 'Ramp',
+    credentialTypes: {
+      [CredentialType.RAMP_CRED]: {
+        displayName: 'Ramp',
+        defaultScopes: [
+          'transactions:read',
+          'users:read',
+          'cards:read',
+          'departments:read',
+          'locations:read',
+          'spend_programs:read',
+          'limits:read',
+          'reimbursements:read',
+          'bills:read',
+          'receipts:read',
+          'vendors:read',
+          'business:read',
+          'statements:read',
+        ],
+        description: 'Access Ramp for corporate expense and spend management',
+        scopeDescriptions: [
+          {
+            scope: 'transactions:read',
+            description: 'View spending activity across cards and funds',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'users:read',
+            description: 'View employees and their information',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'cards:read',
+            description: 'View corporate cards',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'departments:read',
+            description: 'View departments',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'locations:read',
+            description: 'View locations',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'spend_programs:read',
+            description: 'View spend programs',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'limits:read',
+            description: 'View spend limits and funds',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'reimbursements:read',
+            description: 'View reimbursements',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'bills:read',
+            description: 'View bills',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'receipts:read',
+            description: 'View receipts',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'vendors:read',
+            description: 'View vendors',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'business:read',
+            description: 'View business information',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'statements:read',
+            description: 'View statements',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+  },
   xero: {
     name: 'xero',
     displayName: 'Xero',
@@ -2035,6 +2137,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   hubspot: [CredentialType.HUBSPOT_CRED],
   assembled: [CredentialType.ASSEMBLED_CRED],
   xero: [CredentialType.XERO_CRED],
+  ramp: [CredentialType.RAMP_CRED],
 };
 
 export interface CredentialSiblingEntry {

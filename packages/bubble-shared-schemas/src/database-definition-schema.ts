@@ -190,6 +190,17 @@ export const xeroOAuthMetadataSchema = z.object({
 export type XeroOAuthMetadata = z.infer<typeof xeroOAuthMetadataSchema>;
 
 /**
+ * Ramp OAuth metadata - stored after OAuth callback with business info
+ */
+export const rampOAuthMetadataSchema = z.object({
+  businessName: z.string().optional(),
+  /** Human-readable display name for the credential */
+  displayName: z.string().optional(),
+});
+
+export type RampOAuthMetadata = z.infer<typeof rampOAuthMetadataSchema>;
+
+/**
  * Base preference fields that can be added to any credential metadata.
  * These are used for default credential selection and usage tracking.
  */
