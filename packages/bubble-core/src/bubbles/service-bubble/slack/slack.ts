@@ -1516,6 +1516,10 @@ Comprehensive Slack integration for messaging and workspace management.
       return [];
     }
     const viewUrl = `${executionMeta.studioBaseUrl}/flow/${executionMeta.flowId}`;
+    const traceUrl = executionMeta.executionId
+      ? `${executionMeta.studioBaseUrl}/traces/${executionMeta.flowId}/${executionMeta.executionId}`
+      : null;
+    const traceSuffix = traceUrl ? ` · <${traceUrl}|View Traces>` : '';
     const firstName = executionMeta._ownerFirstName || '';
 
     const pearlFlowId = executionMeta._pearlFlowId;
@@ -1527,12 +1531,12 @@ Comprehensive Slack integration for messaging and workspace management.
 
     let text: string;
     if (executionMeta._isPearlFlow) {
-      text = `<${viewUrl}|${pearlLabel}>`;
+      text = `<${viewUrl}|${pearlLabel}>${traceSuffix}`;
     } else if (pearlUrl) {
       const flowName = executionMeta._flowName || 'Flow';
-      text = `<${pearlUrl}|${pearlLabel}> · <${viewUrl}|${flowName}>`;
+      text = `<${pearlUrl}|${pearlLabel}> · <${viewUrl}|${flowName}>${traceSuffix}`;
     } else {
-      text = `Powered by Bubble Lab · <${viewUrl}|View Flow>`;
+      text = `Powered by Bubble Lab · <${viewUrl}|View Flow>${traceSuffix}`;
     }
 
     return [

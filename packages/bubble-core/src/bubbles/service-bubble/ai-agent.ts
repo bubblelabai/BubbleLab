@@ -980,10 +980,15 @@ export class AIAgentBubble extends ServiceBubble<
     // Add the final response
     messages.push({ role: 'assistant', content: result.response });
 
-    // Fire-and-forget
-    memoryReflectionCallback(messages).catch((err) => {
-      console.error('[AIAgent] Memory reflection failed:', err);
-    });
+    // Fire-and-forget — but store promise so trace flush can await it
+    const reflectionPromise = memoryReflectionCallback(messages).catch(
+      (err) => {
+        console.error('[AIAgent] Memory reflection failed:', err);
+      }
+    );
+    if (execMeta) {
+      execMeta._reflectionPromise = reflectionPromise;
+    }
   }
 
   protected getCredentialType(): CredentialType {
@@ -2263,6 +2268,7 @@ export class AIAgentBubble extends ServiceBubble<
       this._trace('agentNode', `LLM CALL`, {
         model: this.params.model.model,
         temperature: this.params.model.temperature,
+        systemPrompt,
         messageCount: messages.length,
         messages: messages.map((m) => {
           const role = m._getType();
@@ -3348,6 +3354,30 @@ export class AIAgentBubble extends ServiceBubble<
       }
 
       const finalResponse = formattedResult.response;
+
+      // When an approval is pending, the master's final response is typically
+      // a memory JSON — override with the subagent's reasoning text instead.
+      const execMeta = this.context?.executionMeta;
+      if (execMeta?._pendingApproval) {
+        const pendingApproval = execMeta._pendingApproval as {
+          lastAIText?: string;
+          action?: string;
+          targetFlowName?: string;
+        };
+        const approvalResponse =
+          pendingApproval.lastAIText ||
+          (pendingApproval.targetFlowName
+            ? `Requesting approval to **${pendingApproval.action}** "${pendingApproval.targetFlowName}".`
+            : `Requesting approval to **${pendingApproval.action}**.`);
+
+        return {
+          response: approvalResponse,
+          toolCalls: toolCalls.length > 0 ? toolCalls : [],
+          iterations,
+          error: '',
+          success: true,
+        };
+      }
 
       console.log(
         '[AIAgent] Final response length:',
