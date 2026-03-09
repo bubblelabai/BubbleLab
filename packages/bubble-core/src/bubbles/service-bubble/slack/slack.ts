@@ -1612,6 +1612,25 @@ Comprehensive Slack integration for messaging and workspace management.
       });
     }
 
+    // Append footer blocks early so they count toward the 50-block limit.
+    // Previously, footers were appended *after* the chunking check, so a
+    // message with 49 content blocks + 2 footer blocks would bypass chunking
+    // and hit Slack's 50-block limit.
+    if (footerBlocks.length > 0) {
+      if (finalBlocks) {
+        finalBlocks = [...finalBlocks, ...footerBlocks] as typeof finalBlocks;
+      } else if (finalText) {
+        // Plain text message — convert to section block + footer
+        finalBlocks = [
+          {
+            type: 'section',
+            text: { type: 'mrkdwn', text: finalText },
+          },
+          ...footerBlocks,
+        ] as unknown as typeof blocks;
+      }
+    }
+
     // Slack only allows one table block per message.
     // If there are multiple tables, split into separate messages.
     if (finalBlocks) {
@@ -1619,9 +1638,6 @@ Comprehensive Slack integration for messaging and workspace management.
         finalBlocks as unknown as import('./slack.utils.js').SlackBlock[]
       );
       if (tableChunks.length > 1) {
-        // Flatten chunks back into a single array but keep the chunk
-        // boundaries aligned so sendMessageWithBlockChunks sends each
-        // chunk as its own message (each with at most 1 table block).
         return await this.sendMessageWithBlockChunks(
           resolvedChannel,
           finalText,
@@ -1636,7 +1652,7 @@ Comprehensive Slack integration for messaging and workspace management.
             unfurl_links,
             unfurl_media,
           },
-          footerBlocks,
+          [], // footer already included in finalBlocks
           tableChunks as unknown as (typeof finalBlocks)[]
         );
       }
@@ -1661,25 +1677,8 @@ Comprehensive Slack integration for messaging and workspace management.
           unfurl_links,
           unfurl_media,
         },
-        footerBlocks
+        [] // footer already included in finalBlocks
       );
-    }
-
-    // Append footer blocks to the message
-    if (footerBlocks.length > 0) {
-      if (finalBlocks) {
-        // Append footer to existing blocks
-        finalBlocks = [...finalBlocks, ...footerBlocks] as typeof finalBlocks;
-      } else if (finalText) {
-        // Plain text message — convert to section block + footer
-        finalBlocks = [
-          {
-            type: 'section',
-            text: { type: 'mrkdwn', text: finalText },
-          },
-          ...footerBlocks,
-        ] as unknown as typeof blocks;
-      }
     }
 
     const body: Record<string, unknown> = {

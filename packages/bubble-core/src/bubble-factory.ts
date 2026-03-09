@@ -851,6 +851,23 @@ export class BubbleFactory {
       .map((t) => `'${t}'`)
       .join(' | ');
 
+    // Dynamically generate bubble imports from registry
+    const nameToClass = this.getBubbleNameToClassNameMap();
+    const serviceBubbles: string[] = [];
+    const toolBubbles: string[] = [];
+
+    for (const [bubbleName, className_] of Object.entries(nameToClass)) {
+      const meta = this.getMetadata(bubbleName as BubbleName);
+      if (!meta) continue;
+      const line = `  ${className_}, // bubble name: '${bubbleName}'`;
+      if (meta.type === 'tool') {
+        toolBubbles.push(line);
+      } else {
+        // service, workflow, and any other types go in the service section
+        serviceBubbles.push(line);
+      }
+    }
+
     return `
 import { z } from 'zod';
 import {
@@ -858,54 +875,10 @@ import {
   BubbleFlow,
 
   // Service Bubbles (Connects to external services)
-  HelloWorldBubble, // bubble name: 'hello-world'
-  AIAgentBubble, // bubble name: 'ai-agent'
-  PostgreSQLBubble, // bubble name: 'postgresql'
-  SlackBubble, // bubble name: 'slack'
-  ResendBubble, // bubble name: 'resend'
-  GoogleDriveBubble, // bubble name: 'google-drive'
-  GoogleSheetsBubble, // bubble name: 'google-sheets'
-  GoogleCalendarBubble, // bubble name: 'google-calendar'
-  GmailBubble, // bubble name: 'gmail'
-  SlackFormatterAgentBubble, // bubble name: 'slack-formatter-agent'
-  HttpBubble, // bubble name: 'http'
-  StorageBubble, // bubble name: 'storage'
-  ApifyBubble, // bubble name: 'apify'
-  ElevenLabsBubble, // bubble name: 'eleven-labs'
-  FollowUpBossBubble, // bubble name: 'followupboss'
-  JiraBubble, // bubble name: 'jira'
-  ConfluenceBubble, // bubble name: 'confluence'
-  AshbyBubble, // bubble name: 'ashby'
-  FullEnrichBubble, // bubble name: 'fullenrich'
-  StripeBubble, // bubble name: 'stripe'
-  SendSafelyBubble, // bubble name: 'sendsafely'
-  PosthogBubble, // bubble name: 'posthog'
-  LinearBubble, // bubble name: 'linear'
-  AttioBubble, // bubble name: 'attio'
-  HubSpotBubble, // bubble name: 'hubspot'
-  S3Bubble, // bubble name: 's3-storage'
-  AssembledBubble, // bubble name: 'assembled'
-  RampBubble, // bubble name: 'ramp'
+${serviceBubbles.join('\n')}
 
   // Tool Bubbles (Perform useful actions)
-  ResearchAgentTool, // bubble name: 'research-agent-tool'
-  RedditScrapeTool, // bubble name: 'reddit-scrape-tool'
-  WebScrapeTool, // bubble name: 'web-scrape-tool'
-  WebCrawlTool, // bubble name: 'web-crawl-tool'
-  WebSearchTool, // bubble name: 'web-search-tool'
-  InstagramTool, // bubble name: 'instagram-tool'
-  LinkedInTool, // bubble name: 'linkedin-tool'
-  TikTokTool, // bubble name: 'tiktok-tool'
-  TwitterTool, // bubble name: 'twitter-tool'
-  GoogleMapsTool, // bubble name: 'google-maps-tool'
-  YouTubeTool, // bubble name: 'youtube-tool'
-  AmazonShoppingTool, // bubble name: 'amazon-shopping-tool',
-  LinkedInConnectionTool, // bubble name: 'linkedin-connection-tool'
-  LinkedInSentInvitationsTool, // bubble name: 'linkedin-sent-invitations-tool'
-  LinkedInReceivedInvitationsTool, // bubble name: 'linkedin-received-invitations-tool'
-  LinkedInAcceptInvitationsTool, // bubble name: 'linkedin-accept-invitations-tool'
-  PeopleSearchTool, // bubble name: 'people-search-tool'
-  YCScraperTool, // bubble name: 'yc-scraper-tool'
+${toolBubbles.join('\n')}
 
   // Event Types (Import the one matching your trigger)
   type WebhookEvent,

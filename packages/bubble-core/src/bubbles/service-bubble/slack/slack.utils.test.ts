@@ -1318,3 +1318,134 @@ describe('splitBlocksByTable', () => {
     }
   });
 });
+
+describe('markdownToBlocks block count regression', () => {
+  it('should produce >50 blocks for a long investor brief (regression: footer blocks must be counted before chunking)', () => {
+    // This investor brief caused a Slack "invalid_blocks: no more than 50 items allowed"
+    // error because markdownToBlocks produced ~49 blocks, the >50 check passed,
+    // then 2 footer blocks were appended, pushing the total to 51.
+    const investorBrief = `Here's your full investor brief for **Monday, March 16th**. Big day — 7 meetings! 🚀
+
+---
+
+## 📅 March 16th — Investor Meeting Day
+
+---
+
+### 1️⃣ Jane Smith — Alpha Ventures
+**10:00 – 10:30 AM** | \`jane@alphaventures.vc\`
+
+**Who she is:** Solo GP at Alpha Ventures (est. 2017). Has made 100+ seed investments. Notable portfolio: Acme, Rocket, Nova.
+
+**Focus:** Pre-seed/seed, B2B SaaS, developer tools, quality of life. Writes first checks ($150K–$250K range).
+
+**📧 Email context:** She reached out twice expressing strong interest after seeing the product.
+
+**💡 Pitch tip:** She decides *fast* as a solo GP. Keep it tight, lead with impact.
+
+---
+
+### 2️⃣ Alex Johnson — Beta Fund
+**11:00 – 11:30 AM** | \`alex@betafund.com\`
+
+**Who he is:** Head of Funds at Beta Fund. Science/deep-tech background from Stanford.
+
+**Focus:** Deep tech, science, research acceleration. Checks: **$50K–$100K**, same-day decisions.
+
+**📧 Email context:** He reached out saying he was "super impressed" with the product.
+
+**💡 Pitch tip:** Same-day decision investor — he's low friction. Lean into the "work that moves things forward" angle.
+
+---
+
+### 3️⃣ Robert Lee — Gamma Capital
+**12:00 – 12:30 PM** | \`robert@gammacap.com\`
+
+**Who he is:** Managing Partner at Gamma Capital (New York, NY). Management consulting background.
+
+**Focus:** Early-stage B2B. Portfolio: Quantum Co, Avoca, Zettascale.
+
+**📧 Email context:** Booked via calendar link — no prior email thread found.
+
+**💡 Pitch tip:** Come with a crisp outbound sales strategy, CAC numbers, and how you acquire B2B customers.
+
+---
+
+### 4️⃣ Sarah Chen — Delta Partners
+**2:00 – 2:30 PM** | \`sarah@deltapartners.com\`
+
+**Who she is:** General Partner at Delta Partners ($3.2B AUM). Former tech journalist (TechCrunch, Bloomberg, WSJ).
+
+**Focus:** Technology touching the physical world — PropTech, energy, vertical AI, defense.
+
+**📧 Email context:** The founder reached out to offer a demo. Sarah looped in her associate to coordinate.
+
+**💡 Pitch tip:** Ex-journalist = zero tolerance for jargon. Your narrative clarity matters more than your deck.
+
+---
+
+### 5️⃣ David Park — Epsilon Capital
+**3:00 – 3:30 PM** | \`david@epsiloncap.com\`
+
+**Who he is:** Founder of Epsilon Capital ($34M fund). 2x founder himself (prior exits in PropTech, NFC).
+
+**Focus:** **Accelerator-alumni-only** fund. Exclusively invests in top-tier accelerator companies. Writes ~$100K checks.
+
+**📧 Email context:** David found you on the alumni network — praised the team for staying close to early users.
+
+**💡 Pitch tip:** He's a fellow operator. Go peer-to-peer. Talk survival, growth metrics, and what's actually hard.
+
+---
+
+### 6️⃣ Chris Wong — Angel Investor
+**4:30 – 5:00 PM** | \`chris.wong@gmail.com\`
+
+**Who he is:** CPO/COO at DataCo. Previously: Delta Partners, Meta, Google, Pinterest.
+
+**Focus:** Early-stage AI, social tech, enterprise tools. Invests personal capital.
+
+**📧 Email context:** He called out the "prompt once, automate forever" angle and the workflow automation.
+
+**💡 Pitch tip:** He *is* a CPO. Have a live demo ready. Talk about retention loops and your roadmap.
+
+---
+
+### 7️⃣ Wei Zhang — Zeta Holdings
+**6:30 – 7:00 PM** | \`wei@zetaholdings.hk\`
+
+**Who he is:** Investment associate for a billionaire tech co-founder's personal investment vehicle.
+
+**Focus:** Foundational AI, AGI-adjacent, robotics. Deep connections in the Asian tech ecosystem.
+
+**📧 Email context:** Booking came in via calendar link. Likely found through accelerator batch channels.
+
+**💡 Pitch tip:** You're indirectly pitching a billionaire. Get technical. Emphasize foundational AI capabilities.
+
+---
+
+## 🗓️ Quick Schedule Snapshot
+
+| Time (PDT) | Investor | Fund | Check Size |
+|---|---|---|---|
+| 10:00 AM | Jane Smith | Alpha Ventures | $150K–$250K |
+| 11:00 AM | Alex Johnson | Beta Fund | $50K–$100K |
+| 12:00 PM | Robert Lee | Gamma Capital | Undisclosed |
+| 2:00 PM | Sarah Chen | Delta Partners ($3.2B) | Undisclosed |
+| 3:00 PM | David Park | Epsilon Capital | ~$100K |
+| 4:30 PM | Chris Wong | Angel | Personal |
+| 6:30 PM | Wei Zhang | Zeta Holdings | Family office |
+
+---
+
+Strong lineup. The standouts: **Sarah** (biggest fund), **David** (already a fan), and **Wei** (potentially the biggest check). Good luck! 🤞`;
+
+    const blocks = markdownToBlocks(investorBrief);
+
+    // The investor brief produces 57 blocks — well over Slack's 50-block limit.
+    // Previously, footer blocks (divider + context = 2 blocks) were appended
+    // *after* the >50 chunking check, AND appended to the last chunk without
+    // checking if it would exceed 50. Both bugs are fixed by including footer
+    // blocks in finalBlocks before any chunking decisions.
+    expect(blocks.length).toBeGreaterThan(50);
+  });
+});
