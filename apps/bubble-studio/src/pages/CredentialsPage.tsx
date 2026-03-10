@@ -107,6 +107,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.ASSEMBLED_CRED]: 'Assembled',
     [CredentialType.XERO_CRED]: 'Xero',
     [CredentialType.RAMP_CRED]: 'Ramp',
+    [CredentialType.ZENDESK_CRED]: 'Zendesk',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

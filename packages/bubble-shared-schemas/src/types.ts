@@ -107,6 +107,9 @@ export enum CredentialType {
 
   // Ramp Credentials
   RAMP_CRED = 'RAMP_CRED',
+
+  // Zendesk Credentials
+  ZENDESK_CRED = 'ZENDESK_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -185,4 +188,5 @@ export type BubbleName =
   | 'hubspot'
   | 'assembled'
   | 'xero'
-  | 'ramp';
+  | 'ramp'
+  | 'zendesk';
