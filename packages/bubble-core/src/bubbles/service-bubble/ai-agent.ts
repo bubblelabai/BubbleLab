@@ -832,8 +832,9 @@ export class AIAgentBubble extends ServiceBubble<
       | undefined;
     if (customCaps && !isCapabilityAgent) {
       // Match /command at start of message (optionally preceded by Slack mention)
+      // Slack may wrap the command in backticks (code formatting), so strip them
       const match = this.params.message.match(
-        /^(?:<@[A-Z0-9]+>\s*)?\/([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)\b\s*([\s\S]*)$/
+        /^(?:<@[A-Z0-9]+>\s*)?`?\/([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)`?\b\s*([\s\S]*)$/
       );
       if (match) {
         const cap = customCaps[match[1]];
