@@ -431,6 +431,24 @@ export const bubbleFlowListItemSchema = z.object({
   }),
   createdAt: z.string().openapi({ description: 'Creation timestamp' }),
   updatedAt: z.string().openapi({ description: 'Update timestamp' }),
+  lastExecution: z
+    .object({
+      status: z.enum(['running', 'success', 'error']),
+      startedAt: z.string(),
+      completedAt: z.string().nullable().optional(),
+    })
+    .nullable()
+    .optional()
+    .openapi({ description: 'Most recent execution summary' }),
+  ownerInfo: z
+    .object({
+      userId: z.string(),
+      email: z.string(),
+      name: z.string().nullable(),
+    })
+    .nullable()
+    .optional()
+    .openapi({ description: 'Flow owner display info' }),
 });
 
 // GET /bubble-flow - List BubbleFlows response with user info
