@@ -78,6 +78,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.XERO_CRED]: {},
   [CredentialType.RAMP_CRED]: {},
   [CredentialType.ZENDESK_CRED]: {},
+  [CredentialType.SLAB_CRED]: {},
   [CredentialType.CREDENTIAL_WILDCARD]: {}, // Wildcard marker, not a real credential
 };
 

@@ -42,7 +42,8 @@ export type CapabilityId =
   | 'assembled-assistant'
   | 'xero-assistant'
   | 'ramp-assistant'
-  | 'zendesk-assistant';
+  | 'zendesk-assistant'
+  | 'slab-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
