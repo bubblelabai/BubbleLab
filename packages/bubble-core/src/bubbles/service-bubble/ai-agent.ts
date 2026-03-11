@@ -739,6 +739,14 @@ export class AIAgentBubble extends ServiceBubble<
         this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\n\n${memorySystemPrompt}`;
       }
 
+      // Operating guidelines (hardcoded by host app, not stored in DB)
+      const operatingGuidelines = execMeta?.operatingGuidelines as
+        | string
+        | undefined;
+      if (operatingGuidelines) {
+        this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\n\n${operatingGuidelines}`;
+      }
+
       // Initialize callLLM for memory tools that need it (update_memory merge, reflection)
       const memoryCallLLMInit = execMeta?.memoryCallLLMInit as
         | ((callLLM: (prompt: string) => Promise<string>) => void)
@@ -818,7 +826,7 @@ export class AIAgentBubble extends ServiceBubble<
           {
             systemPrompt: string;
             name: string;
-            effort?: 'none' | 'low' | 'medium' | 'high';
+            effort?: 'none' | 'run-only' | 'low' | 'medium' | 'high';
           }
         >
       | undefined;
@@ -830,23 +838,35 @@ export class AIAgentBubble extends ServiceBubble<
       if (match) {
         const cap = customCaps[match[1]];
         if (cap) {
-          this.params.systemPrompt += `\n\n---\n\n[Custom Capability: ${match[1]}]\n${cap.systemPrompt}`;
+          const effort = cap.effort || 'medium';
+
+          // run-only: replace entire system prompt — skip all injected context
+          // (memory, guidelines, capability management) that bloats the prompt
+          if (effort === 'run-only') {
+            this.params.systemPrompt = cap.systemPrompt;
+          } else {
+            this.params.systemPrompt += `\n\n---\n\n[Custom Capability: ${match[1]}]\n${cap.systemPrompt}`;
+          }
           this.params.message =
             match[2].trim() || `(user invoked /${match[1]})`;
 
           // Set model override based on effort level
-          const effort = cap.effort || 'medium';
           const effortPresets: Record<
             string,
             {
               masterModel: string;
               delegateModel: string;
               reasoningEffort?: 'low' | 'medium' | 'high';
+              provider?: string[];
             }
           > = {
             none: {
               masterModel: RECOMMENDED_MODELS.ANTHROPIC_FAST,
               delegateModel: RECOMMENDED_MODELS.GOOGLE_FAST,
+            },
+            'run-only': {
+              masterModel: 'google/gemini-3.1-flash-lite-preview',
+              delegateModel: 'google/gemini-3.1-flash-lite-preview',
             },
             low: {
               masterModel: RECOMMENDED_MODELS.ANTHROPIC_FAST,
@@ -872,6 +892,20 @@ export class AIAgentBubble extends ServiceBubble<
             preset.masterModel;
           this.params.model.reasoningEffort =
             preset.reasoningEffort ?? undefined;
+          if (preset.provider) {
+            this.params.model.provider = preset.provider;
+          }
+
+          // run-only: strip all tools except run-flow — the cheap model gets
+          // confused by 20+ tools and picks the wrong one (e.g. list-flows)
+          if (effort === 'run-only') {
+            this.params.customTools = (this.params.customTools ?? []).filter(
+              (t) => t.name === 'run-flow'
+            );
+            this.params.tools = [];
+            this.params.capabilities = [];
+            this.params.model.maxTokens = 20000;
+          }
         }
       }
     }
