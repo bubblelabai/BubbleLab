@@ -1,0 +1,21 @@
+export { SlabBubble } from './slab.js';
+export {
+  SlabParamsSchema,
+  SlabResultSchema,
+  SlabPostSchema,
+  SlabUserSchema,
+  SlabTopicSchema,
+  SlabSearchResultSchema,
+  type SlabParams,
+  type SlabParamsInput,
+  type SlabResult,
+  type SlabUser,
+  type SlabTopic,
+  type SlabPost,
+  type SlabSearchResult,
+  type SlabSearchPostsParams,
+  type SlabGetPostParams,
+  type SlabListPostsParams,
+  type SlabGetTopicPostsParams,
+  type SlabListTopicsParams,
+} from './slab.schema.js';

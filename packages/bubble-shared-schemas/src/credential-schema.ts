@@ -537,6 +537,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Zendesk Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.SLAB_CRED]: {
+      label: 'Slab',
+      description:
+        'API token for Slab knowledge management (search, read, and update posts)',
+      placeholder: 'Your Slab API token',
+      namePlaceholder: 'My Slab API Token',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -613,6 +621,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.XERO_CRED]: '', // OAuth credential, no env var
   [CredentialType.RAMP_CRED]: '', // OAuth credential, no env var
   [CredentialType.ZENDESK_CRED]: '', // OAuth credential, no env var
+  [CredentialType.SLAB_CRED]: 'SLAB_API_TOKEN',
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -2175,6 +2184,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   xero: [CredentialType.XERO_CRED],
   ramp: [CredentialType.RAMP_CRED],
   zendesk: [CredentialType.ZENDESK_CRED],
+  slab: [CredentialType.SLAB_CRED],
 };
 
 export interface CredentialSiblingEntry {
