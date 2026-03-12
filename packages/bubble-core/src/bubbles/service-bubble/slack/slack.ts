@@ -1531,7 +1531,15 @@ Comprehensive Slack integration for messaging and workspace management.
 
     let text: string;
     if (executionMeta._isPearlFlow) {
-      text = `<${viewUrl}|${pearlLabel}>${traceSuffix}`;
+      const lastRunFlowId = executionMeta._lastRunFlowId;
+      if (lastRunFlowId) {
+        const childFlowUrl = `${executionMeta.studioBaseUrl}/flow/${lastRunFlowId}`;
+        const childFlowName =
+          (executionMeta._lastRunFlowName as string) || 'Flow';
+        text = `<${viewUrl}|${pearlLabel}> · <${childFlowUrl}|${childFlowName}>${traceSuffix}`;
+      } else {
+        text = `<${viewUrl}|${pearlLabel}>${traceSuffix}`;
+      }
     } else if (pearlUrl) {
       const flowName = executionMeta._flowName || 'Flow';
       text = `<${pearlUrl}|${pearlLabel}> · <${viewUrl}|${flowName}>${traceSuffix}`;

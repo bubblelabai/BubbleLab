@@ -93,6 +93,9 @@ export interface ExecutionMeta {
   _ownerFirstName?: string;
   _isPearlFlow?: boolean;
   _pearlFlowId?: number;
+  // Child flow link (set when a run-only skill executes via run-flow)
+  _lastRunFlowId?: number;
+  _lastRunFlowName?: string;
   // Forward compat
   [key: string]: unknown;
 }
