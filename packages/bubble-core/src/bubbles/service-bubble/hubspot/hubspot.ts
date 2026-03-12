@@ -12,24 +12,9 @@ import {
 /**
  * HubSpot CRM Service Bubble
  *
- * Comprehensive HubSpot CRM integration for managing contacts, companies, deals, and tickets.
- *
- * Features:
- * - Full CRUD operations for all CRM object types
- * - Advanced search with filter groups (AND/OR logic)
- * - Property-based data management
- * - Pagination support for large datasets
- *
- * Use cases:
- * - Lead management and contact synchronization
- * - Company and deal pipeline tracking
- * - Support ticket management
- * - CRM data enrichment and automation
- *
- * Security Features:
- * - OAuth 2.0 authentication with HubSpot
- * - Scoped access permissions
- * - Secure credential handling
+ * Comprehensive HubSpot CRM integration for managing contacts, companies,
+ * deals, tickets, properties, associations, pipelines, notes, owners,
+ * lists, and account information.
  */
 export class HubSpotBubble<
   T extends HubSpotParamsInput = HubSpotParamsInput,
@@ -49,16 +34,13 @@ export class HubSpotBubble<
     HubSpot CRM service integration for comprehensive customer relationship management.
 
     Features:
-    - Create, read, update, and search contacts, companies, deals, and tickets
+    - Full CRUD + batch operations for contacts, companies, deals, and tickets
     - Advanced search with filter groups supporting AND/OR logic
-    - Flexible property-based data management
-    - Pagination for handling large datasets
-
-    Use cases:
-    - Lead management and contact synchronization
-    - Company tracking and deal pipeline management
-    - Support ticket creation and tracking
-    - CRM data enrichment and workflow automation
+    - Property definition management (create, update, delete custom properties)
+    - Record associations (link contacts to companies, deals, etc.)
+    - Pipeline and stage management for deals and tickets
+    - Note creation with record associations
+    - Account information retrieval
 
     Security Features:
     - OAuth 2.0 authentication with HubSpot
@@ -66,6 +48,14 @@ export class HubSpotBubble<
     - Secure credential handling and validation
   `;
   static readonly alias = 'crm';
+
+  // Note association type IDs (HubSpot-defined)
+  private static readonly NOTE_ASSOC_TYPES: Record<string, number> = {
+    contacts: 202,
+    companies: 190,
+    deals: 214,
+    tickets: 18,
+  };
 
   constructor(
     params: T = {
@@ -113,9 +103,9 @@ export class HubSpotBubble<
 
   private async makeHubSpotApiRequest(
     endpoint: string,
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE' = 'GET',
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT' = 'GET',
     body?: unknown
-  ): Promise<any> {
+  ): Promise<unknown> {
     const credential = this.chooseCredential();
     if (!credential) {
       throw new Error('HubSpot credentials are required');
@@ -144,6 +134,11 @@ export class HubSpotBubble<
       throw new Error(`HubSpot API error (${response.status}): ${errorText}`);
     }
 
+    // DELETE often returns 204 No Content
+    if (response.status === 204) {
+      return undefined;
+    }
+
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
       return await response.json();
@@ -160,36 +155,88 @@ export class HubSpotBubble<
 
     try {
       const result = await (async (): Promise<HubSpotResult> => {
-        const parsedParams = this.params as HubSpotParams;
+        const p = this.params as HubSpotParams;
         switch (operation) {
+          // Record CRUD
           case 'create_record':
-            return await this.createRecord(
-              parsedParams as Extract<
-                HubSpotParams,
-                { operation: 'create_record' }
-              >
+            return this.createRecord(
+              p as Extract<HubSpotParams, { operation: 'create_record' }>
             );
           case 'get_record':
-            return await this.getRecord(
-              parsedParams as Extract<
-                HubSpotParams,
-                { operation: 'get_record' }
-              >
+            return this.getRecord(
+              p as Extract<HubSpotParams, { operation: 'get_record' }>
             );
           case 'update_record':
-            return await this.updateRecord(
-              parsedParams as Extract<
-                HubSpotParams,
-                { operation: 'update_record' }
-              >
+            return this.updateRecord(
+              p as Extract<HubSpotParams, { operation: 'update_record' }>
+            );
+          case 'delete_record':
+            return this.deleteRecord(
+              p as Extract<HubSpotParams, { operation: 'delete_record' }>
             );
           case 'search_records':
-            return await this.searchRecords(
-              parsedParams as Extract<
-                HubSpotParams,
-                { operation: 'search_records' }
-              >
+            return this.searchRecords(
+              p as Extract<HubSpotParams, { operation: 'search_records' }>
             );
+          case 'batch_create_records':
+            return this.batchCreateRecords(
+              p as Extract<HubSpotParams, { operation: 'batch_create_records' }>
+            );
+          case 'batch_update_records':
+            return this.batchUpdateRecords(
+              p as Extract<HubSpotParams, { operation: 'batch_update_records' }>
+            );
+          case 'batch_delete_records':
+            return this.batchDeleteRecords(
+              p as Extract<HubSpotParams, { operation: 'batch_delete_records' }>
+            );
+          // Properties
+          case 'list_properties':
+            return this.listProperties(
+              p as Extract<HubSpotParams, { operation: 'list_properties' }>
+            );
+          case 'get_property':
+            return this.getProperty(
+              p as Extract<HubSpotParams, { operation: 'get_property' }>
+            );
+          case 'create_property':
+            return this.createProperty(
+              p as Extract<HubSpotParams, { operation: 'create_property' }>
+            );
+          case 'update_property':
+            return this.updateProperty(
+              p as Extract<HubSpotParams, { operation: 'update_property' }>
+            );
+          case 'delete_property':
+            return this.deleteProperty(
+              p as Extract<HubSpotParams, { operation: 'delete_property' }>
+            );
+          // Associations
+          case 'list_associations':
+            return this.listAssociations(
+              p as Extract<HubSpotParams, { operation: 'list_associations' }>
+            );
+          case 'create_association':
+            return this.createAssociation(
+              p as Extract<HubSpotParams, { operation: 'create_association' }>
+            );
+          case 'remove_association':
+            return this.removeAssociation(
+              p as Extract<HubSpotParams, { operation: 'remove_association' }>
+            );
+          // Pipelines
+          case 'list_pipelines':
+            return this.listPipelines(
+              p as Extract<HubSpotParams, { operation: 'list_pipelines' }>
+            );
+          // Notes
+          case 'create_note':
+            return this.createNote(
+              p as Extract<HubSpotParams, { operation: 'create_note' }>
+            );
+          // Account
+          case 'get_account_info':
+            return this.getAccountInfo();
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -206,26 +253,29 @@ export class HubSpotBubble<
     }
   }
 
+  // =====================================================================
+  // Record CRUD
+  // =====================================================================
+
   private async createRecord(
     params: Extract<HubSpotParams, { operation: 'create_record' }>
   ): Promise<Extract<HubSpotResult, { operation: 'create_record' }>> {
     const { object_type, properties } = params;
-
-    const response = await this.makeHubSpotApiRequest(
+    const r = (await this.makeHubSpotApiRequest(
       `/crm/v3/objects/${object_type}`,
       'POST',
       { properties }
-    );
+    )) as Record<string, unknown>;
 
     return {
       operation: 'create_record',
       success: true,
       record: {
-        id: response.id,
-        properties: response.properties,
-        createdAt: response.createdAt,
-        updatedAt: response.updatedAt,
-        archived: response.archived,
+        id: r.id as string,
+        properties: (r.properties ?? {}) as Record<string, unknown>,
+        createdAt: r.createdAt as string | undefined,
+        updatedAt: r.updatedAt as string | undefined,
+        archived: r.archived as boolean | undefined,
       },
       error: '',
     };
@@ -235,26 +285,25 @@ export class HubSpotBubble<
     params: Extract<HubSpotParams, { operation: 'get_record' }>
   ): Promise<Extract<HubSpotResult, { operation: 'get_record' }>> {
     const { object_type, record_id, properties } = params;
-
-    const queryParams = new URLSearchParams();
+    const qp = new URLSearchParams();
     if (properties && properties.length > 0) {
-      queryParams.set('properties', properties.join(','));
+      qp.set('properties', properties.join(','));
     }
-
-    const queryString = queryParams.toString();
-    const endpoint = `/crm/v3/objects/${object_type}/${record_id}${queryString ? `?${queryString}` : ''}`;
-
-    const response = await this.makeHubSpotApiRequest(endpoint, 'GET');
+    const qs = qp.toString();
+    const r = (await this.makeHubSpotApiRequest(
+      `/crm/v3/objects/${object_type}/${record_id}${qs ? `?${qs}` : ''}`,
+      'GET'
+    )) as Record<string, unknown>;
 
     return {
       operation: 'get_record',
       success: true,
       record: {
-        id: response.id,
-        properties: response.properties,
-        createdAt: response.createdAt,
-        updatedAt: response.updatedAt,
-        archived: response.archived,
+        id: r.id as string,
+        properties: (r.properties ?? {}) as Record<string, unknown>,
+        createdAt: r.createdAt as string | undefined,
+        updatedAt: r.updatedAt as string | undefined,
+        archived: r.archived as boolean | undefined,
       },
       error: '',
     };
@@ -264,32 +313,41 @@ export class HubSpotBubble<
     params: Extract<HubSpotParams, { operation: 'update_record' }>
   ): Promise<Extract<HubSpotResult, { operation: 'update_record' }>> {
     const { object_type, record_id, properties } = params;
-
-    const response = await this.makeHubSpotApiRequest(
+    const r = (await this.makeHubSpotApiRequest(
       `/crm/v3/objects/${object_type}/${record_id}`,
       'PATCH',
       { properties }
-    );
+    )) as Record<string, unknown>;
 
     return {
       operation: 'update_record',
       success: true,
       record: {
-        id: response.id,
-        properties: response.properties,
-        createdAt: response.createdAt,
-        updatedAt: response.updatedAt,
-        archived: response.archived,
+        id: r.id as string,
+        properties: (r.properties ?? {}) as Record<string, unknown>,
+        createdAt: r.createdAt as string | undefined,
+        updatedAt: r.updatedAt as string | undefined,
+        archived: r.archived as boolean | undefined,
       },
       error: '',
     };
+  }
+
+  private async deleteRecord(
+    params: Extract<HubSpotParams, { operation: 'delete_record' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'delete_record' }>> {
+    const { object_type, record_id } = params;
+    await this.makeHubSpotApiRequest(
+      `/crm/v3/objects/${object_type}/${record_id}`,
+      'DELETE'
+    );
+    return { operation: 'delete_record', success: true, error: '' };
   }
 
   private async searchRecords(
     params: Extract<HubSpotParams, { operation: 'search_records' }>
   ): Promise<Extract<HubSpotResult, { operation: 'search_records' }>> {
     const { object_type, filter_groups, properties, limit, after } = params;
-
     const body: Record<string, unknown> = {
       filterGroups: filter_groups.map((group) => ({
         filters: group.filters.map((filter) => {
@@ -305,32 +363,347 @@ export class HubSpotBubble<
       })),
       limit: limit || 10,
     };
+    if (properties && properties.length > 0) body.properties = properties;
+    if (after) body.after = after;
 
-    if (properties && properties.length > 0) {
-      body.properties = properties;
-    }
-    if (after) {
-      body.after = after;
-    }
-
-    const response = await this.makeHubSpotApiRequest(
+    const response = (await this.makeHubSpotApiRequest(
       `/crm/v3/objects/${object_type}/search`,
       'POST',
       body
-    );
+    )) as Record<string, unknown>;
 
     return {
       operation: 'search_records',
       success: true,
-      results: (response.results || []).map((r: any) => ({
-        id: r.id,
-        properties: r.properties,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-        archived: r.archived,
+      results: ((response.results ?? []) as Array<Record<string, unknown>>).map(
+        (r) => ({
+          id: r.id as string,
+          properties: (r.properties ?? {}) as Record<string, unknown>,
+          createdAt: r.createdAt as string | undefined,
+          updatedAt: r.updatedAt as string | undefined,
+          archived: r.archived as boolean | undefined,
+        })
+      ),
+      total: response.total as number | undefined,
+      paging: response.paging as { next?: { after: string } } | undefined,
+      error: '',
+    };
+  }
+
+  private async batchCreateRecords(
+    params: Extract<HubSpotParams, { operation: 'batch_create_records' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'batch_create_records' }>> {
+    const { object_type, records } = params;
+    const response = (await this.makeHubSpotApiRequest(
+      `/crm/v3/objects/${object_type}/batch/create`,
+      'POST',
+      { inputs: records }
+    )) as Record<string, unknown>;
+
+    return {
+      operation: 'batch_create_records',
+      success: true,
+      results: ((response.results ?? []) as Array<Record<string, unknown>>).map(
+        (r) => ({
+          id: r.id as string,
+          properties: (r.properties ?? {}) as Record<string, unknown>,
+          createdAt: r.createdAt as string | undefined,
+          updatedAt: r.updatedAt as string | undefined,
+          archived: r.archived as boolean | undefined,
+        })
+      ),
+      error: '',
+    };
+  }
+
+  private async batchUpdateRecords(
+    params: Extract<HubSpotParams, { operation: 'batch_update_records' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'batch_update_records' }>> {
+    const { object_type, records } = params;
+    const response = (await this.makeHubSpotApiRequest(
+      `/crm/v3/objects/${object_type}/batch/update`,
+      'POST',
+      { inputs: records }
+    )) as Record<string, unknown>;
+
+    return {
+      operation: 'batch_update_records',
+      success: true,
+      results: ((response.results ?? []) as Array<Record<string, unknown>>).map(
+        (r) => ({
+          id: r.id as string,
+          properties: (r.properties ?? {}) as Record<string, unknown>,
+          createdAt: r.createdAt as string | undefined,
+          updatedAt: r.updatedAt as string | undefined,
+          archived: r.archived as boolean | undefined,
+        })
+      ),
+      error: '',
+    };
+  }
+
+  private async batchDeleteRecords(
+    params: Extract<HubSpotParams, { operation: 'batch_delete_records' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'batch_delete_records' }>> {
+    const { object_type, record_ids } = params;
+    await this.makeHubSpotApiRequest(
+      `/crm/v3/objects/${object_type}/batch/archive`,
+      'POST',
+      { inputs: record_ids.map((id) => ({ id })) }
+    );
+    return { operation: 'batch_delete_records', success: true, error: '' };
+  }
+
+  // =====================================================================
+  // Properties
+  // =====================================================================
+
+  private async listProperties(
+    params: Extract<HubSpotParams, { operation: 'list_properties' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'list_properties' }>> {
+    const { object_type } = params;
+    const response = await this.makeHubSpotApiRequest(
+      `/crm/v3/properties/${object_type}`,
+      'GET'
+    );
+    const results = response as { results?: unknown[] } | unknown[];
+    return {
+      operation: 'list_properties',
+      success: true,
+      properties: ((results as Record<string, unknown>).results ??
+        results) as Array<Record<string, unknown>>,
+      error: '',
+    };
+  }
+
+  private async getProperty(
+    params: Extract<HubSpotParams, { operation: 'get_property' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'get_property' }>> {
+    const { object_type, property_name } = params;
+    const response = await this.makeHubSpotApiRequest(
+      `/crm/v3/properties/${object_type}/${property_name}`,
+      'GET'
+    );
+    return {
+      operation: 'get_property',
+      success: true,
+      property: response as Record<string, unknown>,
+      error: '',
+    };
+  }
+
+  private async createProperty(
+    params: Extract<HubSpotParams, { operation: 'create_property' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'create_property' }>> {
+    const {
+      object_type,
+      name,
+      label,
+      type,
+      fieldType,
+      groupName,
+      description,
+      hasUniqueValue,
+      options,
+      calculationFormula,
+    } = params;
+
+    const body: Record<string, unknown> = {
+      name,
+      label,
+      type,
+      fieldType,
+      groupName,
+    };
+    if (description !== undefined) body.description = description;
+    if (hasUniqueValue !== undefined) body.hasUniqueValue = hasUniqueValue;
+    if (options !== undefined) body.options = options;
+    if (calculationFormula !== undefined)
+      body.calculationFormula = calculationFormula;
+
+    const response = await this.makeHubSpotApiRequest(
+      `/crm/v3/properties/${object_type}`,
+      'POST',
+      body
+    );
+    return {
+      operation: 'create_property',
+      success: true,
+      property: response as Record<string, unknown>,
+      error: '',
+    };
+  }
+
+  private async updateProperty(
+    params: Extract<HubSpotParams, { operation: 'update_property' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'update_property' }>> {
+    const {
+      object_type,
+      property_name,
+      label,
+      description,
+      groupName,
+      type,
+      fieldType,
+      options,
+    } = params;
+
+    const body: Record<string, unknown> = {};
+    if (label !== undefined) body.label = label;
+    if (description !== undefined) body.description = description;
+    if (groupName !== undefined) body.groupName = groupName;
+    if (type !== undefined) body.type = type;
+    if (fieldType !== undefined) body.fieldType = fieldType;
+    if (options !== undefined) body.options = options;
+
+    const response = await this.makeHubSpotApiRequest(
+      `/crm/v3/properties/${object_type}/${property_name}`,
+      'PATCH',
+      body
+    );
+    return {
+      operation: 'update_property',
+      success: true,
+      property: response as Record<string, unknown>,
+      error: '',
+    };
+  }
+
+  private async deleteProperty(
+    params: Extract<HubSpotParams, { operation: 'delete_property' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'delete_property' }>> {
+    const { object_type, property_name } = params;
+    await this.makeHubSpotApiRequest(
+      `/crm/v3/properties/${object_type}/${property_name}`,
+      'DELETE'
+    );
+    return { operation: 'delete_property', success: true, error: '' };
+  }
+
+  // =====================================================================
+  // Associations
+  // =====================================================================
+
+  private async listAssociations(
+    params: Extract<HubSpotParams, { operation: 'list_associations' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'list_associations' }>> {
+    const { from_object_type, from_record_id, to_object_type } = params;
+    const response = (await this.makeHubSpotApiRequest(
+      `/crm/v4/objects/${from_object_type}/${from_record_id}/associations/${to_object_type}`,
+      'GET'
+    )) as Record<string, unknown>;
+
+    return {
+      operation: 'list_associations',
+      success: true,
+      associations: (response.results ?? []) as Array<Record<string, unknown>>,
+      error: '',
+    };
+  }
+
+  private async createAssociation(
+    params: Extract<HubSpotParams, { operation: 'create_association' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'create_association' }>> {
+    const { from_object_type, from_record_id, to_object_type, to_record_id } =
+      params;
+    await this.makeHubSpotApiRequest(
+      `/crm/v4/objects/${from_object_type}/${from_record_id}/associations/default/${to_object_type}/${to_record_id}`,
+      'PUT'
+    );
+    return { operation: 'create_association', success: true, error: '' };
+  }
+
+  private async removeAssociation(
+    params: Extract<HubSpotParams, { operation: 'remove_association' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'remove_association' }>> {
+    const { from_object_type, from_record_id, to_object_type, to_record_id } =
+      params;
+    await this.makeHubSpotApiRequest(
+      `/crm/v4/objects/${from_object_type}/${from_record_id}/associations/${to_object_type}/${to_record_id}`,
+      'DELETE'
+    );
+    return { operation: 'remove_association', success: true, error: '' };
+  }
+
+  // =====================================================================
+  // Pipelines
+  // =====================================================================
+
+  private async listPipelines(
+    params: Extract<HubSpotParams, { operation: 'list_pipelines' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'list_pipelines' }>> {
+    const { object_type } = params;
+    const response = (await this.makeHubSpotApiRequest(
+      `/crm/v3/pipelines/${object_type}`,
+      'GET'
+    )) as Record<string, unknown>;
+
+    return {
+      operation: 'list_pipelines',
+      success: true,
+      pipelines: (response.results ?? []) as Array<Record<string, unknown>>,
+      error: '',
+    };
+  }
+
+  // =====================================================================
+  // Notes
+  // =====================================================================
+
+  private async createNote(
+    params: Extract<HubSpotParams, { operation: 'create_note' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'create_note' }>> {
+    const { note_body, associations, timestamp } = params;
+
+    const body: Record<string, unknown> = {
+      properties: {
+        hs_note_body: note_body,
+        hs_timestamp: timestamp || new Date().toISOString(),
+      },
+      associations: associations.map((assoc) => ({
+        to: { id: assoc.record_id },
+        types: [
+          {
+            associationCategory: 'HUBSPOT_DEFINED',
+            associationTypeId:
+              HubSpotBubble.NOTE_ASSOC_TYPES[assoc.object_type] ?? 202,
+          },
+        ],
       })),
-      total: response.total,
-      paging: response.paging,
+    };
+
+    const response = (await this.makeHubSpotApiRequest(
+      '/crm/v3/objects/notes',
+      'POST',
+      body
+    )) as Record<string, unknown>;
+
+    return {
+      operation: 'create_note',
+      success: true,
+      note: {
+        id: response.id as string,
+        properties: (response.properties ?? {}) as Record<string, unknown>,
+      },
+      error: '',
+    };
+  }
+
+  // =====================================================================
+  // Account
+  // =====================================================================
+
+  private async getAccountInfo(): Promise<
+    Extract<HubSpotResult, { operation: 'get_account_info' }>
+  > {
+    const response = await this.makeHubSpotApiRequest(
+      '/account-info/v3/details',
+      'GET'
+    );
+    return {
+      operation: 'get_account_info',
+      success: true,
+      account: response as Record<string, unknown>,
       error: '',
     };
   }
