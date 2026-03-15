@@ -32,7 +32,8 @@ import type { CapabilityInput } from '@bubblelab/shared-schemas';
 import type { StreamingEvent } from '@bubblelab/shared-schemas';
 import { ConversationMessageSchema } from '@bubblelab/shared-schemas';
 import {
-  extractAndStreamThinkingTokens,
+  extractThinking,
+  extractThinkingFromContent,
   formatFinalResponse,
   generationsToMessageContent,
   isGarbageResponse,
@@ -2419,6 +2420,7 @@ export class AIAgentBubble extends ServiceBubble<
         // Use streaming if streamingCallback is provided
         if (this.streamingCallback) {
           const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+          let extractedThinking: string | undefined;
 
           // Use invoke with callbacks for streaming
           const response = await modelWithTools.invoke(allMessages, {
@@ -2434,13 +2436,12 @@ export class AIAgentBubble extends ServiceBubble<
                   });
                 },
                 handleLLMEnd: async (output): Promise<void> => {
-                  // Extract thinking tokens from different model providers
-                  const thinking = extractAndStreamThinkingTokens(output);
-                  if (thinking) {
+                  extractedThinking = extractThinking(output);
+                  if (extractedThinking) {
                     await this.streamingCallback?.({
                       type: 'think',
                       data: {
-                        content: thinking,
+                        content: extractedThinking,
                         messageId,
                       },
                     });
@@ -2468,6 +2469,7 @@ export class AIAgentBubble extends ServiceBubble<
               typeof response.content === 'string'
                 ? response.content
                 : JSON.stringify(response.content),
+            thinking: extractedThinking,
             toolCalls:
               'tool_calls' in response && Array.isArray(response.tool_calls)
                 ? response.tool_calls.map((tc: Record<string, unknown>) => ({
@@ -2493,6 +2495,7 @@ export class AIAgentBubble extends ServiceBubble<
               typeof response.content === 'string'
                 ? response.content
                 : JSON.stringify(response.content),
+            thinking: extractThinkingFromContent(response.content),
             toolCalls:
               'tool_calls' in response && Array.isArray(response.tool_calls)
                 ? response.tool_calls.map((tc: Record<string, unknown>) => ({

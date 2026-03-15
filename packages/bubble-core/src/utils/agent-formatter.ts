@@ -132,68 +132,84 @@ export function generationsToMessageContent(
 /**
  * Extract and stream thinking tokens from different model providers
  */
-export function extractAndStreamThinkingTokens(
-  output: LLMResult
+/**
+ * Extract thinking from message content blocks (Claude extended thinking format).
+ * Use when you have MessageContent directly (e.g., AIMessage.content).
+ */
+export function extractThinkingFromContent(
+  content: MessageContent
 ): string | undefined {
-  try {
-    // Cast output to any to avoid TypeScript issues
-    const outputAny = output as any;
-    // Try multiple paths to find reasoning content
-    const possiblePaths = [
-      // Path 1: Direct generations
-      outputAny.generations?.[0]?.[0]?.message?.additional_kwargs
-        ?.__raw_response,
-      // Path 2: Through kwargs
-      outputAny.generations?.[0]?.[0]?.message?.kwargs?.additional_kwargs
-        ?.__raw_response,
-      // Path 3: Direct in message
-      outputAny.generations?.[0]?.[0]?.message?.__raw_response,
-      // Path 4: Alternative structure
-      outputAny.generations?.[0]?.[0]?.additional_kwargs?.__raw_response,
-      // Path 5: Deep nested structure
-      outputAny.generations?.[0]?.[0]?.message?.additional_kwargs
-        ?.__raw_response,
-    ];
+  if (!Array.isArray(content)) return undefined;
+  const parts = (content as Array<Record<string, unknown>>)
+    .filter((b) => b.type === 'thinking' && typeof b.thinking === 'string')
+    .map((b) => b.thinking as string);
+  if (parts.length === 0) return undefined;
+  return parts
+    .join('')
+    .replace(/<think>/gi, '')
+    .replace(/<\/think>/gi, '')
+    .trim();
+}
 
-    let rawResponse: unknown = null;
-    for (const path of possiblePaths) {
-      if (path) {
-        rawResponse = path;
-        break;
-      }
+/**
+ * Extract thinking/reasoning tokens from an LLM response.
+ * Handles all provider formats in one place:
+ * - Claude: thinking blocks in message content array
+ * - Grok/OpenRouter: reasoning in raw response choices
+ */
+export function extractThinking(output: LLMResult): string | undefined {
+  try {
+    const gen = output.generations?.flat()?.[0];
+
+    // 1. Claude format: thinking blocks in message content
+    if (gen && hasMessage(gen)) {
+      const content = extractMessageContent(gen.message);
+      const thinking = extractThinkingFromContent(content ?? '');
+      if (thinking) return thinking;
     }
 
-    if (rawResponse) {
-      if (
-        typeof rawResponse === 'object' &&
-        rawResponse !== null &&
-        'choices' in rawResponse &&
-        Array.isArray(rawResponse.choices)
-      ) {
-        for (const choice of rawResponse.choices) {
-          let reasoning: string | undefined;
-          if (choice.delta?.reasoning) {
-            // Stream thinking tokens for Grok models
-            reasoning = choice.delta.reasoning;
-          }
-          // Also check for reasoning in the choice itself (not just delta)
-          else if (choice.reasoning) {
-            reasoning = choice.reasoning;
-          }
+    // 2. Grok/OpenRouter: reasoning in raw response
+    const outputAny = output as Record<string, unknown>;
+    const possiblePaths = [
+      (outputAny.generations as Array<Array<Record<string, unknown>>>)?.[0]?.[0]
+        ?.message,
+      (
+        (
+          outputAny.generations as Array<Array<Record<string, unknown>>>
+        )?.[0]?.[0]?.message as Record<string, unknown>
+      )?.kwargs,
+      (
+        outputAny.generations as Array<Array<Record<string, unknown>>>
+      )?.[0]?.[0],
+    ];
 
-          // Strip <think> and </think> tags from the reasoning content
-          if (reasoning) {
+    for (const base of possiblePaths) {
+      const rawResponse = (
+        (base as Record<string, unknown>)?.additional_kwargs as Record<
+          string,
+          unknown
+        >
+      )?.__raw_response;
+      if (
+        rawResponse &&
+        typeof rawResponse === 'object' &&
+        'choices' in rawResponse &&
+        Array.isArray((rawResponse as Record<string, unknown>).choices)
+      ) {
+        for (const choice of (
+          rawResponse as { choices: Array<Record<string, unknown>> }
+        ).choices) {
+          const reasoning =
+            (choice.delta as Record<string, unknown>)?.reasoning ??
+            choice.reasoning;
+          if (typeof reasoning === 'string') {
             return reasoning
               .replace(/<think>/gi, '')
               .replace(/<\/think>/gi, '')
               .trim();
           }
         }
-      } else {
-        console.log('No choices array found in rawResponse');
       }
-    } else {
-      console.log('No rawResponse found in any path');
     }
 
     return undefined;
@@ -202,6 +218,9 @@ export function extractAndStreamThinkingTokens(
     return undefined;
   }
 }
+
+/** @deprecated Use `extractThinking` instead */
+export const extractAndStreamThinkingTokens = extractThinking;
 /**
  * Format final response with special handling for Gemini image models and JSON mode
  */
