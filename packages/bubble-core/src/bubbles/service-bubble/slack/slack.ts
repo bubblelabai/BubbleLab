@@ -1529,14 +1529,31 @@ Comprehensive Slack integration for messaging and workspace management.
 
     const pearlLabel = firstName ? `${firstName}'s Pearl` : 'Pearl';
 
+    // Build referenced flow links (from edits, creates, runs, configs)
+    const baseUrl = executionMeta.studioBaseUrl;
+    const referencedFlows = (executionMeta._referencedFlows ?? [])
+      .filter((f) => f.id !== executionMeta.flowId && f.id !== pearlFlowId)
+      .slice(0, 3); // limit to avoid Slack overflow
+    const refLinks = referencedFlows
+      .map((f) => {
+        const url = `${baseUrl}/flow/${f.id}`;
+        const label = f.name ? `${f.name}` : `Flow #${f.id}`;
+        return `<${url}|${label}>`;
+      })
+      .join(' · ');
+
+    // Fall back to legacy _lastRunFlowId if no referenced flows
+    const lastRunFlowId = executionMeta._lastRunFlowId;
+    const childLink =
+      refLinks ||
+      (lastRunFlowId
+        ? `<${baseUrl}/flow/${lastRunFlowId}|${(executionMeta._lastRunFlowName as string) || 'Flow'}>`
+        : '');
+
     let text: string;
     if (executionMeta._isPearlFlow) {
-      const lastRunFlowId = executionMeta._lastRunFlowId;
-      if (lastRunFlowId) {
-        const childFlowUrl = `${executionMeta.studioBaseUrl}/flow/${lastRunFlowId}`;
-        const childFlowName =
-          (executionMeta._lastRunFlowName as string) || 'Flow';
-        text = `<${viewUrl}|${pearlLabel}> · <${childFlowUrl}|${childFlowName}>${traceSuffix}`;
+      if (childLink) {
+        text = `<${viewUrl}|${pearlLabel}> · ${childLink}${traceSuffix}`;
       } else {
         text = `<${viewUrl}|${pearlLabel}>${traceSuffix}`;
       }

@@ -96,6 +96,8 @@ export interface ExecutionMeta {
   // Child flow link (set when a run-only skill executes via run-flow)
   _lastRunFlowId?: number;
   _lastRunFlowName?: string;
+  /** Flow IDs referenced during execution (edited, created, run, configured). */
+  _referencedFlows?: Array<{ id: number; name?: string }>;
   // Forward compat
   [key: string]: unknown;
 }
