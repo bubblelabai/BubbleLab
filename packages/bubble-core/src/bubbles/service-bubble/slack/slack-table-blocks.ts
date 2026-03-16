@@ -25,6 +25,8 @@ export const BLOCKS = {
   sortlySearchResults: load('sortly-search-results.md'),
   driveInvoiceFolder: load('drive-invoice-folder.md'),
   investorBriefSchedule: load('investor-brief-schedule.md'),
+  toolErrorLog: load('tool-error-log.md'),
+  toolErrorLog100: load('tool-error-log-100.md'),
 } as const;
 
 export const BATCH_BLOCKS = [1, 2, 3, 4, 5].map((i) =>

@@ -218,6 +218,32 @@ describe('Slack table block integration', () => {
     expect(result.data?.ts).toBeDefined();
   });
 
+  it('should send message with tool error log table with backtick-wrapped tool names', async () => {
+    if (!SLACK_BOT_TOKEN || !SLACK_CHANNEL) {
+      console.log(
+        'Skipping: SLACK_BOT_TOKEN or SLACK_REMINDER_CHANNEL not set'
+      );
+      return;
+    }
+    const result = await runSlackTest(BLOCKS.toolErrorLog);
+    expect(result.success).toBe(true);
+    expect(result.data?.ok).toBe(true);
+    expect(result.data?.ts).toBeDefined();
+  });
+
+  it('should send message with 100-row tool error log, chart image, and escaped pipes', async () => {
+    if (!SLACK_BOT_TOKEN || !SLACK_CHANNEL) {
+      console.log(
+        'Skipping: SLACK_BOT_TOKEN or SLACK_REMINDER_CHANNEL not set'
+      );
+      return;
+    }
+    const result = await runSlackTest(BLOCKS.toolErrorLog100);
+    expect(result.success).toBe(true);
+    expect(result.data?.ok).toBe(true);
+    expect(result.data?.ts).toBeDefined();
+  });
+
   it('should replace a thinking placeholder with pricing comparison (delete + post)', async () => {
     if (!SLACK_BOT_TOKEN || !SLACK_CHANNEL) {
       console.log(

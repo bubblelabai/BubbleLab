@@ -297,7 +297,8 @@ function normalizeMarkdownNewlines(markdown: string): string {
 
 /**
  * Splits a markdown table row on `|` delimiters, but ignores `|` inside
- * angle-bracket expressions like `<mailto:x@y.com|x@y.com>` or `<url|label>`.
+ * angle-bracket expressions like `<mailto:x@y.com|x@y.com>` or `<url|label>`,
+ * and treats backslash-escaped pipes (`\|`) as literal pipe characters.
  */
 function splitTableRow(line: string): string[] {
   // Strip leading/trailing |
@@ -308,7 +309,11 @@ function splitTableRow(line: string): string[] {
 
   for (let i = 0; i < inner.length; i++) {
     const ch = inner[i];
-    if (ch === '<') {
+    if (ch === '\\' && i + 1 < inner.length && inner[i + 1] === '|') {
+      // Escaped pipe — treat as literal pipe character
+      current += '|';
+      i++; // skip the next '|'
+    } else if (ch === '<') {
       angleBracketDepth++;
       current += ch;
     } else if (ch === '>' && angleBracketDepth > 0) {
@@ -749,8 +754,39 @@ export function markdownToBlocks(
               block.tableHeaders,
               block.tableRows
             );
+            if (result.overflowChunks) {
+              const firstChunkEnd = result.overflowChunks[0].rowStart - 1;
+              slackBlocks.push({
+                type: 'context',
+                elements: [
+                  {
+                    type: 'mrkdwn' as const,
+                    text: `Rows 1–${firstChunkEnd} of ${result.totalDataRows}`,
+                  },
+                ],
+              });
+            }
             slackBlocks.push(result.tableBlock);
-            if (result.wasTruncated) {
+            if (result.overflowChunks) {
+              for (let ci = 0; ci < result.overflowChunks.length; ci++) {
+                const chunk = result.overflowChunks[ci];
+                const isLast = ci === result.overflowChunks.length - 1;
+                let label = `Continued · Rows ${chunk.rowStart}–${chunk.rowEnd} of ${result.totalDataRows}`;
+                if (isLast && result.wasTruncated) {
+                  label += ` (${result.originalRowCount - result.totalDataRows} omitted)`;
+                }
+                slackBlocks.push({
+                  type: 'context',
+                  elements: [
+                    {
+                      type: 'mrkdwn' as const,
+                      text: label,
+                    },
+                  ],
+                });
+                slackBlocks.push(chunk.block);
+              }
+            } else if (result.wasTruncated) {
               slackBlocks.push({
                 type: 'context',
                 elements: [
@@ -885,15 +921,32 @@ export function createContextBlock(texts: string[]): SlackContextBlock {
 /**
  * Slack table block constraints
  */
-export const SLACK_TABLE_MAX_ROWS = 100;
+export const SLACK_TABLE_MAX_ROWS = 1000;
 export const SLACK_TABLE_MAX_COLUMNS = 20;
+
+export interface TableChunkInfo {
+  block: SlackTableBlock;
+  /** 1-based start row (data rows, not counting header) */
+  rowStart: number;
+  /** 1-based end row (inclusive) */
+  rowEnd: number;
+}
 
 export interface CreateTableBlockResult {
   tableBlock: SlackTableBlock;
+  /** Additional table chunks when a single table exceeds Slack's character limit */
+  overflowChunks?: TableChunkInfo[];
+  /** Total data row count across all chunks */
+  totalDataRows: number;
   overflowCsv?: string;
   wasTruncated: boolean;
   originalRowCount: number;
 }
+
+/**
+ * Slack's maximum character count for a single table block.
+ */
+const SLACK_TABLE_MAX_CHARS = 10000;
 
 /**
  * Common Slack emoji shortcodes mapped to Unicode.
@@ -1032,11 +1085,72 @@ export function createTableBlock(
     }
   }
 
-  const tableBlock: SlackTableBlock = {
-    type: 'table',
-    rows: [headerRowCells, ...dataRowCells],
-    ...(settings ? { column_settings: settings } : {}),
-  };
+  // Estimate character count for a set of rows (including header)
+  const estimateChars = (rowSet: SlackTableCellRawText[][]): number =>
+    rowSet.reduce(
+      (sum, row) => sum + row.reduce((s, cell) => s + cell.text.length, 0),
+      0
+    );
+
+  const allRows = [headerRowCells, ...dataRowCells];
+  const totalChars = estimateChars(allRows);
+
+  let tableBlock: SlackTableBlock;
+  let overflowChunks: TableChunkInfo[] | undefined;
+  const totalDataRows = dataRowCells.length;
+
+  if (totalChars > SLACK_TABLE_MAX_CHARS) {
+    // Split rows into chunks that fit within the character limit.
+    // Each chunk gets the header row prepended.
+    const headerChars = estimateChars([headerRowCells]);
+    const charBudget = SLACK_TABLE_MAX_CHARS - headerChars;
+    const chunks: SlackTableCellRawText[][][] = [];
+    let currentChunk: SlackTableCellRawText[][] = [];
+    let currentChars = 0;
+
+    for (const row of dataRowCells) {
+      const rowChars = row.reduce((s, cell) => s + cell.text.length, 0);
+      if (currentChunk.length > 0 && currentChars + rowChars > charBudget) {
+        chunks.push(currentChunk);
+        currentChunk = [];
+        currentChars = 0;
+      }
+      currentChunk.push(row);
+      currentChars += rowChars;
+    }
+    if (currentChunk.length > 0) chunks.push(currentChunk);
+
+    // First chunk becomes the main table block
+    tableBlock = {
+      type: 'table',
+      rows: [headerRowCells, ...chunks[0]],
+      ...(settings ? { column_settings: settings } : {}),
+    };
+
+    // Remaining chunks become overflow chunks with row range info
+    if (chunks.length > 1) {
+      let rowOffset = chunks[0].length;
+      overflowChunks = chunks.slice(1).map((chunk) => {
+        const info: TableChunkInfo = {
+          block: {
+            type: 'table',
+            rows: [headerRowCells, ...chunk],
+            ...(settings ? { column_settings: settings } : {}),
+          },
+          rowStart: rowOffset + 1,
+          rowEnd: rowOffset + chunk.length,
+        };
+        rowOffset += chunk.length;
+        return info;
+      });
+    }
+  } else {
+    tableBlock = {
+      type: 'table',
+      rows: allRows,
+      ...(settings ? { column_settings: settings } : {}),
+    };
+  }
 
   // Generate CSV for overflow
   let overflowCsv: string | undefined;
@@ -1046,6 +1160,8 @@ export function createTableBlock(
 
   return {
     tableBlock,
+    overflowChunks,
+    totalDataRows,
     overflowCsv,
     wasTruncated,
     originalRowCount,
@@ -1204,6 +1320,7 @@ export function splitBlocksByTable(blocks: SlackBlock[]): SlackBlock[][] {
       if (
         prev.type === 'divider' ||
         prev.type === 'header' ||
+        prev.type === 'context' ||
         (prev.type === 'section' &&
           prev.text.text.length < 200 &&
           !prev.text.text.startsWith('```'))
