@@ -12,6 +12,15 @@ const ticketIdField = z
   .min(1, 'Ticket ID is required')
   .describe('Zendesk ticket ID (numeric string)');
 
+const customFieldEntry = z.object({
+  id: z.number().describe('Custom ticket field ID'),
+  value: z
+    .union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()])
+    .describe(
+      'Field value. For dropdowns use the tag name, for multiselect use an array of tag names, for dates use "YYYY-MM-DD"'
+    ),
+});
+
 // Parameter schema using discriminated union
 export const ZendeskParamsSchema = z.discriminatedUnion('operation', [
   // List tickets
@@ -94,6 +103,12 @@ export const ZendeskParamsSchema = z.discriminatedUnion('operation', [
       .array(z.string())
       .optional()
       .describe('Tags to apply to the ticket'),
+    custom_fields: z
+      .array(customFieldEntry)
+      .optional()
+      .describe(
+        'Custom field values. Use list_ticket_fields to discover available fields and their IDs.'
+      ),
     credentials: credentialsField,
   }),
 
@@ -134,6 +149,12 @@ export const ZendeskParamsSchema = z.discriminatedUnion('operation', [
       .array(z.string())
       .optional()
       .describe('Replace ticket tags with this list'),
+    custom_fields: z
+      .array(customFieldEntry)
+      .optional()
+      .describe(
+        'Custom field values to set. Use list_ticket_fields to discover available fields and their IDs.'
+      ),
     credentials: credentialsField,
   }),
 
@@ -312,6 +333,85 @@ export const ZendeskParamsSchema = z.discriminatedUnion('operation', [
       .describe('Locale for the article (e.g., "en-us")'),
     credentials: credentialsField,
   }),
+
+  // List ticket fields
+  z.object({
+    operation: z
+      .literal('list_ticket_fields')
+      .describe(
+        'List all ticket fields (system and custom) to discover field IDs, types, and allowed values'
+      ),
+    credentials: credentialsField,
+  }),
+
+  // Create ticket field
+  z.object({
+    operation: z
+      .literal('create_ticket_field')
+      .describe('Create a new custom ticket field (admin only)'),
+    type: z
+      .enum([
+        'text',
+        'textarea',
+        'checkbox',
+        'date',
+        'integer',
+        'decimal',
+        'regexp',
+        'partialcreditcard',
+        'multiselect',
+        'tagger',
+        'lookup',
+      ])
+      .describe('Field type'),
+    title: z.string().min(1).describe('Field display title'),
+    description: z.string().optional().describe('Field description'),
+    required: z
+      .boolean()
+      .optional()
+      .describe(
+        'Whether agents must fill this field to mark a ticket as solved'
+      ),
+    active: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe('Whether field is active'),
+    custom_field_options: z
+      .array(
+        z.object({
+          name: z.string().describe('Display name of the option'),
+          value: z.string().describe('Tag value for this option'),
+        })
+      )
+      .optional()
+      .describe(
+        'Options for tagger/multiselect fields. Each option needs a display name and a tag value.'
+      ),
+    tag: z
+      .string()
+      .optional()
+      .describe('Tag added when checkbox is selected (checkbox type only)'),
+    regexp_for_validation: z
+      .string()
+      .optional()
+      .describe('Validation regex (regexp type only)'),
+    credentials: credentialsField,
+  }),
+
+  // Delete ticket field
+  z.object({
+    operation: z
+      .literal('delete_ticket_field')
+      .describe(
+        'Delete a custom ticket field (admin only). System fields cannot be deleted.'
+      ),
+    ticket_field_id: z
+      .string()
+      .min(1)
+      .describe('ID of the ticket field to delete'),
+    credentials: credentialsField,
+  }),
 ]);
 
 // Zendesk record schemas for response data
@@ -331,6 +431,23 @@ const ZendeskTicketSchema = z
       .nullable()
       .describe('Organization ID'),
     tags: z.array(z.string()).optional().describe('Ticket tags'),
+    custom_fields: z
+      .array(
+        z.object({
+          id: z.number(),
+          value: z
+            .union([
+              z.string(),
+              z.number(),
+              z.boolean(),
+              z.array(z.string()),
+              z.null(),
+            ])
+            .nullable(),
+        })
+      )
+      .optional()
+      .describe('Custom field values on the ticket'),
     created_at: z.string().optional().describe('Created timestamp'),
     updated_at: z.string().optional().describe('Updated timestamp'),
   })
@@ -493,6 +610,87 @@ export const ZendeskResultSchema = z.discriminatedUnion('operation', [
       .describe('Search results (mixed types)'),
     count: z.number().optional().describe('Total result count'),
     next_page: z.string().optional().nullable().describe('Next page URL'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // List ticket fields result
+  z.object({
+    operation: z.literal('list_ticket_fields'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    ticket_fields: z
+      .array(
+        z.object({
+          id: z.number().describe('Field ID'),
+          type: z
+            .string()
+            .describe(
+              'Field type (text, textarea, checkbox, date, integer, decimal, tagger, multiselect, etc.)'
+            ),
+          title: z.string().describe('Field display title'),
+          description: z
+            .string()
+            .optional()
+            .nullable()
+            .describe('Field description'),
+          active: z
+            .boolean()
+            .optional()
+            .describe('Whether the field is active'),
+          required: z
+            .boolean()
+            .optional()
+            .describe('Whether the field is required'),
+          custom_field_options: z
+            .array(
+              z.object({
+                name: z.string().describe('Display name of the option'),
+                value: z
+                  .string()
+                  .describe('Tag value to use when setting this field'),
+              })
+            )
+            .optional()
+            .nullable()
+            .describe(
+              'Available options for dropdown/tagger/multiselect fields'
+            ),
+        })
+      )
+      .optional()
+      .describe('List of ticket fields'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Create ticket field result
+  z.object({
+    operation: z.literal('create_ticket_field'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    ticket_field: z
+      .object({
+        id: z.number().describe('Created field ID'),
+        type: z.string().describe('Field type'),
+        title: z.string().describe('Field title'),
+        active: z.boolean().optional().describe('Whether field is active'),
+        required: z.boolean().optional().describe('Whether field is required'),
+        custom_field_options: z
+          .array(
+            z.object({
+              name: z.string(),
+              value: z.string(),
+            })
+          )
+          .optional()
+          .nullable(),
+      })
+      .optional()
+      .describe('Created ticket field'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Delete ticket field result
+  z.object({
+    operation: z.literal('delete_ticket_field'),
+    success: z.boolean().describe('Whether the operation was successful'),
     error: z.string().describe('Error message if operation failed'),
   }),
 

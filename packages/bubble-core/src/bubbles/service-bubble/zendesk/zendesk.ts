@@ -276,6 +276,22 @@ export class ZendeskBubble<
                 { operation: 'get_article' }
               >
             );
+          case 'list_ticket_fields':
+            return await this.listTicketFields();
+          case 'create_ticket_field':
+            return await this.createTicketField(
+              parsedParams as Extract<
+                ZendeskParams,
+                { operation: 'create_ticket_field' }
+              >
+            );
+          case 'delete_ticket_field':
+            return await this.deleteTicketField(
+              parsedParams as Extract<
+                ZendeskParams,
+                { operation: 'delete_ticket_field' }
+              >
+            );
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -374,6 +390,7 @@ export class ZendeskBubble<
     if (params.priority) ticketBody.priority = params.priority;
     if (params.type) ticketBody.type = params.type;
     if (params.tags) ticketBody.tags = params.tags;
+    if (params.custom_fields) ticketBody.custom_fields = params.custom_fields;
 
     const response = await this.makeZendeskApiRequest(
       '/api/v2/tickets.json',
@@ -404,6 +421,7 @@ export class ZendeskBubble<
     if (params.priority) ticketBody.priority = params.priority;
     if (params.assignee_id) ticketBody.assignee_id = params.assignee_id;
     if (params.tags) ticketBody.tags = params.tags;
+    if (params.custom_fields) ticketBody.custom_fields = params.custom_fields;
 
     const response = await this.makeZendeskApiRequest(
       `/api/v2/tickets/${params.ticket_id}.json`,
@@ -415,6 +433,94 @@ export class ZendeskBubble<
       operation: 'update_ticket',
       success: true,
       ticket: this.mapTicket(response.ticket),
+      error: '',
+    };
+  }
+
+  private async listTicketFields(): Promise<
+    Extract<ZendeskResult, { operation: 'list_ticket_fields' }>
+  > {
+    const response = await this.makeZendeskApiRequest(
+      '/api/v2/ticket_fields.json'
+    );
+
+    const fields = (response.ticket_fields || []).map((f: any) => ({
+      id: f.id,
+      type: f.type,
+      title: f.title,
+      description: f.description ?? null,
+      active: f.active,
+      required: f.required,
+      custom_field_options: f.custom_field_options
+        ? f.custom_field_options.map((o: any) => ({
+            name: o.name,
+            value: o.value,
+          }))
+        : null,
+    }));
+
+    return {
+      operation: 'list_ticket_fields',
+      success: true,
+      ticket_fields: fields,
+      error: '',
+    };
+  }
+
+  private async createTicketField(
+    params: Extract<ZendeskParams, { operation: 'create_ticket_field' }>
+  ): Promise<Extract<ZendeskResult, { operation: 'create_ticket_field' }>> {
+    const fieldBody: Record<string, unknown> = {
+      type: params.type,
+      title: params.title,
+    };
+    if (params.description) fieldBody.description = params.description;
+    if (params.required !== undefined) fieldBody.required = params.required;
+    if (params.active !== undefined) fieldBody.active = params.active;
+    if (params.custom_field_options)
+      fieldBody.custom_field_options = params.custom_field_options;
+    if (params.tag) fieldBody.tag = params.tag;
+    if (params.regexp_for_validation)
+      fieldBody.regexp_for_validation = params.regexp_for_validation;
+
+    const response = await this.makeZendeskApiRequest(
+      '/api/v2/ticket_fields.json',
+      'POST',
+      { ticket_field: fieldBody }
+    );
+
+    const f = response.ticket_field;
+    return {
+      operation: 'create_ticket_field',
+      success: true,
+      ticket_field: {
+        id: f.id,
+        type: f.type,
+        title: f.title,
+        active: f.active,
+        required: f.required,
+        custom_field_options: f.custom_field_options
+          ? f.custom_field_options.map((o: any) => ({
+              name: o.name,
+              value: o.value,
+            }))
+          : null,
+      },
+      error: '',
+    };
+  }
+
+  private async deleteTicketField(
+    params: Extract<ZendeskParams, { operation: 'delete_ticket_field' }>
+  ): Promise<Extract<ZendeskResult, { operation: 'delete_ticket_field' }>> {
+    await this.makeZendeskApiRequest(
+      `/api/v2/ticket_fields/${params.ticket_field_id}.json`,
+      'DELETE'
+    );
+
+    return {
+      operation: 'delete_ticket_field',
+      success: true,
       error: '',
     };
   }
@@ -663,6 +769,7 @@ export class ZendeskBubble<
     assignee_id: t.assignee_id,
     organization_id: t.organization_id,
     tags: t.tags,
+    custom_fields: t.custom_fields,
     created_at: t.created_at,
     updated_at: t.updated_at,
   });
