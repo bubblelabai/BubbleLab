@@ -1559,9 +1559,14 @@ Comprehensive Slack integration for messaging and workspace management.
       }
     } else if (pearlUrl) {
       const flowName = executionMeta._flowName || 'Flow';
-      text = `<${pearlUrl}|${pearlLabel}> · <${viewUrl}|${flowName}>${traceSuffix}`;
+      const parts = [`<${pearlUrl}|${pearlLabel}>`, `<${viewUrl}|${flowName}>`];
+      if (childLink) parts.push(childLink);
+      text = `${parts.join(' · ')}${traceSuffix}`;
     } else {
-      text = `Powered by Bubble Lab · <${viewUrl}|View Flow>${traceSuffix}`;
+      const flowName = (executionMeta._flowName as string) || 'View Flow';
+      const parts = ['Powered by Bubble Lab', `<${viewUrl}|${flowName}>`];
+      if (childLink) parts.push(childLink);
+      text = `${parts.join(' · ')}${traceSuffix}`;
     }
 
     return [
