@@ -579,6 +579,29 @@ const GmailParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // Get attachment operation
+  z.object({
+    operation: z
+      .literal('get_attachment')
+      .describe('Download an attachment from an email message'),
+    message_id: z
+      .string()
+      .min(1, 'Message ID is required')
+      .describe('Gmail message ID that contains the attachment'),
+    attachment_id: z
+      .string()
+      .min(1, 'Attachment ID is required')
+      .describe(
+        'Attachment ID from the message payload (found in body.attachmentId of attachment parts)'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // Define result schemas for different operations
@@ -786,6 +809,18 @@ const GmailResultSchema = z.discriminatedUnion('operation', [
       .boolean()
       .describe('Whether the thread labels were modified successfully'),
     thread_id: z.string().optional().describe('Modified thread ID'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  z.object({
+    operation: z
+      .literal('get_attachment')
+      .describe('Download an attachment from an email message'),
+    success: z
+      .boolean()
+      .describe('Whether the attachment was downloaded successfully'),
+    data: z.string().optional().describe('Base64-encoded attachment content'),
+    size: z.number().optional().describe('Attachment size in bytes'),
     error: z.string().describe('Error message if operation failed'),
   }),
 ]);
@@ -1125,6 +1160,8 @@ export class GmailBubble<
             return await this.modifyMessageLabels(this.params);
           case 'modify_thread_labels':
             return await this.modifyThreadLabels(this.params);
+          case 'get_attachment':
+            return await this.getAttachment(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -1731,6 +1768,36 @@ export class GmailBubble<
       operation: 'modify_thread_labels',
       success: true,
       thread_id: response.id,
+      error: '',
+    };
+  }
+
+  private async getAttachment(
+    params: Extract<GmailParams, { operation: 'get_attachment' }>
+  ): Promise<Extract<GmailResult, { operation: 'get_attachment' }>> {
+    const { message_id, attachment_id } = params;
+
+    const response = await this.makeGmailApiRequest(
+      `/messages/${message_id}/attachments/${attachment_id}`
+    );
+
+    // Gmail API returns base64url-encoded data — convert to standard base64 with proper padding
+    let base64Data: string | undefined;
+    if (response.data) {
+      let converted = (response.data as string)
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+      // Add padding if missing — required for standard base64 and downstream consumers
+      const paddingNeeded = (4 - (converted.length % 4)) % 4;
+      converted += '='.repeat(paddingNeeded);
+      base64Data = converted;
+    }
+
+    return {
+      operation: 'get_attachment',
+      success: true,
+      data: base64Data,
+      size: response.size as number | undefined,
       error: '',
     };
   }
