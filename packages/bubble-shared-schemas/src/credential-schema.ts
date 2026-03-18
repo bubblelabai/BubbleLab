@@ -545,6 +545,13 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Slab API Token',
       credentialConfigurations: {},
     },
+    [CredentialType.DOCUSIGN_CRED]: {
+      label: 'DocuSign',
+      description: 'OAuth connection to DocuSign for eSignature operations',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My DocuSign Account',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -622,6 +629,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.RAMP_CRED]: '', // OAuth credential, no env var
   [CredentialType.ZENDESK_CRED]: '', // OAuth credential, no env var
   [CredentialType.SLAB_CRED]: 'SLAB_API_TOKEN',
+  [CredentialType.DOCUSIGN_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -669,7 +677,8 @@ export type OAuthProvider =
   | 'hubspot'
   | 'xero'
   | 'ramp'
-  | 'zendesk';
+  | 'zendesk'
+  | 'docusign';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -1841,6 +1850,28 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       },
     },
   },
+  docusign: {
+    name: 'docusign',
+    displayName: 'DocuSign',
+    credentialTypes: {
+      [CredentialType.DOCUSIGN_CRED]: {
+        displayName: 'DocuSign eSignature',
+        defaultScopes: ['signature'],
+        description:
+          'Access DocuSign eSignature for creating, sending, and managing envelopes',
+        scopeDescriptions: [
+          {
+            scope: 'signature',
+            description: 'Full access to the DocuSign eSignature REST API',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+    authorizationParams: {
+      prompt: 'login',
+    },
+  },
 };
 
 /**
@@ -2200,6 +2231,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   ramp: [CredentialType.RAMP_CRED],
   zendesk: [CredentialType.ZENDESK_CRED],
   slab: [CredentialType.SLAB_CRED],
+  docusign: [CredentialType.DOCUSIGN_CRED],
 };
 
 export interface CredentialSiblingEntry {

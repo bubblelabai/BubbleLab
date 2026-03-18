@@ -212,6 +212,19 @@ export const zendeskOAuthMetadataSchema = z.object({
 export type ZendeskOAuthMetadata = z.infer<typeof zendeskOAuthMetadataSchema>;
 
 /**
+ * DocuSign OAuth metadata - stored after OAuth callback with account info for API calls
+ */
+export const docuSignOAuthMetadataSchema = z.object({
+  accountId: z.string(),
+  baseUri: z.string(),
+  accountName: z.string().optional(),
+  /** Human-readable display name for the credential */
+  displayName: z.string().optional(),
+});
+
+export type DocuSignOAuthMetadata = z.infer<typeof docuSignOAuthMetadataSchema>;
+
+/**
  * Base preference fields that can be added to any credential metadata.
  * These are used for default credential selection and usage tracking.
  */

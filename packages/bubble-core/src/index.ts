@@ -89,6 +89,8 @@ export { ZendeskBubble } from './bubbles/service-bubble/zendesk/index.js';
 export type { ZendeskParamsInput } from './bubbles/service-bubble/zendesk/index.js';
 export { SlabBubble } from './bubbles/service-bubble/slab/index.js';
 export type { SlabParamsInput } from './bubbles/service-bubble/slab/index.js';
+export { DocuSignBubble } from './bubbles/service-bubble/docusign/index.js';
+export type { DocuSignParamsInput } from './bubbles/service-bubble/docusign/index.js';
 export { ConfluenceBubble } from './bubbles/service-bubble/confluence/index.js';
 export type { ConfluenceParamsInput } from './bubbles/service-bubble/confluence/index.js';
 export { AshbyBubble } from './bubbles/service-bubble/ashby/index.js';

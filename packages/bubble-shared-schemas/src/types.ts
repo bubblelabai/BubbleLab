@@ -113,6 +113,9 @@ export enum CredentialType {
 
   // Slab Credentials
   SLAB_CRED = 'SLAB_CRED',
+
+  // DocuSign Credentials
+  DOCUSIGN_CRED = 'DOCUSIGN_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -193,4 +196,5 @@ export type BubbleName =
   | 'xero'
   | 'ramp'
   | 'zendesk'
-  | 'slab';
+  | 'slab'
+  | 'docusign';
