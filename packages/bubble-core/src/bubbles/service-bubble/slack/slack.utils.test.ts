@@ -456,32 +456,23 @@ describe('helper functions', () => {
       expect(result.tableBlock.rows[1]).toHaveLength(SLACK_TABLE_MAX_COLUMNS);
     });
 
-    it('should truncate rows beyond 99 data rows and generate CSV', () => {
+    it('should truncate rows beyond max data rows and generate CSV', () => {
       const headers = ['ID', 'Value'];
-      const rows = Array.from({ length: 150 }, (_, i) => [
+      const rowCount = SLACK_TABLE_MAX_ROWS + 50; // exceed the limit
+      const rows = Array.from({ length: rowCount }, (_, i) => [
         String(i),
         `val${i}`,
       ]);
       const result = createTableBlock(headers, rows);
-      expect(result.tableBlock.rows).toHaveLength(SLACK_TABLE_MAX_ROWS); // 1 header + 99 data
+      expect(result.tableBlock.rows).toHaveLength(SLACK_TABLE_MAX_ROWS); // 1 header + (MAX-1) data
       expect(result.wasTruncated).toBe(true);
-      expect(result.originalRowCount).toBe(150);
+      expect(result.originalRowCount).toBe(rowCount);
       expect(result.overflowCsv).toBeDefined();
     });
 
     it('should generate CSV with proper escaping', () => {
-      const result = createTableBlock(
-        ['Name', 'Description'],
-        [
-          ['Alice', 'Has a "quote"'],
-          ['Bob', 'Has a, comma'],
-          ['Charlie', 'Has a\nnewline'],
-        ]
-        // Force overflow by not actually overflowing — test CSV content via manual overflow
-      );
-      // No overflow for 3 rows, so test the CSV helpers indirectly
-      // by creating an overflow scenario
-      const bigRows = Array.from({ length: 100 }, (_, i) => [
+      // Create an overflow scenario that exceeds SLACK_TABLE_MAX_ROWS
+      const bigRows = Array.from({ length: SLACK_TABLE_MAX_ROWS }, (_, i) => [
         `Name${i}`,
         i === 0 ? 'Has "quotes", commas' : `Desc${i}`,
       ]);
@@ -492,7 +483,9 @@ describe('helper functions', () => {
     });
 
     it('should not generate CSV when rows are within limit', () => {
-      const rows = Array.from({ length: 99 }, (_, i) => [String(i)]);
+      const rows = Array.from({ length: SLACK_TABLE_MAX_ROWS - 1 }, (_, i) => [
+        String(i),
+      ]);
       const result = createTableBlock(['ID'], rows);
       expect(result.wasTruncated).toBe(false);
       expect(result.overflowCsv).toBeUndefined();
@@ -511,19 +504,21 @@ describe('helper functions', () => {
       expect(result.tableBlock.rows[1]).toHaveLength(1);
     });
 
-    it('should handle exactly 99 data rows without truncation', () => {
-      const rows = Array.from({ length: 99 }, (_, i) => [String(i)]);
+    it('should handle exactly max-1 data rows without truncation', () => {
+      const maxData = SLACK_TABLE_MAX_ROWS - 1;
+      const rows = Array.from({ length: maxData }, (_, i) => [String(i)]);
       const result = createTableBlock(['ID'], rows);
-      expect(result.tableBlock.rows).toHaveLength(100); // 1 header + 99
+      expect(result.tableBlock.rows).toHaveLength(maxData + 1); // 1 header + maxData
       expect(result.wasTruncated).toBe(false);
     });
 
-    it('should handle exactly 100 data rows with truncation', () => {
-      const rows = Array.from({ length: 100 }, (_, i) => [String(i)]);
+    it('should handle exactly max data rows with truncation', () => {
+      const maxData = SLACK_TABLE_MAX_ROWS; // equals maxDataRows + 1, triggers truncation
+      const rows = Array.from({ length: maxData }, (_, i) => [String(i)]);
       const result = createTableBlock(['ID'], rows);
-      expect(result.tableBlock.rows).toHaveLength(100); // 1 header + 99
+      expect(result.tableBlock.rows).toHaveLength(SLACK_TABLE_MAX_ROWS); // 1 header + (MAX-1) data
       expect(result.wasTruncated).toBe(true);
-      expect(result.originalRowCount).toBe(100);
+      expect(result.originalRowCount).toBe(maxData);
     });
 
     it('should pad column settings if fewer than column count', () => {
@@ -762,15 +757,20 @@ It looks like you've been busy with those 720 workflows!
     const headers = ['ID', 'Val'];
     const headerLine = '| ' + headers.join(' | ') + ' |';
     const sepLine = '| --- | --- |';
-    const dataLines = Array.from({ length: 110 }, (_, i) => `| ${i} | v${i} |`);
+    const rowCount = SLACK_TABLE_MAX_ROWS + 10; // exceed the limit
+    const maxData = SLACK_TABLE_MAX_ROWS - 1;
+    const dataLines = Array.from(
+      { length: rowCount },
+      (_, i) => `| ${i} | v${i} |`
+    );
     const md = [headerLine, sepLine, ...dataLines].join('\n');
     const blocks = markdownToBlocks(md);
     const contextBlock = blocks.find(
       (b) => b.type === 'context'
     ) as SlackContextBlock;
     expect(contextBlock).toBeDefined();
-    expect(contextBlock.elements[0].text).toContain('99');
-    expect(contextBlock.elements[0].text).toContain('110');
+    expect(contextBlock.elements[0].text).toContain(String(maxData));
+    expect(contextBlock.elements[0].text).toContain(String(rowCount));
   });
 
   it('should strip markdown bold from table cell values', () => {
