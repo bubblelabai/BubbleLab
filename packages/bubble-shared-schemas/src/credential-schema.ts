@@ -1567,6 +1567,16 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           'crm.objects.deals.write',
           'crm.objects.custom.read',
           'crm.objects.custom.write',
+          'crm.objects.owners.read',
+          'settings.users.read',
+          'settings.users.write',
+          'settings.users.teams.read',
+          'settings.users.teams.write',
+          'crm.objects.line_items.read',
+          'crm.objects.line_items.write',
+          'crm.schemas.contacts.read',
+          'crm.schemas.companies.read',
+          'crm.schemas.deals.read',
           'tickets',
         ],
         description:
@@ -1610,6 +1620,11 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'crm.objects.custom.write',
             description: 'Create, update, and delete custom objects',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.objects.owners.read',
+            description: 'View account owners and their details',
             defaultEnabled: true,
           },
           {

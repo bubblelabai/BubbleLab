@@ -234,6 +234,15 @@ export class HubSpotBubble<
             return this.createNote(
               p as Extract<HubSpotParams, { operation: 'create_note' }>
             );
+          // Owners
+          case 'list_owners':
+            return this.listOwners(
+              p as Extract<HubSpotParams, { operation: 'list_owners' }>
+            );
+          case 'get_owner':
+            return this.getOwner(
+              p as Extract<HubSpotParams, { operation: 'get_owner' }>
+            );
           // Account
           case 'get_account_info':
             return this.getAccountInfo();
@@ -361,7 +370,7 @@ export class HubSpotBubble<
           return f;
         }),
       })),
-      limit: limit || 10,
+      limit: limit || 100,
     };
     if (properties && properties.length > 0) body.properties = properties;
     if (after) body.after = after;
@@ -685,6 +694,50 @@ export class HubSpotBubble<
         id: response.id as string,
         properties: (response.properties ?? {}) as Record<string, unknown>,
       },
+      error: '',
+    };
+  }
+
+  // =====================================================================
+  // Owners
+  // =====================================================================
+
+  private async listOwners(
+    params: Extract<HubSpotParams, { operation: 'list_owners' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'list_owners' }>> {
+    const { email, limit, after } = params;
+    const qp = new URLSearchParams();
+    if (email) qp.set('email', email);
+    if (limit) qp.set('limit', String(limit));
+    if (after) qp.set('after', after);
+    const qs = qp.toString();
+
+    const response = (await this.makeHubSpotApiRequest(
+      `/crm/v3/owners${qs ? `?${qs}` : ''}`,
+      'GET'
+    )) as Record<string, unknown>;
+
+    return {
+      operation: 'list_owners',
+      success: true,
+      owners: (response.results ?? []) as Array<Record<string, unknown>>,
+      paging: response.paging as { next?: { after: string } } | undefined,
+      error: '',
+    };
+  }
+
+  private async getOwner(
+    params: Extract<HubSpotParams, { operation: 'get_owner' }>
+  ): Promise<Extract<HubSpotResult, { operation: 'get_owner' }>> {
+    const { owner_id } = params;
+    const response = await this.makeHubSpotApiRequest(
+      `/crm/v3/owners/${owner_id}`,
+      'GET'
+    );
+    return {
+      operation: 'get_owner',
+      success: true,
+      owner: response as Record<string, unknown>,
       error: '',
     };
   }

@@ -188,8 +188,8 @@ export const HubSpotParamsSchema = z.discriminatedUnion('operation', [
       .min(1)
       .max(200)
       .optional()
-      .default(10)
-      .describe('Maximum number of results to return (1-200, default 10)'),
+      .default(100)
+      .describe('Maximum number of results to return (1-200, default 100)'),
     after: z
       .string()
       .optional()
@@ -418,6 +418,46 @@ export const HubSpotParamsSchema = z.discriminatedUnion('operation', [
   }),
 
   // =====================================================================
+  // Owners
+  // =====================================================================
+
+  // List owners
+  z.object({
+    operation: z
+      .literal('list_owners')
+      .describe(
+        'List HubSpot account owners (users who can be assigned to records)'
+      ),
+    email: z.string().optional().describe('Filter owners by email address'),
+    limit: z
+      .number()
+      .min(1)
+      .max(500)
+      .optional()
+      .default(100)
+      .describe('Maximum number of owners to return (1-500, default 100)'),
+    after: z
+      .string()
+      .optional()
+      .describe('Pagination cursor for next page of results'),
+    credentials: credentialsField,
+  }),
+
+  // Get owner
+  z.object({
+    operation: z
+      .literal('get_owner')
+      .describe('Retrieve a single HubSpot owner by ID'),
+    owner_id: z
+      .string()
+      .min(1, 'Owner ID is required')
+      .describe(
+        'HubSpot owner ID (e.g., from hubspot_owner_id property on records)'
+      ),
+    credentials: credentialsField,
+  }),
+
+  // =====================================================================
   // Account
   // =====================================================================
 
@@ -572,6 +612,25 @@ export const HubSpotResultSchema = z.discriminatedUnion('operation', [
           .describe('Note properties including hs_note_body, hs_timestamp'),
       })
       .optional(),
+    error: z.string(),
+  }),
+
+  // Owner results
+  z.object({
+    operation: z.literal('list_owners'),
+    success: z.boolean(),
+    owners: jsonArrayField,
+    paging: z
+      .object({
+        next: z.object({ after: z.string() }).optional(),
+      })
+      .optional(),
+    error: z.string(),
+  }),
+  z.object({
+    operation: z.literal('get_owner'),
+    success: z.boolean(),
+    owner: jsonDataField,
     error: z.string(),
   }),
 
