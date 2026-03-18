@@ -907,6 +907,7 @@ export class AIAgentBubble extends ServiceBubble<
             this.params.tools = [];
             this.params.capabilities = [];
             this.params.model.maxTokens = 20000;
+            this.params.conversationHistory = []; // Strip thread history — run-only is stateless
           }
         }
       }
