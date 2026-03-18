@@ -123,6 +123,9 @@ export enum CredentialType {
 
   // Asana Credentials
   ASANA_CRED = 'ASANA_CRED',
+
+  // DocuSign Credentials
+  DOCUSIGN_CRED = 'DOCUSIGN_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -209,4 +212,5 @@ export type BubbleName =
   | 'salesforce'
   | 'asana'
   | 'discord'
-  | 'sortly';
+  | 'sortly'
+  | 'docusign';

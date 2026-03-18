@@ -100,6 +100,8 @@ export { DiscordBubble } from './bubbles/service-bubble/discord/index.js';
 export type { DiscordParamsInput } from './bubbles/service-bubble/discord/index.js';
 export { SortlyBubble } from './bubbles/service-bubble/sortly/index.js';
 export type { SortlyParamsInput } from './bubbles/service-bubble/sortly/index.js';
+export { DocuSignBubble } from './bubbles/service-bubble/docusign/index.js';
+export type { DocuSignParamsInput } from './bubbles/service-bubble/docusign/index.js';
 export { ConfluenceBubble } from './bubbles/service-bubble/confluence/index.js';
 export type { ConfluenceParamsInput } from './bubbles/service-bubble/confluence/index.js';
 export { AshbyBubble } from './bubbles/service-bubble/ashby/index.js';

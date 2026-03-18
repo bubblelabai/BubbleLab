@@ -643,6 +643,13 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
         },
       ],
     },
+    [CredentialType.DOCUSIGN_CRED]: {
+      label: 'DocuSign',
+      description: 'OAuth connection to DocuSign for eSignature operations',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My DocuSign Account',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -724,6 +731,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.SALESFORCE_CRED]: '', // OAuth credential, no env var
   [CredentialType.ASANA_CRED]: '', // OAuth credential, no env var
   [CredentialType.DISCORD_CRED]: '', // OAuth credential, no env var
+  [CredentialType.DOCUSIGN_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -774,7 +782,8 @@ export type OAuthProvider =
   | 'zendesk'
   | 'salesforce'
   | 'asana'
-  | 'discord';
+  | 'discord'
+  | 'docusign';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -2282,6 +2291,28 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       permissions: '563483066756176',
     },
   },
+  docusign: {
+    name: 'docusign',
+    displayName: 'DocuSign',
+    credentialTypes: {
+      [CredentialType.DOCUSIGN_CRED]: {
+        displayName: 'DocuSign eSignature',
+        defaultScopes: ['signature'],
+        description:
+          'Access DocuSign eSignature for creating, sending, and managing envelopes',
+        scopeDescriptions: [
+          {
+            scope: 'signature',
+            description: 'Full access to the DocuSign eSignature REST API',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+    authorizationParams: {
+      prompt: 'login',
+    },
+  },
 };
 
 /**
@@ -2647,6 +2678,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   asana: [CredentialType.ASANA_CRED],
   discord: [CredentialType.DISCORD_CRED],
   sortly: [CredentialType.SORTLY_API_KEY],
+  docusign: [CredentialType.DOCUSIGN_CRED],
 };
 
 export interface CredentialSiblingEntry {
