@@ -13,6 +13,8 @@ export interface UserCredentialMapping {
   credentialType: string; // The credential type from the database (e.g., 'OPENAI_CRED', 'SLACK_CRED')
   credentialId: number;
   metadata?: CredentialMetadata; // Credential metadata (DatabaseMetadata or JiraOAuthMetadata)
+  /** User-assigned credential name (used for credential pool metadata) */
+  name?: string;
 }
 
 /**
@@ -44,11 +46,14 @@ export class CredentialHelper {
         try {
           // Parse the credentials object: { CredentialType -> credentialId }
           const credentialsObj = this.parseCredentialsObject(
-            credentialsParam.value as Record<string, number>
+            credentialsParam.value as Record<string, number | number[]>
           );
 
-          for (const [, credentialId] of Object.entries(credentialsObj)) {
-            if (typeof credentialId === 'number') {
+          for (const [, credentialIdOrIds] of Object.entries(credentialsObj)) {
+            const ids = Array.isArray(credentialIdOrIds)
+              ? credentialIdOrIds
+              : [credentialIdOrIds];
+            for (const credentialId of ids) {
               if (!credentialIds.includes(credentialId)) {
                 credentialIds.push(credentialId);
               }
@@ -178,6 +183,7 @@ export class CredentialHelper {
               credentialType: encryptedCred.credentialType,
               credentialId: encryptedCred.id,
               metadata: encryptedCred.metadata || undefined,
+              name: encryptedCred.name || undefined,
             });
           }
         }
@@ -200,13 +206,18 @@ export class CredentialHelper {
    * @returns Object mapping credential types to credential IDs
    */
   private static parseCredentialsObject(
-    credentialsValue: Record<string, number>
-  ): Record<string, number> {
-    // Validate that all values are numbers (credential IDs)
-    const result: Record<string, number> = {};
+    credentialsValue: Record<string, number | number[]>
+  ): Record<string, number | number[]> {
+    // Validate that all values are numbers or arrays of numbers (credential IDs)
+    const result: Record<string, number | number[]> = {};
     for (const [key, value] of Object.entries(credentialsValue)) {
       if (typeof value === 'number' && Number.isInteger(value)) {
         result[key] = value;
+      } else if (Array.isArray(value)) {
+        const validIds = value.filter(
+          (v) => typeof v === 'number' && Number.isInteger(v)
+        );
+        if (validIds.length > 0) result[key] = validIds;
       } else {
         console.warn(`Skipping invalid credential ID for ${key}: ${value}`);
       }

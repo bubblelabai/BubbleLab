@@ -71,6 +71,7 @@ async function runBubbleFlowCommon(
         credentialType: mapping.credentialType as CredentialType,
         credentialId: mapping.credentialId,
         metadata: mapping.metadata,
+        name: mapping.name,
       }))
     );
 
