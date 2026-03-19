@@ -564,14 +564,18 @@ export class BubbleInjector {
           }
         }
 
-        // Inject user credentials
+        // Inject user credentials (first credential of each type wins as the "default")
         for (const userCred of userCreds) {
           const userCredType = userCred.credentialType;
 
           if (allCredentialOptions.includes(userCredType)) {
-            credentialMapping[userCredType] = this.escapeString(
-              userCred.secret
-            );
+            // Only set if not already present — first credential is the "default"
+            // (pool array order is preserved by CredentialHelper)
+            if (!(userCredType in credentialMapping)) {
+              credentialMapping[userCredType] = this.escapeString(
+                userCred.secret
+              );
+            }
             injectedCredentials[`${bubble.variableId}.${userCredType}`] = {
               isUserCredential: true,
               credentialType: userCredType,
