@@ -841,7 +841,7 @@ export function mergeCredentialsByBubbleName(
     | Record<string | number, ParsedBubbleWithInfo>
     | null
     | undefined,
-  credentials: Record<string | number, Record<string, number>>
+  credentials: Record<string | number, Record<string, number | number[]>>
 ): Record<string | number, ParsedBubbleWithInfo> {
   const updatedParameters = { ...newBubbleParameters };
 
@@ -855,7 +855,10 @@ export function mergeCredentialsByBubbleName(
   }
 
   // Build a map of bubbleName -> credentials from old parameters
-  const credentialsByBubbleName: Record<string, Record<string, number>> = {};
+  const credentialsByBubbleName: Record<
+    string,
+    Record<string, number | number[]>
+  > = {};
   for (const [oldKey, oldBubble] of Object.entries(oldBubbleParameters)) {
     const bubbleName = oldBubble.bubbleName;
     if (bubbleName && credentials[oldKey]) {
@@ -874,7 +877,7 @@ export function mergeCredentialsByBubbleName(
     if (existingCredParam && existingCredParam.value) {
       const credValue = existingCredParam.value as Record<string, unknown>;
       const hasRealCredentials = Object.values(credValue).some(
-        (v) => typeof v === 'number'
+        (v) => typeof v === 'number' || (Array.isArray(v) && v.length > 0)
       );
       if (hasRealCredentials) {
         continue; // Already has credentials, skip
@@ -905,7 +908,10 @@ export function mergeCredentialsByBubbleName(
       ) {
         credentialsParam.value = {};
       }
-      const credObj = credentialsParam.value as Record<string, number>;
+      const credObj = credentialsParam.value as Record<
+        string,
+        number | number[]
+      >;
       for (const [credType, credId] of Object.entries(matchedCredentials)) {
         credObj[credType] = credId;
       }
