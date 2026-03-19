@@ -877,7 +877,7 @@ export function mergeCredentialsByBubbleName(
     if (existingCredParam && existingCredParam.value) {
       const credValue = existingCredParam.value as Record<string, unknown>;
       const hasRealCredentials = Object.values(credValue).some(
-        (v) => typeof v === 'number'
+        (v) => typeof v === 'number' || (Array.isArray(v) && v.length > 0)
       );
       if (hasRealCredentials) {
         continue; // Already has credentials, skip
