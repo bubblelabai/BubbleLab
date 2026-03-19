@@ -50,6 +50,7 @@ export { FollowUpBossBubble } from './bubbles/service-bubble/followupboss.js';
 export { TwitterTool } from './bubbles/tool-bubble/twitter-tool.js';
 export { TikTokTool } from './bubbles/tool-bubble/tiktok-tool.js';
 export { GoogleMapsTool } from './bubbles/tool-bubble/google-maps-tool.js';
+export { AppRankingsTool } from './bubbles/tool-bubble/app-rankings-tool.js';
 export type {
   ApifyParamsInput,
   ApifyActorInput,

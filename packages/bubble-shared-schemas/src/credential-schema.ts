@@ -24,6 +24,16 @@ export interface CredentialRequirements {
 }
 
 /**
+ * A single entry in a credential pool — contains metadata and decrypted value.
+ * Used by AI agent master to present credential choices and resolve selections.
+ */
+export interface CredentialPoolEntry {
+  id: number;
+  name: string;
+  value: string;
+}
+
+/**
  * A single field within a multi-field credential.
  * When a credential type has `fields`, the UI renders multiple labeled inputs
  * and stores them as a single JSON-encoded `value`.
@@ -2141,6 +2151,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   'tiktok-tool': [CredentialType.APIFY_CRED],
   'twitter-tool': [CredentialType.APIFY_CRED],
   'google-maps-tool': [CredentialType.APIFY_CRED],
+  'app-rankings-tool': [CredentialType.APIFY_CRED],
   'youtube-tool': [CredentialType.APIFY_CRED],
   github: [CredentialType.GITHUB_TOKEN],
   'eleven-labs': [CredentialType.ELEVENLABS_API_KEY],
