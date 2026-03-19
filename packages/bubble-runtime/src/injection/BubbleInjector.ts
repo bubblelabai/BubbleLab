@@ -25,6 +25,8 @@ export interface UserCredentialWithId {
   credentialType: CredentialType;
   credentialId?: number;
   metadata?: CredentialMetadata;
+  /** User-assigned credential name (used for credential pool metadata) */
+  name?: string;
 }
 
 export interface CredentialInjectionResult {
@@ -604,6 +606,46 @@ export class BubbleInjector {
         if (Object.keys(credentialMapping).length > 0) {
           this.injectCredentialsIntoBubble(bubble, credentialMapping);
         }
+
+        // For ai-agent bubbles, build and inject credential pool when
+        // multiple user credentials exist for the same credential type
+        if (bubble.bubbleName === 'ai-agent' && userCreds.length > 0) {
+          const credsByType = new Map<
+            CredentialType,
+            Array<{ id: number; name: string; value: string }>
+          >();
+          for (const uc of userCreds) {
+            if (
+              !allCredentialOptions.includes(uc.credentialType) ||
+              uc.credentialId == null
+            )
+              continue;
+            if (!credsByType.has(uc.credentialType)) {
+              credsByType.set(uc.credentialType, []);
+            }
+            credsByType.get(uc.credentialType)!.push({
+              id: uc.credentialId,
+              name: uc.name ?? `${uc.credentialType} (${uc.credentialId})`,
+              value: this.escapeString(uc.secret),
+            });
+          }
+          // Only inject pool if at least one type has multiple credentials
+          const hasMultiple = Array.from(credsByType.values()).some(
+            (entries) => entries.length > 1
+          );
+          if (hasMultiple) {
+            const pool: Record<
+              string,
+              Array<{ id: number; name: string; value: string }>
+            > = {};
+            for (const [credType, entries] of credsByType) {
+              if (entries.length > 1) {
+                pool[credType] = entries;
+              }
+            }
+            this.injectCredentialPoolIntoBubble(bubble, pool);
+          }
+        }
       }
 
       // Apply the modified bubbles back to the script
@@ -662,6 +704,28 @@ export class BubbleInjector {
     }
 
     credentialsParam.value = credentialsObj;
+  }
+
+  /**
+   * Injects a credential pool into an ai-agent bubble's parameters.
+   * The pool contains all credentials per type with metadata (id, name, value).
+   */
+  private injectCredentialPoolIntoBubble(
+    bubble: ParsedBubbleWithInfo,
+    pool: Record<string, Array<{ id: number; name: string; value: string }>>
+  ): void {
+    let poolParam = bubble.parameters.find((p) => p.name === 'credentialPool');
+
+    if (!poolParam) {
+      poolParam = {
+        name: 'credentialPool',
+        value: pool,
+        type: BubbleParameterType.OBJECT,
+      };
+      bubble.parameters.push(poolParam);
+    } else {
+      poolParam.value = pool;
+    }
   }
 
   /**

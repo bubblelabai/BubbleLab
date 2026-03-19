@@ -360,6 +360,21 @@ const AIAgentParamsSchema = z.object({
     .describe(
       'Object mapping credential types to values (injected at runtime)'
     ),
+  credentialPool: z
+    .record(
+      z.nativeEnum(CredentialType),
+      z.array(
+        z.object({
+          id: z.number(),
+          name: z.string(),
+          value: z.string(),
+        })
+      )
+    )
+    .optional()
+    .describe(
+      'All available credentials per type with metadata. Used by master agent for delegation credential selection.'
+    ),
   streaming: z
     .boolean()
     .default(false)
@@ -657,7 +672,8 @@ export class AIAgentBubble extends ServiceBubble<
     await applyCapabilityPreprocessing(
       this.params,
       this.context,
-      this.resolveCapabilityCredentials.bind(this)
+      this.resolveCapabilityCredentials.bind(this),
+      this.params.credentialPool
     );
 
     // Extract execution metadata (used for conversation history + agent memory)
@@ -1665,14 +1681,44 @@ export class AIAgentBubble extends ServiceBubble<
               .describe(
                 'Clear description of what to do. Include any relevant context from the conversation. Always include information about the users timezone and current time.'
               ),
+            credentials: z
+              .record(z.nativeEnum(CredentialType), z.number())
+              .optional()
+              .describe(
+                'Optional: map credential type to credential ID to select a specific account. Only needed when multiple credentials of the same type are available. If omitted, the default credential is used.'
+              ),
           }),
           func: async (input: Record<string, unknown>) => {
             const capabilityId = input.capabilityId as string;
             const task = input.task as string;
+            const credentialOverrides = input.credentials as
+              | Record<string, number>
+              | undefined;
             const capConfig = caps.find((c) => c.id === capabilityId);
             const capDef = getCapability(capabilityId);
             if (!capConfig || !capDef)
               return { error: `Capability "${capabilityId}" not found` };
+
+            // Resolve credential overrides from the credential pool
+            const subAgentCredentials = this.params.credentials
+              ? { ...this.params.credentials }
+              : undefined;
+            if (
+              credentialOverrides &&
+              this.params.credentialPool &&
+              subAgentCredentials
+            ) {
+              for (const [credType, credId] of Object.entries(
+                credentialOverrides
+              )) {
+                const pool =
+                  this.params.credentialPool[credType as CredentialType];
+                const match = pool?.find((c) => c.id === credId);
+                if (match) {
+                  subAgentCredentials[credType as CredentialType] = match.value;
+                }
+              }
+            }
 
             // Snapshot master agent state before delegation so that the
             // subagent's beforeToolCall hook can save both states if an
@@ -1707,7 +1753,7 @@ export class AIAgentBubble extends ServiceBubble<
                 name: `Capability Agent: ${capDef.metadata.name}`,
                 model: { ...this.params.model },
                 capabilities: [capConfig], // single cap = eager load in sub-agent
-                credentials: this.params.credentials,
+                credentials: subAgentCredentials,
               },
               this.context,
               `capability-${capabilityId}`

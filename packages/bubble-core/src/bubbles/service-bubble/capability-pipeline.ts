@@ -2,6 +2,7 @@ import type { BubbleContext } from '../../types/bubble.js';
 import {
   RECOMMENDED_MODELS,
   type CredentialType,
+  type CredentialPoolEntry,
 } from '@bubblelab/shared-schemas';
 import {
   getCapability,
@@ -22,7 +23,8 @@ type ResolveCapabilityCredentials = (
 export async function applyCapabilityPreprocessing(
   params: AIAgentParamsParsed,
   bubbleContext: BubbleContext | undefined,
-  resolveCapabilityCredentials: ResolveCapabilityCredentials
+  resolveCapabilityCredentials: ResolveCapabilityCredentials,
+  credentialPool?: Partial<Record<CredentialType, CredentialPoolEntry[]>>
 ): Promise<AIAgentParamsParsed> {
   const caps = params.capabilities ?? [];
   if (caps.length > 1) {
@@ -90,6 +92,24 @@ export async function applyCapabilityPreprocessing(
           }
           hint ??= def.metadata.delegationHint;
           if (hint) summary += `\n   When to use: ${hint}`;
+
+          // List available credentials when multiple exist for a type
+          if (credentialPool) {
+            const capCredTypes = [
+              ...def.metadata.requiredCredentials,
+              ...(def.metadata.optionalCredentials ?? []),
+            ];
+            for (const credType of capCredTypes) {
+              const pool = credentialPool[credType];
+              if (pool && pool.length > 1) {
+                summary += `\n   Available ${credType} accounts:`;
+                for (const entry of pool) {
+                  summary += `\n   - id=${entry.id}: "${entry.name}"`;
+                }
+                summary += `\n   Pass 'credentials: { ${credType}: <id> }' to use-capability to select a specific account.`;
+              }
+            }
+          }
 
           return summary;
         })
