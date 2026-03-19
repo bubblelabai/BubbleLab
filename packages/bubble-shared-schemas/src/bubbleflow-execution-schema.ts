@@ -302,17 +302,21 @@ export const validateBubbleFlowCodeSchema = z.object({
     example: 123,
   }),
   credentials: z
-    .record(z.string(), z.record(z.string(), z.number()))
+    .record(
+      z.string(),
+      z.record(z.string(), z.union([z.number(), z.array(z.number())]))
+    )
     .optional()
     .openapi({
       description:
-        'Optional credentials mapping: bubble name -> credential type -> credential ID',
+        'Optional credentials mapping: bubble name -> credential type -> credential ID or array of IDs',
       example: {
         'slack-sender': {
           SLACK_CRED: 123,
         },
         'ai-agent': {
           OPENAI_CRED: 456,
+          CONFLUENCE_CRED: [789, 790],
         },
       },
     }),
