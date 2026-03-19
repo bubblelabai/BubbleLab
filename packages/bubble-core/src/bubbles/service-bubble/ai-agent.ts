@@ -1682,7 +1682,7 @@ export class AIAgentBubble extends ServiceBubble<
                 'Clear description of what to do. Include any relevant context from the conversation. Always include information about the users timezone and current time.'
               ),
             credentials: z
-              .record(z.nativeEnum(CredentialType), z.number())
+              .record(z.nativeEnum(CredentialType), z.number().int())
               .optional()
               .describe(
                 'Optional: map credential type to credential ID to select a specific account. Only needed when multiple credentials of the same type are available. If omitted, the default credential is used.'
@@ -1780,7 +1780,7 @@ export class AIAgentBubble extends ServiceBubble<
           },
         } as any)
       );
-      console.log(
+      console.debug(
         `🔧 [AIAgent] Multi-capability delegation mode: registered use-capability tool for [${capIds.join(', ')}]`
       );
     } else {

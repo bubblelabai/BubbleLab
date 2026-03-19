@@ -99,7 +99,11 @@ export async function applyCapabilityPreprocessing(
               if (pool && pool.length > 1) {
                 summary += `\n   Available ${credType} accounts:`;
                 for (const entry of pool) {
-                  summary += `\n   - id=${entry.id}: "${entry.name}"`;
+                  // Sanitize name to prevent prompt injection via credential names
+                  const safeName = entry.name
+                    .replace(/[\n\r]/g, ' ')
+                    .slice(0, 100);
+                  summary += `\n   - id=${entry.id}: "${safeName}"`;
                 }
                 summary += `\n   Pass 'credentials: { ${credType}: <id> }' to use-capability to select a specific account.`;
               }

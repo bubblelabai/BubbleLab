@@ -1081,13 +1081,6 @@ export class BubbleInjector {
         'Error injecting bubble logging and reinitialize bubble parameters:',
         error
       );
-      console.log(
-        '--------------------------------SCRIPT ERROR--------------------------------'
-      );
-      console.log(this.bubbleScript.currentBubbleScript);
-      console.log(
-        '--------------------------------SCRIPT ERROR--------------------------------'
-      );
       // Revert the script to the original script
       this.bubbleScript.currentBubbleScript = script;
     }
