@@ -12,3 +12,9 @@ export {
   YouTubeTranscriptItemSchema,
   YouTubeTranscriptResultSchema,
 } from './actors/youtube-transcript-scraper.js';
+
+// App Rankings schemas
+export {
+  AppRankingsScraperInputSchema,
+  AppRankingsItemSchema,
+} from './actors/app-rankings-scraper.js';

@@ -159,6 +159,7 @@ export type BubbleName =
   | 'tiktok-tool'
   | 'twitter-tool'
   | 'google-maps-tool'
+  | 'app-rankings-tool'
   | 'youtube-tool'
   | 'github'
   | 'eleven-labs'

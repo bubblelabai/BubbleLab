@@ -188,7 +188,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     This is a generic service bubble that can execute any Apify actor with any input.
     Actor-specific logic and data transformation should be handled by Tool Bubbles.
 
-    Integrated Actors, use them through instagram-tool, reddit-tool, linkedin-tool, youtube-tool, tiktok-tool, twitter-tool, google-maps-tool, etc, not directly:
+    Integrated Actors, use them through instagram-tool, reddit-tool, linkedin-tool, youtube-tool, tiktok-tool, twitter-tool, google-maps-tool, app-rankings-tool, etc, not directly:
     - apify/instagram-scraper - Instagram posts, profiles, hashtags
     - apify/instagram-hashtag-scraper - Instagram hashtag posts
     - harvestapi/linkedin-profile-scraper - LinkedIn profile details (name, experience, education, skills)
@@ -200,6 +200,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     - clockworks/tiktok-scraper - TikTok profiles, videos, hashtags
     - apidojo/tweet-scraper - Twitter/X profiles, tweets, search results
     - compass/crawler-google-places - Google Maps business listings and reviews
+    - slothtechlabs/ios-android-app-rankings-scraper - Apple & Google Play top chart rankings
     - IMPORTANT: For other actors, use discovery mode to find the actor and its page, then use the web scrape tool to scrape the input schema page to get the input/output schema details.
 
     Discovery Mode:

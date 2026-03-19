@@ -42,6 +42,10 @@ import {
   GoogleMapsScraperInputSchema,
   GoogleMapsPlaceSchema,
 } from './actors/google-maps-scraper.js';
+import {
+  AppRankingsScraperInputSchema,
+  AppRankingsItemSchema,
+} from './actors/app-rankings-scraper.js';
 
 // ============================================================================
 // ACTOR REGISTRY
@@ -128,5 +132,14 @@ export const APIFY_ACTOR_SCHEMAS = {
       'Scrape Google Maps for business listings, reviews, and place data',
     documentation: 'https://apify.com/compass/crawler-google-places',
     category: 'maps',
+  },
+  'slothtechlabs/ios-android-app-rankings-scraper': {
+    input: AppRankingsScraperInputSchema,
+    output: AppRankingsItemSchema,
+    description:
+      'Scrape Apple App Store and Google Play top chart rankings (Top Free, Top Paid, Top Grossing) across 60+ countries and 50+ categories',
+    documentation:
+      'https://apify.com/slothtechlabs/ios-android-app-rankings-scraper',
+    category: 'apps',
   },
 };

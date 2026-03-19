@@ -26,6 +26,7 @@ export const AvailableTools = z.enum([
   'tiktok-tool',
   'twitter-tool',
   'google-maps-tool',
+  'app-rankings-tool',
   'youtube-tool',
   'people-search-tool',
   'sql-query-tool',

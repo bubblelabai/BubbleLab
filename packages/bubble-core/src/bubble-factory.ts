@@ -151,6 +151,7 @@ export class BubbleFactory {
       'tiktok-tool',
       'twitter-tool',
       'google-maps-tool',
+      'app-rankings-tool',
       'youtube-tool',
       'github',
       'eleven-labs',
@@ -328,6 +329,9 @@ export class BubbleFactory {
     );
     const { GoogleMapsTool } = await import(
       './bubbles/tool-bubble/google-maps-tool.js'
+    );
+    const { AppRankingsTool } = await import(
+      './bubbles/tool-bubble/app-rankings-tool.js'
     );
     const { SlackFormatterAgentBubble } = await import(
       './bubbles/workflow-bubble/slack-formatter-agent.js'
@@ -535,6 +539,10 @@ export class BubbleFactory {
     this.register(
       'google-maps-tool',
       GoogleMapsTool as BubbleClassWithMetadata
+    );
+    this.register(
+      'app-rankings-tool',
+      AppRankingsTool as BubbleClassWithMetadata
     );
     this.register('youtube-tool', YouTubeTool as BubbleClassWithMetadata);
     this.register('web-crawl-tool', WebCrawlTool as BubbleClassWithMetadata);
