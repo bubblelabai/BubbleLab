@@ -565,22 +565,25 @@ export class BubbleInjector {
         }
 
         // Inject user credentials (first credential of each type wins as the "default")
+        // User credentials always override system credentials.
+        // Within a multi-credential pool, the first entry wins (pool order
+        // is preserved by CredentialHelper.getUserCredentials()).
+        const seenUserCredTypes = new Set<string>();
         for (const userCred of userCreds) {
           const userCredType = userCred.credentialType;
 
           if (allCredentialOptions.includes(userCredType)) {
-            // Only set if not already present — first credential is the "default"
-            // (pool array order is preserved by CredentialHelper)
-            if (!(userCredType in credentialMapping)) {
+            if (!seenUserCredTypes.has(userCredType)) {
+              seenUserCredTypes.add(userCredType);
               credentialMapping[userCredType] = this.escapeString(
                 userCred.secret
               );
+              injectedCredentials[`${bubble.variableId}.${userCredType}`] = {
+                isUserCredential: true,
+                credentialType: userCredType,
+                credentialValue: this.maskCredential(userCred.secret),
+              };
             }
-            injectedCredentials[`${bubble.variableId}.${userCredType}`] = {
-              isUserCredential: true,
-              credentialType: userCredType,
-              credentialValue: this.maskCredential(userCred.secret),
-            };
           }
         }
 
