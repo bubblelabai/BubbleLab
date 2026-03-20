@@ -1674,7 +1674,7 @@ export class AIAgentBubble extends ServiceBubble<
             'Delegate a task to a specialized capability. The capability has its own tools and context to handle the task.',
           schema: z.object({
             capabilityId: z
-              .enum(capIds as [string, ...string[]])
+              .string()
               .describe('Which capability to delegate to'),
             task: z
               .string()
@@ -1697,10 +1697,14 @@ export class AIAgentBubble extends ServiceBubble<
             const credentialOverrides = input.credentials as
               | Record<string, string | number>
               | undefined;
-            const capConfig = caps.find((c) => c.id === capabilityId);
+            const capConfig = caps.find((c) => c.id === capabilityId) ?? {
+              id: capabilityId,
+            };
             const capDef = getCapability(capabilityId);
-            if (!capConfig || !capDef)
-              return { error: `Capability "${capabilityId}" not found` };
+            if (!capDef)
+              return {
+                error: `Capability "${capabilityId}" not found. Available: ${capIds.join(', ')}`,
+              };
 
             // Resolve credential overrides from the credential pool
             const subAgentCredentials = this.params.credentials
