@@ -33,12 +33,12 @@ export async function applyCapabilityPreprocessing(
     params.model.model = RECOMMENDED_MODELS.CHAT as typeof params.model.model;
     params.model.reasoningEffort = 'medium';
   } else {
-    // Single-cap: sub-agents (multi-cap delegation) default to Gemini 3 Flash + no thinking
+    // Single-cap: sub-agents (multi-cap delegation) default to Gemini 3 Flash + low thinking
     const isSubAgent = params.name?.startsWith('Capability Agent: ');
     if (isSubAgent) {
       params.model.model =
         RECOMMENDED_MODELS.GOOGLE_FLAGSHIP as typeof params.model.model;
-      params.model.reasoningEffort = undefined;
+      params.model.reasoningEffort = 'low';
     }
     // Apply capability modelConfigOverride on top (capabilities can override model/thinking)
     for (const capConfig of caps) {
@@ -103,9 +103,9 @@ export async function applyCapabilityPreprocessing(
                   const safeName = entry.name
                     .replace(/[\n\r]/g, ' ')
                     .slice(0, 100);
-                  summary += `\n   - id=${entry.id}: "${safeName}"`;
+                  summary += `\n   - "${safeName}"`;
                 }
-                summary += `\n   Pass 'credentials: { ${credType}: <id> }' to use-capability to select a specific account.`;
+                summary += `\n   Pass 'credentials: { ${credType}: "<account name>" }' to use-capability to select a specific account.`;
               }
             }
           }
