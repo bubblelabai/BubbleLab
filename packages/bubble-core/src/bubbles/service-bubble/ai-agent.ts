@@ -1682,17 +1682,20 @@ export class AIAgentBubble extends ServiceBubble<
                 'Clear description of what to do. Include any relevant context from the conversation. Always include information about the users timezone and current time.'
               ),
             credentials: z
-              .record(z.nativeEnum(CredentialType), z.number().int())
+              .record(
+                z.nativeEnum(CredentialType),
+                z.union([z.string(), z.number()])
+              )
               .optional()
               .describe(
-                'Optional: map credential type to credential ID to select a specific account. Only needed when multiple credentials of the same type are available. If omitted, the default credential is used.'
+                'Optional: map credential type to the account name (e.g. "bubblelab-team") to select a specific account. Only needed when multiple credentials of the same type are available. If omitted, the default credential is used.'
               ),
           }),
           func: async (input: Record<string, unknown>) => {
             const capabilityId = input.capabilityId as string;
             const task = input.task as string;
             const credentialOverrides = input.credentials as
-              | Record<string, number>
+              | Record<string, string | number>
               | undefined;
             const capConfig = caps.find((c) => c.id === capabilityId);
             const capDef = getCapability(capabilityId);
@@ -1703,17 +1706,42 @@ export class AIAgentBubble extends ServiceBubble<
             const subAgentCredentials = this.params.credentials
               ? { ...this.params.credentials }
               : undefined;
+
             if (
               credentialOverrides &&
               this.params.credentialPool &&
               subAgentCredentials
             ) {
-              for (const [credType, credId] of Object.entries(
+              for (const [credType, credSelector] of Object.entries(
                 credentialOverrides
               )) {
                 const pool =
                   this.params.credentialPool[credType as CredentialType];
-                const match = pool?.find((c) => c.id === credId);
+                if (!pool) continue;
+
+                // Match by name first (string), fall back to ID (number)
+                let match: (typeof pool)[number] | undefined;
+                if (typeof credSelector === 'string') {
+                  const sel = credSelector.toLowerCase();
+                  // Exact match first, then substring (handles "email (label)" format)
+                  match = pool.find((c) => c.name.toLowerCase() === sel);
+                  if (!match) {
+                    match = pool.find((c) =>
+                      c.name.toLowerCase().includes(sel)
+                    );
+                  }
+                }
+                if (!match && typeof credSelector === 'number') {
+                  match = pool.find((c) => c.id === credSelector);
+                }
+                // Also try parsing string as number for ID fallback
+                if (!match && typeof credSelector === 'string') {
+                  const asNum = Number(credSelector);
+                  if (!Number.isNaN(asNum)) {
+                    match = pool.find((c) => c.id === asNum);
+                  }
+                }
+
                 if (match) {
                   subAgentCredentials[credType as CredentialType] = match.value;
                 }
