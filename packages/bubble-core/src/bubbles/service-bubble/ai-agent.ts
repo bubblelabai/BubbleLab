@@ -1802,9 +1802,12 @@ export class AIAgentBubble extends ServiceBubble<
             });
 
             if (!result.success) {
-              return { success: false, error: result.error };
+              return { error: result.error };
             }
-            return { success: true, response: result.data?.response };
+            const toolsMade = (result.data?.toolCalls ?? []).map(
+              (tc: { tool: string }) => tc.tool
+            );
+            return { response: result.data?.response, toolCalls: toolsMade };
           },
         } as any)
       );
