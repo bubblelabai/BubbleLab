@@ -292,6 +292,52 @@ export class ZendeskBubble<
                 { operation: 'delete_ticket_field' }
               >
             );
+          case 'list_macros':
+            return await this.listMacros(
+              parsedParams as Extract<
+                ZendeskParams,
+                { operation: 'list_macros' }
+              >
+            );
+          case 'get_macro':
+            return await this.getMacro(
+              parsedParams as Extract<ZendeskParams, { operation: 'get_macro' }>
+            );
+          case 'apply_macro':
+            return await this.applyMacro(
+              parsedParams as Extract<
+                ZendeskParams,
+                { operation: 'apply_macro' }
+              >
+            );
+          case 'create_macro':
+            return await this.createMacro(
+              parsedParams as Extract<
+                ZendeskParams,
+                { operation: 'create_macro' }
+              >
+            );
+          case 'update_macro':
+            return await this.updateMacro(
+              parsedParams as Extract<
+                ZendeskParams,
+                { operation: 'update_macro' }
+              >
+            );
+          case 'delete_macro':
+            return await this.deleteMacro(
+              parsedParams as Extract<
+                ZendeskParams,
+                { operation: 'delete_macro' }
+              >
+            );
+          case 'search_macros':
+            return await this.searchMacros(
+              parsedParams as Extract<
+                ZendeskParams,
+                { operation: 'search_macros' }
+              >
+            );
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -756,6 +802,176 @@ export class ZendeskBubble<
     };
   }
 
+  // ---- Macro operations ----
+
+  private async listMacros(
+    params: Extract<ZendeskParams, { operation: 'list_macros' }>
+  ): Promise<Extract<ZendeskResult, { operation: 'list_macros' }>> {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.set('page', String(params.page));
+    if (params.per_page) queryParams.set('per_page', String(params.per_page));
+    if (params.category) queryParams.set('category', params.category);
+    if (params.include) queryParams.set('include', params.include);
+
+    // Use active or inactive endpoint
+    let basePath = '/api/v2/macros';
+    if (params.active === true) {
+      basePath = '/api/v2/macros/active';
+    }
+    // For active === false, we list all and filter below
+
+    const queryString = queryParams.toString();
+    const endpoint = `${basePath}.json${queryString ? `?${queryString}` : ''}`;
+    const response = await this.makeZendeskApiRequest(endpoint);
+
+    let macros = (response.macros || []).map(this.mapMacro);
+    // Filter inactive if requested
+    if (params.active === false) {
+      macros = macros.filter((m: any) => !m.active);
+    }
+
+    return {
+      operation: 'list_macros',
+      success: true,
+      macros,
+      count: response.count ?? macros.length,
+      next_page: response.next_page ?? null,
+      error: '',
+    };
+  }
+
+  private async getMacro(
+    params: Extract<ZendeskParams, { operation: 'get_macro' }>
+  ): Promise<Extract<ZendeskResult, { operation: 'get_macro' }>> {
+    const response = await this.makeZendeskApiRequest(
+      `/api/v2/macros/${params.macro_id}.json`
+    );
+
+    return {
+      operation: 'get_macro',
+      success: true,
+      macro: this.mapMacro(response.macro),
+      error: '',
+    };
+  }
+
+  private async applyMacro(
+    params: Extract<ZendeskParams, { operation: 'apply_macro' }>
+  ): Promise<Extract<ZendeskResult, { operation: 'apply_macro' }>> {
+    const response = await this.makeZendeskApiRequest(
+      `/api/v2/tickets/${params.ticket_id}/macros/${params.macro_id}/apply.json`
+    );
+
+    const result = response.result || {};
+    return {
+      operation: 'apply_macro',
+      success: true,
+      result: {
+        ticket: result.ticket,
+        comment: result.comment
+          ? {
+              body: result.comment.body,
+              html_body: result.comment.html_body,
+              public: result.comment.public,
+              scoped_body: result.comment.scoped_body,
+            }
+          : undefined,
+      },
+      error: '',
+    };
+  }
+
+  private async createMacro(
+    params: Extract<ZendeskParams, { operation: 'create_macro' }>
+  ): Promise<Extract<ZendeskResult, { operation: 'create_macro' }>> {
+    const macroBody: Record<string, unknown> = {
+      title: params.title,
+      actions: params.actions,
+    };
+    if (params.active !== undefined) macroBody.active = params.active;
+    if (params.description) macroBody.description = params.description;
+    if (params.restriction) macroBody.restriction = params.restriction;
+
+    const response = await this.makeZendeskApiRequest(
+      '/api/v2/macros.json',
+      'POST',
+      { macro: macroBody }
+    );
+
+    return {
+      operation: 'create_macro',
+      success: true,
+      macro: this.mapMacro(response.macro),
+      error: '',
+    };
+  }
+
+  private async updateMacro(
+    params: Extract<ZendeskParams, { operation: 'update_macro' }>
+  ): Promise<Extract<ZendeskResult, { operation: 'update_macro' }>> {
+    const macroBody: Record<string, unknown> = {};
+    if (params.title) macroBody.title = params.title;
+    if (params.actions) macroBody.actions = params.actions;
+    if (params.active !== undefined) macroBody.active = params.active;
+    if (params.description !== undefined)
+      macroBody.description = params.description;
+    if (params.restriction) macroBody.restriction = params.restriction;
+
+    const response = await this.makeZendeskApiRequest(
+      `/api/v2/macros/${params.macro_id}.json`,
+      'PUT',
+      { macro: macroBody }
+    );
+
+    return {
+      operation: 'update_macro',
+      success: true,
+      macro: this.mapMacro(response.macro),
+      error: '',
+    };
+  }
+
+  private async deleteMacro(
+    params: Extract<ZendeskParams, { operation: 'delete_macro' }>
+  ): Promise<Extract<ZendeskResult, { operation: 'delete_macro' }>> {
+    await this.makeZendeskApiRequest(
+      `/api/v2/macros/${params.macro_id}.json`,
+      'DELETE'
+    );
+
+    return {
+      operation: 'delete_macro',
+      success: true,
+      error: '',
+    };
+  }
+
+  private async searchMacros(
+    params: Extract<ZendeskParams, { operation: 'search_macros' }>
+  ): Promise<Extract<ZendeskResult, { operation: 'search_macros' }>> {
+    const queryParams = new URLSearchParams();
+    queryParams.set('query', params.query);
+    if (params.active !== undefined)
+      queryParams.set('active', String(params.active));
+    if (params.include) queryParams.set('include', params.include);
+    if (params.page) queryParams.set('page', String(params.page));
+    if (params.per_page) queryParams.set('per_page', String(params.per_page));
+
+    const queryString = queryParams.toString();
+    const response = await this.makeZendeskApiRequest(
+      `/api/v2/macros/search.json?${queryString}`
+    );
+
+    return {
+      operation: 'search_macros',
+      success: true,
+      macros: (response.macros || []).map(this.mapMacro),
+      count: response.count ?? 0,
+      next_page: response.next_page ?? null,
+      error: '',
+    };
+  }
+
   // ---- Mappers ----
 
   private mapTicket = (t: any) => ({
@@ -799,6 +1015,17 @@ export class ZendeskBubble<
     domain_names: o.domain_names,
     external_id: o.external_id,
     created_at: o.created_at,
+  });
+
+  private mapMacro = (m: any) => ({
+    id: m.id,
+    title: m.title,
+    description: m.description,
+    active: m.active,
+    actions: m.actions,
+    restriction: m.restriction,
+    created_at: m.created_at,
+    updated_at: m.updated_at,
   });
 
   private mapArticle = (a: any) => ({

@@ -12,6 +12,17 @@ const ticketIdField = z
   .min(1, 'Ticket ID is required')
   .describe('Zendesk ticket ID (numeric string)');
 
+const macroActionEntry = z.object({
+  field: z
+    .string()
+    .describe(
+      'The ticket field this action targets (e.g., "comment_value", "status", "priority", "assignee_id", "group_id")'
+    ),
+  value: z
+    .union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()])
+    .describe('The value to set for this field'),
+});
+
 const customFieldEntry = z.object({
   id: z.number().describe('Custom ticket field ID'),
   value: z
@@ -412,6 +423,155 @@ export const ZendeskParamsSchema = z.discriminatedUnion('operation', [
       .describe('ID of the ticket field to delete'),
     credentials: credentialsField,
   }),
+
+  // List macros
+  z.object({
+    operation: z
+      .literal('list_macros')
+      .describe(
+        'List available macros. Optionally filter by active status or category.'
+      ),
+    active: z
+      .boolean()
+      .optional()
+      .describe(
+        'Filter by active status (true = active only, false = inactive only)'
+      ),
+    category: z.string().optional().describe('Filter macros by category name'),
+    include: z
+      .enum(['usage_7d', 'usage_24h', 'usage_30d'])
+      .optional()
+      .describe('Include usage statistics for the given period'),
+    page: z
+      .number()
+      .min(1)
+      .optional()
+      .default(1)
+      .describe('Page number for pagination (default 1)'),
+    per_page: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(25)
+      .describe('Results per page (1-100, default 25)'),
+    credentials: credentialsField,
+  }),
+
+  // Get macro
+  z.object({
+    operation: z
+      .literal('get_macro')
+      .describe(
+        'Retrieve a single macro by ID with its full action definitions'
+      ),
+    macro_id: z.string().min(1).describe('Zendesk macro ID (numeric string)'),
+    credentials: credentialsField,
+  }),
+
+  // Apply macro
+  z.object({
+    operation: z
+      .literal('apply_macro')
+      .describe(
+        'Apply a macro to a ticket. Returns the resulting ticket changes (comment text, field updates) without actually modifying the ticket. ' +
+          'Use this to preview what a macro would do, then use update_ticket to apply the changes.'
+      ),
+    ticket_id: ticketIdField,
+    macro_id: z.string().min(1).describe('Zendesk macro ID to apply'),
+    credentials: credentialsField,
+  }),
+
+  // Create macro
+  z.object({
+    operation: z
+      .literal('create_macro')
+      .describe('Create a new macro with a title and a set of actions'),
+    title: z.string().min(1).describe('Macro title'),
+    actions: z
+      .array(macroActionEntry)
+      .min(1)
+      .describe(
+        'Actions the macro performs. Each action has a field name and value (e.g., {field: "comment_value", value: "Thanks for contacting us!"})'
+      ),
+    active: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe('Whether the macro is active (default: true)'),
+    description: z.string().optional().describe('Macro description'),
+    restriction: z
+      .object({
+        type: z.string().describe('Restriction type (e.g., "Group")'),
+        id: z.number().optional().describe('Restriction target ID'),
+        ids: z.array(z.number()).optional().describe('Restriction target IDs'),
+      })
+      .optional()
+      .describe('Access restriction (e.g., limit to a specific group)'),
+    credentials: credentialsField,
+  }),
+
+  // Update macro
+  z.object({
+    operation: z.literal('update_macro').describe('Update an existing macro'),
+    macro_id: z
+      .string()
+      .min(1)
+      .describe('Zendesk macro ID to update (numeric string)'),
+    title: z.string().min(1).optional().describe('New macro title'),
+    actions: z
+      .array(macroActionEntry)
+      .min(1)
+      .optional()
+      .describe('New actions for the macro'),
+    active: z.boolean().optional().describe('Set active status'),
+    description: z.string().optional().describe('New macro description'),
+    restriction: z
+      .object({
+        type: z.string().describe('Restriction type (e.g., "Group")'),
+        id: z.number().optional().describe('Restriction target ID'),
+        ids: z.array(z.number()).optional().describe('Restriction target IDs'),
+      })
+      .optional()
+      .describe('Access restriction'),
+    credentials: credentialsField,
+  }),
+
+  // Delete macro
+  z.object({
+    operation: z
+      .literal('delete_macro')
+      .describe('Delete a macro (admin only)'),
+    macro_id: z.string().min(1).describe('ID of the macro to delete'),
+    credentials: credentialsField,
+  }),
+
+  // Search macros
+  z.object({
+    operation: z
+      .literal('search_macros')
+      .describe('Search macros by title keyword'),
+    query: z.string().min(1).describe('Search query (matches macro title)'),
+    active: z.boolean().optional().describe('Filter by active status'),
+    include: z
+      .enum(['usage_7d', 'usage_24h', 'usage_30d'])
+      .optional()
+      .describe('Include usage statistics for the given period'),
+    page: z
+      .number()
+      .min(1)
+      .optional()
+      .default(1)
+      .describe('Page number for pagination (default 1)'),
+    per_page: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(25)
+      .describe('Results per page (1-100, default 25)'),
+    credentials: credentialsField,
+  }),
 ]);
 
 // Zendesk record schemas for response data
@@ -492,6 +652,50 @@ const ZendeskOrganizationSchema = z
     created_at: z.string().optional().describe('Created timestamp'),
   })
   .describe('A Zendesk organization');
+
+const ZendeskMacroActionSchema = z
+  .object({
+    field: z
+      .string()
+      .describe(
+        'The ticket field this action targets (e.g., "comment_value", "status", "priority", "assignee_id")'
+      ),
+    value: z
+      .union([
+        z.string(),
+        z.number(),
+        z.boolean(),
+        z.array(z.string()),
+        z.null(),
+      ])
+      .nullable()
+      .describe('The value to set for this field'),
+  })
+  .describe('A single action within a Zendesk macro');
+
+const ZendeskMacroSchema = z
+  .object({
+    id: z.number().describe('Macro ID'),
+    title: z.string().optional().describe('Macro title/name'),
+    description: z.string().optional().nullable().describe('Macro description'),
+    active: z.boolean().optional().describe('Whether the macro is active'),
+    actions: z
+      .array(ZendeskMacroActionSchema)
+      .optional()
+      .describe('List of actions this macro performs'),
+    restriction: z
+      .object({
+        type: z.string().optional(),
+        id: z.number().optional(),
+        ids: z.array(z.number()).optional(),
+      })
+      .optional()
+      .nullable()
+      .describe('Access restriction (e.g., limited to a group)'),
+    created_at: z.string().optional().describe('Created timestamp'),
+    updated_at: z.string().optional().describe('Updated timestamp'),
+  })
+  .describe('A Zendesk macro');
 
 const ZendeskArticleSchema = z
   .object({
@@ -712,6 +916,94 @@ export const ZendeskResultSchema = z.discriminatedUnion('operation', [
     operation: z.literal('get_article'),
     success: z.boolean().describe('Whether the operation was successful'),
     article: ZendeskArticleSchema.optional().describe('Retrieved article'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // List macros result
+  z.object({
+    operation: z.literal('list_macros'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    macros: z.array(ZendeskMacroSchema).optional().describe('List of macros'),
+    count: z.number().optional().describe('Total macro count'),
+    next_page: z.string().optional().nullable().describe('Next page URL'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Get macro result
+  z.object({
+    operation: z.literal('get_macro'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    macro: ZendeskMacroSchema.optional().describe('Retrieved macro'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Apply macro result
+  z.object({
+    operation: z.literal('apply_macro'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    result: z
+      .object({
+        ticket: z
+          .record(z.unknown())
+          .optional()
+          .describe('Ticket fields that would be changed'),
+        comment: z
+          .object({
+            body: z
+              .string()
+              .optional()
+              .describe('Comment body text the macro would add'),
+            html_body: z
+              .string()
+              .optional()
+              .describe('Comment body HTML the macro would add'),
+            public: z
+              .boolean()
+              .optional()
+              .describe('Whether the comment would be public'),
+            scoped_body: z
+              .array(z.array(z.string()))
+              .optional()
+              .describe('Scoped comment bodies (locale-specific)'),
+          })
+          .optional()
+          .describe('Comment that the macro would add to the ticket'),
+      })
+      .optional()
+      .describe('The result of applying the macro — shows what would change'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Create macro result
+  z.object({
+    operation: z.literal('create_macro'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    macro: ZendeskMacroSchema.optional().describe('Created macro'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Update macro result
+  z.object({
+    operation: z.literal('update_macro'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    macro: ZendeskMacroSchema.optional().describe('Updated macro'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Delete macro result
+  z.object({
+    operation: z.literal('delete_macro'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Search macros result
+  z.object({
+    operation: z.literal('search_macros'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    macros: z.array(ZendeskMacroSchema).optional().describe('Matching macros'),
+    count: z.number().optional().describe('Total result count'),
+    next_page: z.string().optional().nullable().describe('Next page URL'),
     error: z.string().describe('Error message if operation failed'),
   }),
 ]);
