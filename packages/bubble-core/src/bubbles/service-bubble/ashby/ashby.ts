@@ -15,6 +15,18 @@ import {
   type AshbyListTagsParams,
   type AshbyCreateTagParams,
   type AshbyListCustomFieldsParams,
+  type AshbyListJobsParams,
+  type AshbyGetJobParams,
+  type AshbyListApplicationsParams,
+  type AshbyGetApplicationParams,
+  type AshbyCreateApplicationParams,
+  type AshbyChangeApplicationStageParams,
+  type AshbyUpdateCandidateParams,
+  type AshbyCreateNoteParams,
+  type AshbyListNotesParams,
+  type AshbyListSourcesParams,
+  type AshbyListInterviewStagesParams,
+  type AshbyGetFileUrlParams,
 } from './ashby.schema.js';
 
 // Ashby API base URL
@@ -74,11 +86,15 @@ export class AshbyBubble<
   static readonly longDescription = `
     Ashby is an applicant tracking system (ATS) for modern recruiting teams.
     This bubble provides operations for:
-    - Listing and filtering candidates
-    - Retrieving candidate details
-    - Creating new candidates
+    - Listing and filtering candidates, jobs, applications, and sources
+    - Retrieving candidate, job, and application details
+    - Creating and updating candidates
     - Searching candidates by email or name
     - Managing candidate tags (list, create, add to candidates)
+    - Managing applications (create, change stage)
+    - Adding and listing notes on candidates
+    - Listing interview stages for jobs
+    - Getting resume download URLs
     - Listing custom field definitions
 
     Security Features:
@@ -90,7 +106,8 @@ export class AshbyBubble<
     - Automate candidate tagging workflows
     - Build custom recruiting dashboards
     - Integrate recruiting data with other systems
-    - Retrieve custom field metadata for building dynamic forms
+    - Track application pipeline stages
+    - Download candidate resumes
   `;
   static readonly alias = 'ashby-ats';
 
@@ -186,6 +203,67 @@ export class AshbyBubble<
         case 'list_custom_fields':
           return (await this.listCustomFields(
             params as AshbyListCustomFieldsParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'list_jobs':
+          return (await this.listJobs(
+            params as AshbyListJobsParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'get_job':
+          return (await this.getJob(params as AshbyGetJobParams)) as Extract<
+            AshbyResult,
+            { operation: T['operation'] }
+          >;
+
+        case 'list_applications':
+          return (await this.listApplications(
+            params as AshbyListApplicationsParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'get_application':
+          return (await this.getApplication(
+            params as AshbyGetApplicationParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'create_application':
+          return (await this.createApplication(
+            params as AshbyCreateApplicationParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'change_application_stage':
+          return (await this.changeApplicationStage(
+            params as AshbyChangeApplicationStageParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'update_candidate':
+          return (await this.updateCandidate(
+            params as AshbyUpdateCandidateParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'create_note':
+          return (await this.createNote(
+            params as AshbyCreateNoteParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'list_notes':
+          return (await this.listNotes(
+            params as AshbyListNotesParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'list_sources':
+          return (await this.listSources(
+            params as AshbyListSourcesParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'list_interview_stages':
+          return (await this.listInterviewStages(
+            params as AshbyListInterviewStagesParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'get_file_url':
+          return (await this.getFileUrl(
+            params as AshbyGetFileUrlParams
           )) as Extract<AshbyResult, { operation: T['operation'] }>;
 
         default:
@@ -670,6 +748,363 @@ export class AshbyBubble<
       next_cursor: response.nextCursor as string | undefined,
       more_data_available: response.moreDataAvailable as boolean | undefined,
       sync_token: response.syncToken as string | undefined,
+      error: '',
+    };
+  }
+
+  /**
+   * List jobs with optional filtering
+   */
+  private async listJobs(
+    params: AshbyListJobsParams
+  ): Promise<Extract<AshbyResult, { operation: 'list_jobs' }>> {
+    const body: Record<string, unknown> = {};
+
+    if (params.limit !== undefined) {
+      body.limit = params.limit;
+    }
+    if (params.cursor) {
+      body.cursor = params.cursor;
+    }
+    if (params.status) {
+      body.status = [params.status]; // Ashby API expects status as an array
+    }
+
+    const response = await this.makeAshbyRequest('job.list', body);
+
+    return {
+      operation: 'list_jobs',
+      success: true,
+      jobs: response.results as Extract<
+        AshbyResult,
+        { operation: 'list_jobs' }
+      >['jobs'],
+      next_cursor: response.nextCursor as string | undefined,
+      more_data_available: response.moreDataAvailable as boolean | undefined,
+      error: '',
+    };
+  }
+
+  /**
+   * Get detailed information about a specific job
+   */
+  private async getJob(
+    params: AshbyGetJobParams
+  ): Promise<Extract<AshbyResult, { operation: 'get_job' }>> {
+    const response = await this.makeAshbyRequest('job.info', {
+      id: params.job_id,
+    });
+
+    // Also fetch interview stages using the job's default interview plan
+    let interviewStages: Extract<
+      AshbyResult,
+      { operation: 'get_job' }
+    >['interview_stages'];
+    try {
+      const jobData = response.results as Record<string, unknown>;
+      const planId = jobData?.defaultInterviewPlanId as string | undefined;
+      if (planId) {
+        const stagesResponse = await this.makeAshbyRequest(
+          'interviewStage.list',
+          { interviewPlanId: planId }
+        );
+        interviewStages = stagesResponse.results as typeof interviewStages;
+      }
+    } catch {
+      // Interview stages fetch is optional — don't fail the whole request
+      interviewStages = undefined;
+    }
+
+    return {
+      operation: 'get_job',
+      success: true,
+      job: response.results as Extract<
+        AshbyResult,
+        { operation: 'get_job' }
+      >['job'],
+      interview_stages: interviewStages,
+      error: '',
+    };
+  }
+
+  /**
+   * List applications with optional filtering
+   */
+  private async listApplications(
+    params: AshbyListApplicationsParams
+  ): Promise<Extract<AshbyResult, { operation: 'list_applications' }>> {
+    const body: Record<string, unknown> = {};
+
+    if (params.limit !== undefined) {
+      body.limit = params.limit;
+    }
+    if (params.cursor) {
+      body.cursor = params.cursor;
+    }
+    if (params.candidate_id) {
+      body.candidateId = params.candidate_id;
+    }
+    if (params.job_id) {
+      body.jobId = params.job_id;
+    }
+    if (params.status) {
+      body.status = params.status;
+    }
+    if (params.created_after !== undefined) {
+      body.createdAfter = params.created_after;
+    }
+
+    const response = await this.makeAshbyRequest('application.list', body);
+
+    return {
+      operation: 'list_applications',
+      success: true,
+      applications: response.results as Extract<
+        AshbyResult,
+        { operation: 'list_applications' }
+      >['applications'],
+      next_cursor: response.nextCursor as string | undefined,
+      more_data_available: response.moreDataAvailable as boolean | undefined,
+      error: '',
+    };
+  }
+
+  /**
+   * Get detailed information about a specific application
+   */
+  private async getApplication(
+    params: AshbyGetApplicationParams
+  ): Promise<Extract<AshbyResult, { operation: 'get_application' }>> {
+    const response = await this.makeAshbyRequest('application.info', {
+      applicationId: params.application_id,
+    });
+
+    const appResult = response.results as Record<string, unknown>;
+
+    return {
+      operation: 'get_application',
+      success: true,
+      application: appResult as Extract<
+        AshbyResult,
+        { operation: 'get_application' }
+      >['application'],
+      candidate: appResult?.candidate as Extract<
+        AshbyResult,
+        { operation: 'get_application' }
+      >['candidate'],
+      job: appResult?.job as Extract<
+        AshbyResult,
+        { operation: 'get_application' }
+      >['job'],
+      error: '',
+    };
+  }
+
+  /**
+   * Create an application (submit candidate to a job)
+   */
+  private async createApplication(
+    params: AshbyCreateApplicationParams
+  ): Promise<Extract<AshbyResult, { operation: 'create_application' }>> {
+    const body: Record<string, unknown> = {
+      candidateId: params.candidate_id,
+      jobId: params.job_id,
+    };
+
+    if (params.interview_stage_id) {
+      body.interviewStageId = params.interview_stage_id;
+    }
+    if (params.source_id) {
+      body.sourceId = params.source_id;
+    }
+
+    const response = await this.makeAshbyRequest('application.create', body);
+
+    return {
+      operation: 'create_application',
+      success: true,
+      application: response.results as Extract<
+        AshbyResult,
+        { operation: 'create_application' }
+      >['application'],
+      error: '',
+    };
+  }
+
+  /**
+   * Change the interview stage of an application
+   */
+  private async changeApplicationStage(
+    params: AshbyChangeApplicationStageParams
+  ): Promise<Extract<AshbyResult, { operation: 'change_application_stage' }>> {
+    const response = await this.makeAshbyRequest('application.changeStage', {
+      applicationId: params.application_id,
+      interviewStageId: params.interview_stage_id,
+    });
+
+    return {
+      operation: 'change_application_stage',
+      success: true,
+      application: response.results as Extract<
+        AshbyResult,
+        { operation: 'change_application_stage' }
+      >['application'],
+      error: '',
+    };
+  }
+
+  /**
+   * Update an existing candidate
+   */
+  private async updateCandidate(
+    params: AshbyUpdateCandidateParams
+  ): Promise<Extract<AshbyResult, { operation: 'update_candidate' }>> {
+    const body: Record<string, unknown> = {
+      id: params.candidate_id,
+    };
+
+    if (params.name !== undefined) {
+      body.name = params.name;
+    }
+    if (params.email !== undefined) {
+      body.email = params.email;
+    }
+    if (params.phone_number !== undefined) {
+      body.phoneNumber = params.phone_number;
+    }
+    if (params.linkedin_url !== undefined) {
+      body.linkedInUrl = params.linkedin_url;
+    }
+    if (params.github_url !== undefined) {
+      body.githubUrl = params.github_url;
+    }
+    if (params.website !== undefined) {
+      body.website = params.website;
+    }
+
+    const response = await this.makeAshbyRequest('candidate.update', body);
+
+    return {
+      operation: 'update_candidate',
+      success: true,
+      candidate: response.results as Extract<
+        AshbyResult,
+        { operation: 'update_candidate' }
+      >['candidate'],
+      error: '',
+    };
+  }
+
+  /**
+   * Create a note on a candidate
+   */
+  private async createNote(
+    params: AshbyCreateNoteParams
+  ): Promise<Extract<AshbyResult, { operation: 'create_note' }>> {
+    const response = await this.makeAshbyRequest('candidate.createNote', {
+      candidateId: params.candidate_id,
+      note: params.content,
+    });
+
+    return {
+      operation: 'create_note',
+      success: true,
+      note: response.results as Extract<
+        AshbyResult,
+        { operation: 'create_note' }
+      >['note'],
+      error: '',
+    };
+  }
+
+  /**
+   * List notes for a candidate
+   */
+  private async listNotes(
+    params: AshbyListNotesParams
+  ): Promise<Extract<AshbyResult, { operation: 'list_notes' }>> {
+    const response = await this.makeAshbyRequest('candidate.listNotes', {
+      candidateId: params.candidate_id,
+    });
+
+    return {
+      operation: 'list_notes',
+      success: true,
+      notes: response.results as Extract<
+        AshbyResult,
+        { operation: 'list_notes' }
+      >['notes'],
+      error: '',
+    };
+  }
+
+  /**
+   * List all candidate sources
+   */
+  private async listSources(
+    _params: AshbyListSourcesParams
+  ): Promise<Extract<AshbyResult, { operation: 'list_sources' }>> {
+    const response = await this.makeAshbyRequest('source.list', {});
+
+    return {
+      operation: 'list_sources',
+      success: true,
+      sources: response.results as Extract<
+        AshbyResult,
+        { operation: 'list_sources' }
+      >['sources'],
+      error: '',
+    };
+  }
+
+  /**
+   * List interview stages for a job (resolves the interview plan ID automatically)
+   */
+  private async listInterviewStages(
+    params: AshbyListInterviewStagesParams
+  ): Promise<Extract<AshbyResult, { operation: 'list_interview_stages' }>> {
+    // First get the job to find its defaultInterviewPlanId
+    const jobResponse = await this.makeAshbyRequest('job.info', {
+      id: params.job_id,
+    });
+    const jobData = jobResponse.results as Record<string, unknown>;
+    const planId = jobData?.defaultInterviewPlanId as string | undefined;
+    if (!planId) {
+      throw new Error('Job does not have an interview plan');
+    }
+
+    const response = await this.makeAshbyRequest('interviewStage.list', {
+      interviewPlanId: planId,
+    });
+
+    return {
+      operation: 'list_interview_stages',
+      success: true,
+      interview_stages: response.results as Extract<
+        AshbyResult,
+        { operation: 'list_interview_stages' }
+      >['interview_stages'],
+      error: '',
+    };
+  }
+
+  /**
+   * Get a download URL for a file (e.g., resume)
+   */
+  private async getFileUrl(
+    params: AshbyGetFileUrlParams
+  ): Promise<Extract<AshbyResult, { operation: 'get_file_url' }>> {
+    const response = await this.makeAshbyRequest('file.info', {
+      fileHandle: params.file_handle,
+    });
+
+    return {
+      operation: 'get_file_url',
+      success: true,
+      file: response.results as Extract<
+        AshbyResult,
+        { operation: 'get_file_url' }
+      >['file'],
       error: '',
     };
   }

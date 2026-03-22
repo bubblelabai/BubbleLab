@@ -177,8 +177,160 @@ export const AshbyCandidateListItemSchema = z
       .array(AshbyCustomFieldSchema)
       .optional()
       .describe('Custom field values'),
+    profileUrl: z
+      .string()
+      .optional()
+      .nullable()
+      .describe('URL to the candidate profile in Ashby'),
+    source: z.unknown().optional().nullable().describe('Candidate source'),
+    creditedToUser: z
+      .unknown()
+      .optional()
+      .nullable()
+      .describe('User credited for the candidate'),
   })
   .describe('Ashby candidate list item');
+
+/**
+ * Job object from Ashby API
+ */
+export const AshbyJobSchema = z
+  .object({
+    id: z.string().describe('Unique job identifier (UUID)'),
+    title: z.string().describe('Job title'),
+    status: z
+      .string()
+      .optional()
+      .describe('Job status (e.g., Open, Closed, Draft, Archived)'),
+    departmentId: z.string().optional().nullable().describe('Department ID'),
+    teamId: z.string().optional().nullable().describe('Team ID'),
+    locationId: z.string().optional().nullable().describe('Location ID'),
+    locationIds: z.array(z.string()).optional().describe('Location IDs'),
+    customFields: z
+      .array(AshbyCustomFieldSchema)
+      .optional()
+      .describe('Custom field values'),
+    openedAt: z
+      .string()
+      .optional()
+      .nullable()
+      .describe('ISO 8601 opened timestamp'),
+    closedAt: z
+      .string()
+      .optional()
+      .nullable()
+      .describe('ISO 8601 closed timestamp'),
+    createdAt: z.string().optional().describe('ISO 8601 creation timestamp'),
+    updatedAt: z.string().optional().describe('ISO 8601 update timestamp'),
+  })
+  .describe('Ashby job record');
+
+/**
+ * Interview stage object from Ashby API
+ */
+export const AshbyInterviewStageSchema = z
+  .object({
+    id: z.string().describe('Interview stage ID (UUID)'),
+    title: z.string().describe('Stage title'),
+    type: z
+      .string()
+      .optional()
+      .describe('Stage type (e.g., PreInterviewScreen, IndividualInterview)'),
+    orderInInterviewPlan: z
+      .number()
+      .optional()
+      .describe('Order in the interview plan'),
+    interviewPlanId: z.string().optional().describe('Interview plan ID'),
+  })
+  .describe('Interview stage');
+
+/**
+ * Application object from Ashby API
+ */
+export const AshbyApplicationSchema = z
+  .object({
+    id: z.string().describe('Unique application identifier (UUID)'),
+    createdAt: z.string().optional().describe('ISO 8601 creation timestamp'),
+    updatedAt: z.string().optional().describe('ISO 8601 update timestamp'),
+    status: z
+      .string()
+      .optional()
+      .describe('Application status (Active, Hired, Archived, Lead)'),
+    candidateId: z.string().optional().nullable().describe('Candidate ID'),
+    jobId: z.string().optional().nullable().describe('Job ID'),
+    currentInterviewStage: AshbyInterviewStageSchema.optional()
+      .nullable()
+      .describe('Current interview stage'),
+    source: z.unknown().optional().nullable().describe('Application source'),
+    archiveReason: z
+      .unknown()
+      .optional()
+      .nullable()
+      .describe('Archive reason if archived'),
+    customFields: z
+      .array(AshbyCustomFieldSchema)
+      .optional()
+      .describe('Custom field values'),
+    hiringTeam: z
+      .array(
+        z.object({
+          userId: z.string().describe('Team member user ID'),
+          role: z.string().describe('Role in hiring team'),
+          email: z.string().optional().describe('Team member email'),
+          firstName: z.string().optional().describe('First name'),
+          lastName: z.string().optional().describe('Last name'),
+        })
+      )
+      .optional()
+      .describe('Hiring team members'),
+  })
+  .describe('Ashby application record');
+
+/**
+ * Note object from Ashby API
+ */
+export const AshbyNoteSchema = z
+  .object({
+    id: z.string().describe('Note ID (UUID)'),
+    createdAt: z.string().optional().describe('ISO 8601 creation timestamp'),
+    content: z.string().describe('Note content (HTML)'),
+    author: z
+      .object({
+        id: z.string().describe('Author user ID'),
+        firstName: z.string().optional().describe('Author first name'),
+        lastName: z.string().optional().describe('Author last name'),
+        email: z.string().optional().describe('Author email'),
+      })
+      .optional()
+      .nullable()
+      .describe('Note author'),
+  })
+  .describe('Candidate note');
+
+/**
+ * Source object from Ashby API
+ */
+export const AshbySourceSchema = z
+  .object({
+    id: z.string().describe('Source ID (UUID)'),
+    title: z.string().describe('Source title'),
+    isArchived: z
+      .boolean()
+      .optional()
+      .describe('Whether the source is archived'),
+  })
+  .describe('Candidate source');
+
+/**
+ * File info response from Ashby API (file.info endpoint)
+ */
+export const AshbyFileInfoSchema = z
+  .object({
+    id: z.string().optional().describe('File ID'),
+    name: z.string().optional().describe('File name'),
+    url: z.string().describe('Temporary download URL'),
+  })
+  .describe('File info with download URL');
 
 // ============================================================================
 // PARAMETER SCHEMAS - Discriminated Union for Multiple Operations
@@ -402,6 +554,259 @@ export const AshbyParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // List jobs operation
+  z.object({
+    operation: z.literal('list_jobs').describe('List all jobs'),
+    limit: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(100)
+      .describe('Maximum number of jobs to return (1-100)'),
+    cursor: z
+      .string()
+      .optional()
+      .describe('Pagination cursor for fetching subsequent pages'),
+    status: z
+      .enum(['Open', 'Closed', 'Draft', 'Archived'])
+      .optional()
+      .describe('Filter jobs by status'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Get job info operation
+  z.object({
+    operation: z
+      .literal('get_job')
+      .describe('Get detailed information about a specific job'),
+    job_id: z
+      .string()
+      .min(1, 'Job ID is required')
+      .describe('UUID of the job to retrieve'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // List applications operation
+  z.object({
+    operation: z
+      .literal('list_applications')
+      .describe('List applications with optional filtering'),
+    candidate_id: z.string().optional().describe('Filter by candidate ID'),
+    job_id: z.string().optional().describe('Filter by job ID'),
+    status: z
+      .enum(['Active', 'Hired', 'Archived', 'Lead'])
+      .optional()
+      .describe('Filter by application status'),
+    limit: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(100)
+      .describe('Maximum number of applications to return (1-100)'),
+    cursor: z
+      .string()
+      .optional()
+      .describe('Pagination cursor for fetching subsequent pages'),
+    created_after: z
+      .number()
+      .optional()
+      .describe(
+        'Unix timestamp in milliseconds — only return applications created after this time'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Get application info operation
+  z.object({
+    operation: z
+      .literal('get_application')
+      .describe('Get detailed information about a specific application'),
+    application_id: z
+      .string()
+      .min(1, 'Application ID is required')
+      .describe('UUID of the application to retrieve'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Create application operation (submit candidate to job)
+  z.object({
+    operation: z
+      .literal('create_application')
+      .describe('Submit a candidate to a job by creating an application'),
+    candidate_id: z
+      .string()
+      .min(1, 'Candidate ID is required')
+      .describe('UUID of the candidate'),
+    job_id: z
+      .string()
+      .min(1, 'Job ID is required')
+      .describe('UUID of the job to apply to'),
+    interview_stage_id: z
+      .string()
+      .optional()
+      .describe('Optional interview stage ID to start at'),
+    source_id: z
+      .string()
+      .optional()
+      .describe('Optional source ID to attribute the application to'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Change application stage operation
+  z.object({
+    operation: z
+      .literal('change_application_stage')
+      .describe('Move an application to a different interview stage'),
+    application_id: z
+      .string()
+      .min(1, 'Application ID is required')
+      .describe('UUID of the application'),
+    interview_stage_id: z
+      .string()
+      .min(1, 'Interview stage ID is required')
+      .describe('UUID of the interview stage to move to'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Update candidate operation
+  z.object({
+    operation: z
+      .literal('update_candidate')
+      .describe('Update an existing candidate'),
+    candidate_id: z
+      .string()
+      .min(1, 'Candidate ID is required')
+      .describe('UUID of the candidate to update'),
+    name: z.string().optional().describe('Updated candidate name'),
+    email: z.string().optional().describe('Updated primary email'),
+    phone_number: z.string().optional().describe('Updated phone number'),
+    linkedin_url: z
+      .string()
+      .optional()
+      .describe('Updated LinkedIn profile URL'),
+    github_url: z.string().optional().describe('Updated GitHub profile URL'),
+    website: z.string().optional().describe('Updated website URL'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Create note operation
+  z.object({
+    operation: z.literal('create_note').describe('Add a note to a candidate'),
+    candidate_id: z
+      .string()
+      .min(1, 'Candidate ID is required')
+      .describe('UUID of the candidate'),
+    content: z
+      .string()
+      .min(1, 'Note content is required')
+      .describe('Note content (plain text or HTML)'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // List notes operation
+  z.object({
+    operation: z.literal('list_notes').describe('List notes for a candidate'),
+    candidate_id: z
+      .string()
+      .min(1, 'Candidate ID is required')
+      .describe('UUID of the candidate'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // List sources operation
+  z.object({
+    operation: z.literal('list_sources').describe('List all candidate sources'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // List interview stages operation
+  z.object({
+    operation: z
+      .literal('list_interview_stages')
+      .describe('List interview stages for a job'),
+    job_id: z
+      .string()
+      .min(1, 'Job ID is required')
+      .describe('UUID of the job to get interview stages for'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Get file URL operation
+  z.object({
+    operation: z
+      .literal('get_file_url')
+      .describe('Get a download URL for a file (e.g., resume)'),
+    file_handle: z
+      .string()
+      .min(1, 'File handle is required')
+      .describe(
+        'File handle from a candidate record (e.g., resumeFileHandle.handle)'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // ============================================================================
@@ -517,6 +922,144 @@ export const AshbyResultSchema = z.discriminatedUnion('operation', [
     sync_token: z.string().optional().describe('Token for incremental sync'),
     error: z.string().describe('Error message if operation failed'),
   }),
+
+  // List jobs result
+  z.object({
+    operation: z.literal('list_jobs').describe('List jobs operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    jobs: z.array(AshbyJobSchema).optional().describe('List of jobs'),
+    next_cursor: z.string().optional().describe('Cursor for next page'),
+    more_data_available: z
+      .boolean()
+      .optional()
+      .describe('Whether more data is available'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Get job result
+  z.object({
+    operation: z.literal('get_job').describe('Get job operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    job: AshbyJobSchema.optional().describe('Job details'),
+    interview_stages: z
+      .array(AshbyInterviewStageSchema)
+      .optional()
+      .describe('Interview stages for this job'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // List applications result
+  z.object({
+    operation: z
+      .literal('list_applications')
+      .describe('List applications operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    applications: z
+      .array(AshbyApplicationSchema)
+      .optional()
+      .describe('List of applications'),
+    next_cursor: z.string().optional().describe('Cursor for next page'),
+    more_data_available: z
+      .boolean()
+      .optional()
+      .describe('Whether more data is available'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Get application result
+  z.object({
+    operation: z
+      .literal('get_application')
+      .describe('Get application operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    application: AshbyApplicationSchema.optional().describe(
+      'Application details'
+    ),
+    candidate: AshbyCandidateSchema.optional().describe('Associated candidate'),
+    job: AshbyJobSchema.optional().describe('Associated job'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Create application result
+  z.object({
+    operation: z
+      .literal('create_application')
+      .describe('Create application operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    application: AshbyApplicationSchema.optional().describe(
+      'Created application'
+    ),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Change application stage result
+  z.object({
+    operation: z
+      .literal('change_application_stage')
+      .describe('Change application stage operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    application: AshbyApplicationSchema.optional().describe(
+      'Updated application'
+    ),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Update candidate result
+  z.object({
+    operation: z
+      .literal('update_candidate')
+      .describe('Update candidate operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    candidate: AshbyCandidateSchema.optional().describe('Updated candidate'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Create note result
+  z.object({
+    operation: z.literal('create_note').describe('Create note operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    note: AshbyNoteSchema.optional().describe('Created note'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // List notes result
+  z.object({
+    operation: z.literal('list_notes').describe('List notes operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    notes: z.array(AshbyNoteSchema).optional().describe('List of notes'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // List sources result
+  z.object({
+    operation: z.literal('list_sources').describe('List sources operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    sources: z.array(AshbySourceSchema).optional().describe('List of sources'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // List interview stages result
+  z.object({
+    operation: z
+      .literal('list_interview_stages')
+      .describe('List interview stages operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    interview_stages: z
+      .array(AshbyInterviewStageSchema)
+      .optional()
+      .describe('List of interview stages'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Get file URL result
+  z.object({
+    operation: z.literal('get_file_url').describe('Get file URL operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    file: AshbyFileInfoSchema.optional().describe(
+      'File info with download URL'
+    ),
+    error: z.string().describe('Error message if operation failed'),
+  }),
 ]);
 
 // ============================================================================
@@ -547,6 +1090,12 @@ export type AshbySelectableValue = z.output<typeof AshbySelectableValueSchema>;
 export type AshbyCustomFieldDefinition = z.output<
   typeof AshbyCustomFieldDefinitionSchema
 >;
+export type AshbyJob = z.output<typeof AshbyJobSchema>;
+export type AshbyApplication = z.output<typeof AshbyApplicationSchema>;
+export type AshbyInterviewStage = z.output<typeof AshbyInterviewStageSchema>;
+export type AshbyNote = z.output<typeof AshbyNoteSchema>;
+export type AshbySource = z.output<typeof AshbySourceSchema>;
+export type AshbyFileInfo = z.output<typeof AshbyFileInfoSchema>;
 
 // Operation-specific types (for internal method parameters)
 export type AshbyListCandidatesParams = Extract<
@@ -577,4 +1126,49 @@ export type AshbyCreateTagParams = Extract<
 export type AshbyListCustomFieldsParams = Extract<
   AshbyParams,
   { operation: 'list_custom_fields' }
+>;
+export type AshbyListJobsParams = Extract<
+  AshbyParams,
+  { operation: 'list_jobs' }
+>;
+export type AshbyGetJobParams = Extract<AshbyParams, { operation: 'get_job' }>;
+export type AshbyListApplicationsParams = Extract<
+  AshbyParams,
+  { operation: 'list_applications' }
+>;
+export type AshbyGetApplicationParams = Extract<
+  AshbyParams,
+  { operation: 'get_application' }
+>;
+export type AshbyCreateApplicationParams = Extract<
+  AshbyParams,
+  { operation: 'create_application' }
+>;
+export type AshbyChangeApplicationStageParams = Extract<
+  AshbyParams,
+  { operation: 'change_application_stage' }
+>;
+export type AshbyUpdateCandidateParams = Extract<
+  AshbyParams,
+  { operation: 'update_candidate' }
+>;
+export type AshbyCreateNoteParams = Extract<
+  AshbyParams,
+  { operation: 'create_note' }
+>;
+export type AshbyListNotesParams = Extract<
+  AshbyParams,
+  { operation: 'list_notes' }
+>;
+export type AshbyListSourcesParams = Extract<
+  AshbyParams,
+  { operation: 'list_sources' }
+>;
+export type AshbyListInterviewStagesParams = Extract<
+  AshbyParams,
+  { operation: 'list_interview_stages' }
+>;
+export type AshbyGetFileUrlParams = Extract<
+  AshbyParams,
+  { operation: 'get_file_url' }
 >;
