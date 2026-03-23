@@ -32,6 +32,8 @@ import {
   type AshbyListCandidateProjectsParams,
   type AshbyAddCandidateToProjectParams,
   type AshbyRemoveCandidateFromProjectParams,
+  type AshbyListProjectCandidateIdsParams,
+  type AshbyGetAllCandidatesWithProjectsParams,
 } from './ashby.schema.js';
 
 // Ashby API base URL
@@ -294,6 +296,16 @@ export class AshbyBubble<
         case 'remove_candidate_from_project':
           return (await this.removeCandidateFromProject(
             params as AshbyRemoveCandidateFromProjectParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'list_project_candidate_ids':
+          return (await this.listProjectCandidateIds(
+            params as AshbyListProjectCandidateIdsParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'get_all_candidates_with_projects':
+          return (await this.getAllCandidatesWithProjects(
+            params as AshbyGetAllCandidatesWithProjectsParams
           )) as Extract<AshbyResult, { operation: T['operation'] }>;
 
         default:
@@ -1275,6 +1287,180 @@ export class AshbyBubble<
     return {
       operation: 'remove_candidate_from_project',
       success: true,
+      error: '',
+    };
+  }
+
+  /**
+   * List candidate IDs belonging to a project
+   */
+  private async listProjectCandidateIds(
+    params: AshbyListProjectCandidateIdsParams
+  ): Promise<
+    Extract<AshbyResult, { operation: 'list_project_candidate_ids' }>
+  > {
+    const body: Record<string, unknown> = {
+      projectId: params.project_id,
+    };
+    if (params.cursor) {
+      body.cursor = params.cursor;
+    }
+
+    const response = await this.makeAshbyRequest(
+      'project.listCandidateIds',
+      body
+    );
+
+    return {
+      operation: 'list_project_candidate_ids',
+      success: true,
+      candidate_ids: response.results as string[],
+      next_cursor: response.nextCursor as string | undefined,
+      more_data_available: response.moreDataAvailable as boolean | undefined,
+      error: '',
+    };
+  }
+
+  /**
+   * Paginate all candidates, fetch all projects, then enrich each
+   * candidate with their project associations via candidate.listProjects.
+   *
+   * Long-running operation — uses configurable concurrency with
+   * Promise.allSettled for resilience against individual failures.
+   */
+  private async getAllCandidatesWithProjects(
+    params: AshbyGetAllCandidatesWithProjectsParams
+  ): Promise<
+    Extract<AshbyResult, { operation: 'get_all_candidates_with_projects' }>
+  > {
+    const concurrency = params.concurrency ?? 10;
+    const t0 = Date.now();
+    const elapsed = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
+    const log = (...args: unknown[]) =>
+      console.log(
+        `[ashby:get_all_candidates_with_projects][${elapsed()}]`,
+        ...args
+      );
+
+    // Step 1: Paginate ALL candidates
+    log('starting candidate pagination...');
+    const allCandidates: Array<Record<string, unknown>> = [];
+    let cursor: string | undefined;
+
+    for (let page = 0; page < 200; page++) {
+      log('page', page + 1, '| total so far:', allCandidates.length);
+
+      const body: Record<string, unknown> = { limit: 100 };
+      if (cursor) body.cursor = cursor;
+
+      const response = await this.makeAshbyRequest('candidate.list', body);
+      const results = response.results as
+        | Array<Record<string, unknown>>
+        | undefined;
+      allCandidates.push(...(results ?? []));
+
+      const moreDataAvailable = response.moreDataAvailable as
+        | boolean
+        | undefined;
+      const nextCursor = response.nextCursor as string | undefined;
+      if (!moreDataAvailable || !nextCursor) break;
+      cursor = nextCursor;
+    }
+
+    log('candidate pagination done, total:', allCandidates.length);
+
+    // Step 2: Fetch ALL projects
+    const projectResponse = await this.makeAshbyRequest('project.list', {});
+    const allProjects = (projectResponse.results ?? []) as Array<{
+      id: string;
+      title: string;
+      isArchived?: boolean;
+    }>;
+    log('fetched', allProjects.length, 'projects');
+
+    // Step 3: Enrich each candidate with their project associations
+    log('enriching candidates (concurrency:', concurrency, ')...');
+
+    interface EnrichedResult {
+      id: string;
+      name: string;
+      email: string | null;
+      phone: string | null;
+      linkedinUrl: string | null;
+      position: string | null;
+      company: string | null;
+      tags: string[];
+      projectIds: string[];
+      projectNames: string[];
+    }
+
+    const enriched: EnrichedResult[] = [];
+
+    for (let i = 0; i < allCandidates.length; i += concurrency) {
+      if (i % 100 === 0) {
+        log('progress:', i, '/', allCandidates.length);
+      }
+
+      const batch = allCandidates.slice(i, i + concurrency);
+      const batchResults = await Promise.allSettled(
+        batch.map(async (candidate) => {
+          const candidateId = candidate.id as string;
+
+          const projResponse = await this.makeAshbyRequest(
+            'candidate.listProjects',
+            { candidateId }
+          );
+          const candidateProjects = (projResponse.results ?? []) as Array<{
+            id: string;
+            title: string;
+          }>;
+
+          const socialLinks = candidate.socialLinks as
+            | Array<{ url: string; type: string }>
+            | undefined;
+          const linkedinLink = socialLinks?.find((l) => l.type === 'LinkedIn');
+
+          const primaryEmail = candidate.primaryEmailAddress as
+            | { value: string }
+            | null
+            | undefined;
+          const primaryPhone = candidate.primaryPhoneNumber as
+            | { value: string }
+            | null
+            | undefined;
+          const tags = candidate.tags as Array<{ title: string }> | undefined;
+
+          return {
+            id: candidateId,
+            name: candidate.name as string,
+            email: primaryEmail?.value ?? null,
+            phone: primaryPhone?.value ?? null,
+            linkedinUrl: linkedinLink?.url ?? null,
+            position: (candidate.position as string | null) ?? null,
+            company: (candidate.company as string | null) ?? null,
+            tags: tags?.map((t) => t.title) ?? [],
+            projectIds: candidateProjects.map((p) => p.id),
+            projectNames: candidateProjects.map((p) => p.title),
+          } satisfies EnrichedResult;
+        })
+      );
+
+      for (const result of batchResults) {
+        if (result.status === 'fulfilled') {
+          enriched.push(result.value);
+        }
+      }
+    }
+
+    log('done:', enriched.length, '/', allCandidates.length, 'enriched');
+
+    return {
+      operation: 'get_all_candidates_with_projects',
+      success: true,
+      candidates: enriched,
+      projects: allProjects,
+      total_candidates: allCandidates.length,
+      total_enriched: enriched.length,
       error: '',
     };
   }

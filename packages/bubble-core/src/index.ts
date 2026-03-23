@@ -93,7 +93,10 @@ export type { SlabParamsInput } from './bubbles/service-bubble/slab/index.js';
 export { ConfluenceBubble } from './bubbles/service-bubble/confluence/index.js';
 export type { ConfluenceParamsInput } from './bubbles/service-bubble/confluence/index.js';
 export { AshbyBubble } from './bubbles/service-bubble/ashby/index.js';
-export type { AshbyParamsInput } from './bubbles/service-bubble/ashby/index.js';
+export type {
+  AshbyParamsInput,
+  AshbyEnrichedCandidate,
+} from './bubbles/service-bubble/ashby/index.js';
 export { FullEnrichBubble } from './bubbles/service-bubble/fullenrich/index.js';
 export type { FullEnrichParamsInput } from './bubbles/service-bubble/fullenrich/index.js';
 export {

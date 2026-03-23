@@ -33,4 +33,9 @@ export {
   type AshbyListTagsParams,
   type AshbyCreateTagParams,
   type AshbyListCustomFieldsParams,
+  type AshbyListProjectCandidateIdsParams,
+  type AshbyProject,
+  AshbyEnrichedCandidateSchema,
+  type AshbyEnrichedCandidate,
+  type AshbyGetAllCandidatesWithProjectsParams,
 } from './ashby.schema.js';

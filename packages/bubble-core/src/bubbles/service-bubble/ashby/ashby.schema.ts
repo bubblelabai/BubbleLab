@@ -192,6 +192,28 @@ export const AshbyCandidateListItemSchema = z
   .describe('Ashby candidate list item');
 
 /**
+ * Candidate enriched with project associations (from get_all_candidates_with_projects)
+ */
+export const AshbyEnrichedCandidateSchema = z
+  .object({
+    id: z.string().describe('Unique candidate identifier (UUID)'),
+    name: z.string().describe('Full name of the candidate'),
+    email: z.string().nullable().describe('Primary email address or null'),
+    phone: z.string().nullable().describe('Primary phone number or null'),
+    linkedinUrl: z.string().nullable().describe('LinkedIn profile URL or null'),
+    position: z.string().nullable().describe('Current position or null'),
+    company: z.string().nullable().describe('Current company or null'),
+    tags: z.array(z.string()).describe('Tag titles assigned to candidate'),
+    projectIds: z
+      .array(z.string())
+      .describe('IDs of projects the candidate belongs to'),
+    projectNames: z
+      .array(z.string())
+      .describe('Names of projects the candidate belongs to'),
+  })
+  .describe('Candidate enriched with project associations');
+
+/**
  * Job object from Ashby API
  */
 export const AshbyJobSchema = z
@@ -906,6 +928,51 @@ export const AshbyParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // List candidate IDs in a project operation
+  z.object({
+    operation: z
+      .literal('list_project_candidate_ids')
+      .describe('List all candidate IDs belonging to a project'),
+    project_id: z
+      .string()
+      .min(1, 'Project ID is required')
+      .describe('UUID of the project'),
+    cursor: z
+      .string()
+      .optional()
+      .describe('Pagination cursor for fetching subsequent pages'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Get all candidates with project associations operation
+  z.object({
+    operation: z
+      .literal('get_all_candidates_with_projects')
+      .describe(
+        'Paginate all candidates, fetch all projects, and enrich each candidate with their project associations'
+      ),
+    concurrency: z
+      .number()
+      .min(1)
+      .max(50)
+      .optional()
+      .default(10)
+      .describe(
+        'Max concurrent candidate.listProjects requests (1-50, default: 10)'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // ============================================================================
@@ -1209,6 +1276,52 @@ export const AshbyResultSchema = z.discriminatedUnion('operation', [
     success: z.boolean().describe('Whether the operation was successful'),
     error: z.string().describe('Error message if operation failed'),
   }),
+
+  // List project candidate IDs result
+  z.object({
+    operation: z
+      .literal('list_project_candidate_ids')
+      .describe('List project candidate IDs operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    candidate_ids: z
+      .array(z.string())
+      .optional()
+      .describe('Candidate IDs belonging to this project'),
+    next_cursor: z
+      .string()
+      .optional()
+      .describe('Cursor for fetching the next page of results'),
+    more_data_available: z
+      .boolean()
+      .optional()
+      .describe('Whether more data is available'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Get all candidates with projects result
+  z.object({
+    operation: z
+      .literal('get_all_candidates_with_projects')
+      .describe('Get all candidates with projects operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    candidates: z
+      .array(AshbyEnrichedCandidateSchema)
+      .optional()
+      .describe('All candidates enriched with project associations'),
+    projects: z
+      .array(AshbyProjectSchema)
+      .optional()
+      .describe('All projects in Ashby'),
+    total_candidates: z
+      .number()
+      .optional()
+      .describe('Total number of candidates fetched'),
+    total_enriched: z
+      .number()
+      .optional()
+      .describe('Number of candidates successfully enriched'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
 ]);
 
 // ============================================================================
@@ -1341,4 +1454,15 @@ export type AshbyRemoveCandidateFromProjectParams = Extract<
   AshbyParams,
   { operation: 'remove_candidate_from_project' }
 >;
+export type AshbyListProjectCandidateIdsParams = Extract<
+  AshbyParams,
+  { operation: 'list_project_candidate_ids' }
+>;
 export type AshbyProject = z.output<typeof AshbyProjectSchema>;
+export type AshbyEnrichedCandidate = z.output<
+  typeof AshbyEnrichedCandidateSchema
+>;
+export type AshbyGetAllCandidatesWithProjectsParams = Extract<
+  AshbyParams,
+  { operation: 'get_all_candidates_with_projects' }
+>;
