@@ -322,6 +322,20 @@ export const AshbySourceSchema = z
   .describe('Candidate source');
 
 /**
+ * Project object from Ashby API
+ */
+export const AshbyProjectSchema = z
+  .object({
+    id: z.string().describe('Project ID (UUID)'),
+    title: z.string().describe('Project title'),
+    isArchived: z
+      .boolean()
+      .optional()
+      .describe('Whether the project is archived'),
+  })
+  .describe('Ashby project');
+
+/**
  * File info response from Ashby API (file.info endpoint)
  */
 export const AshbyFileInfoSchema = z
@@ -807,6 +821,91 @@ export const AshbyParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // List projects operation
+  z.object({
+    operation: z.literal('list_projects').describe('List all projects'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Get project info operation
+  z.object({
+    operation: z.literal('get_project').describe('Get project details'),
+    project_id: z
+      .string()
+      .min(1, 'Project ID is required')
+      .describe('UUID of the project'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // List candidate projects operation
+  z.object({
+    operation: z
+      .literal('list_candidate_projects')
+      .describe('List all projects a candidate belongs to'),
+    candidate_id: z
+      .string()
+      .min(1, 'Candidate ID is required')
+      .describe('UUID of the candidate'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Add candidate to project operation
+  z.object({
+    operation: z
+      .literal('add_candidate_to_project')
+      .describe('Add a candidate to a project'),
+    candidate_id: z
+      .string()
+      .min(1, 'Candidate ID is required')
+      .describe('UUID of the candidate'),
+    project_id: z
+      .string()
+      .min(1, 'Project ID is required')
+      .describe('UUID of the project'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Remove candidate from project operation
+  z.object({
+    operation: z
+      .literal('remove_candidate_from_project')
+      .describe('Remove a candidate from a project'),
+    candidate_id: z
+      .string()
+      .min(1, 'Candidate ID is required')
+      .describe('UUID of the candidate'),
+    project_id: z
+      .string()
+      .min(1, 'Project ID is required')
+      .describe('UUID of the project'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // ============================================================================
@@ -1060,6 +1159,56 @@ export const AshbyResultSchema = z.discriminatedUnion('operation', [
     ),
     error: z.string().describe('Error message if operation failed'),
   }),
+
+  // List projects result
+  z.object({
+    operation: z.literal('list_projects').describe('List projects operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    projects: z
+      .array(AshbyProjectSchema)
+      .optional()
+      .describe('List of projects'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Get project result
+  z.object({
+    operation: z.literal('get_project').describe('Get project operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    project: AshbyProjectSchema.optional().describe('Project details'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // List candidate projects result
+  z.object({
+    operation: z
+      .literal('list_candidate_projects')
+      .describe('List candidate projects operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    projects: z
+      .array(AshbyProjectSchema)
+      .optional()
+      .describe('Projects the candidate belongs to'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Add candidate to project result
+  z.object({
+    operation: z
+      .literal('add_candidate_to_project')
+      .describe('Add candidate to project operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Remove candidate from project result
+  z.object({
+    operation: z
+      .literal('remove_candidate_from_project')
+      .describe('Remove candidate from project operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
 ]);
 
 // ============================================================================
@@ -1172,3 +1321,24 @@ export type AshbyGetFileUrlParams = Extract<
   AshbyParams,
   { operation: 'get_file_url' }
 >;
+export type AshbyListProjectsParams = Extract<
+  AshbyParams,
+  { operation: 'list_projects' }
+>;
+export type AshbyGetProjectParams = Extract<
+  AshbyParams,
+  { operation: 'get_project' }
+>;
+export type AshbyListCandidateProjectsParams = Extract<
+  AshbyParams,
+  { operation: 'list_candidate_projects' }
+>;
+export type AshbyAddCandidateToProjectParams = Extract<
+  AshbyParams,
+  { operation: 'add_candidate_to_project' }
+>;
+export type AshbyRemoveCandidateFromProjectParams = Extract<
+  AshbyParams,
+  { operation: 'remove_candidate_from_project' }
+>;
+export type AshbyProject = z.output<typeof AshbyProjectSchema>;
