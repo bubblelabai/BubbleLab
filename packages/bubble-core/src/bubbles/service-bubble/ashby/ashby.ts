@@ -27,6 +27,11 @@ import {
   type AshbyListSourcesParams,
   type AshbyListInterviewStagesParams,
   type AshbyGetFileUrlParams,
+  type AshbyListProjectsParams,
+  type AshbyGetProjectParams,
+  type AshbyListCandidateProjectsParams,
+  type AshbyAddCandidateToProjectParams,
+  type AshbyRemoveCandidateFromProjectParams,
 } from './ashby.schema.js';
 
 // Ashby API base URL
@@ -266,6 +271,31 @@ export class AshbyBubble<
             params as AshbyGetFileUrlParams
           )) as Extract<AshbyResult, { operation: T['operation'] }>;
 
+        case 'list_projects':
+          return (await this.listProjects(
+            params as AshbyListProjectsParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'get_project':
+          return (await this.getProject(
+            params as AshbyGetProjectParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'list_candidate_projects':
+          return (await this.listCandidateProjects(
+            params as AshbyListCandidateProjectsParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'add_candidate_to_project':
+          return (await this.addCandidateToProject(
+            params as AshbyAddCandidateToProjectParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
+        case 'remove_candidate_from_project':
+          return (await this.removeCandidateFromProject(
+            params as AshbyRemoveCandidateFromProjectParams
+          )) as Extract<AshbyResult, { operation: T['operation'] }>;
+
         default:
           throw new Error(`Unknown operation: ${operation}`);
       }
@@ -316,7 +346,8 @@ export class AshbyBubble<
    */
   private async makeAshbyRequest(
     endpoint: string,
-    body: Record<string, unknown>
+    body: Record<string, unknown>,
+    retries = 3
   ): Promise<Record<string, unknown>> {
     const apiKey = this.chooseCredential();
     if (!apiKey) {
@@ -326,30 +357,61 @@ export class AshbyBubble<
     // Ashby uses HTTP Basic Auth with API key as username, empty password
     const authHeader = `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`;
 
-    const response = await fetch(`${ASHBY_API_BASE}/${endpoint}`, {
-      method: 'POST',
-      headers: {
-        Authorization: authHeader,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const response = await fetch(`${ASHBY_API_BASE}/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
 
-    const data = (await response.json()) as Record<string, unknown>;
+      // Handle rate limiting with retry
+      if (response.status === 429 && attempt < retries) {
+        const retryAfter = response.headers.get('retry-after');
+        const waitMs = retryAfter
+          ? parseInt(retryAfter, 10) * 1000
+          : 1000 * (attempt + 1);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        continue;
+      }
 
-    // Ashby returns success: false in the body for errors
-    if (data.success === false) {
-      const errorMessage = this.extractErrorMessage(data);
-      throw new Error(errorMessage);
+      let data: Record<string, unknown>;
+      try {
+        data = (await response.json()) as Record<string, unknown>;
+      } catch {
+        // Non-JSON response — retry if attempts remain
+        if (attempt < retries) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * (attempt + 1))
+          );
+          continue;
+        }
+        const text = await response.text().catch(() => '(unreadable)');
+        throw new Error(
+          `Failed to parse JSON from Ashby API (${endpoint}, HTTP ${response.status}): ${text.slice(0, 200)}`
+        );
+      }
+
+      // Ashby returns success: false in the body for errors
+      if (data.success === false) {
+        const errorMessage = this.extractErrorMessage(data);
+        throw new Error(errorMessage);
+      }
+
+      // Also check HTTP status code
+      if (!response.ok) {
+        const errorMessage = this.extractErrorMessage(data);
+        throw new Error(`HTTP ${response.status}: ${errorMessage}`);
+      }
+
+      return data;
     }
 
-    // Also check HTTP status code
-    if (!response.ok) {
-      const errorMessage = this.extractErrorMessage(data);
-      throw new Error(`HTTP ${response.status}: ${errorMessage}`);
-    }
-
-    return data;
+    throw new Error(
+      `Ashby API request failed after ${retries + 1} attempts (${endpoint})`
+    );
   }
 
   /**
@@ -1105,6 +1167,114 @@ export class AshbyBubble<
         AshbyResult,
         { operation: 'get_file_url' }
       >['file'],
+      error: '',
+    };
+  }
+
+  /**
+   * List all projects
+   */
+  private async listProjects(
+    _params: AshbyListProjectsParams
+  ): Promise<Extract<AshbyResult, { operation: 'list_projects' }>> {
+    const response = await this.makeAshbyRequest('project.list', {});
+
+    return {
+      operation: 'list_projects',
+      success: true,
+      projects: response.results as Extract<
+        AshbyResult,
+        { operation: 'list_projects' }
+      >['projects'],
+      error: '',
+    };
+  }
+
+  /**
+   * Get project details by finding it in the project list.
+   */
+  private async getProject(
+    params: AshbyGetProjectParams
+  ): Promise<Extract<AshbyResult, { operation: 'get_project' }>> {
+    // Use project.list and filter — project.info has unreliable parameter format
+    const listResponse = await this.makeAshbyRequest('project.list', {});
+    const allProjects = listResponse.results as Array<{
+      id: string;
+      title: string;
+      isArchived?: boolean;
+    }>;
+    const match = allProjects?.find((p) => p.id === params.project_id);
+    if (!match) {
+      throw new Error(`Project not found: ${params.project_id}`);
+    }
+    const response = { results: match };
+
+    return {
+      operation: 'get_project',
+      success: true,
+      project: response.results as Extract<
+        AshbyResult,
+        { operation: 'get_project' }
+      >['project'],
+      error: '',
+    };
+  }
+
+  /**
+   * List projects a candidate belongs to
+   */
+  private async listCandidateProjects(
+    params: AshbyListCandidateProjectsParams
+  ): Promise<Extract<AshbyResult, { operation: 'list_candidate_projects' }>> {
+    const response = await this.makeAshbyRequest('candidate.listProjects', {
+      candidateId: params.candidate_id,
+    });
+
+    return {
+      operation: 'list_candidate_projects',
+      success: true,
+      projects: response.results as Extract<
+        AshbyResult,
+        { operation: 'list_candidate_projects' }
+      >['projects'],
+      error: '',
+    };
+  }
+
+  /**
+   * Add a candidate to a project
+   */
+  private async addCandidateToProject(
+    params: AshbyAddCandidateToProjectParams
+  ): Promise<Extract<AshbyResult, { operation: 'add_candidate_to_project' }>> {
+    await this.makeAshbyRequest('candidate.addProject', {
+      candidateId: params.candidate_id,
+      projectId: params.project_id,
+    });
+
+    return {
+      operation: 'add_candidate_to_project',
+      success: true,
+      error: '',
+    };
+  }
+
+  /**
+   * Remove a candidate from a project
+   */
+  private async removeCandidateFromProject(
+    params: AshbyRemoveCandidateFromProjectParams
+  ): Promise<
+    Extract<AshbyResult, { operation: 'remove_candidate_from_project' }>
+  > {
+    await this.makeAshbyRequest('candidate.removeProject', {
+      candidateId: params.candidate_id,
+      projectId: params.project_id,
+    });
+
+    return {
+      operation: 'remove_candidate_from_project',
+      success: true,
       error: '',
     };
   }
