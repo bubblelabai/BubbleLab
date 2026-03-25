@@ -225,13 +225,31 @@ export class JiraBubble<
    * @returns The resolved accountId
    * @throws Error if assignee is an email but no user is found
    */
+  /**
+   * Check whether a string looks like a Jira accountId.
+   * Account IDs are typically long alphanumeric strings like
+   * "712020:66367503-6f4e-473d-953e-f63339075775" or "5f3b2c1a8e9d4f0012345678".
+   */
+  private isAccountId(value: string): boolean {
+    return /^[0-9a-f]{24}$/.test(value) || /^\d+:[0-9a-f-]+$/.test(value);
+  }
+
+  /**
+   * Resolve an assignee string (display name, email, or accountId) to a Jira accountId.
+   * - If it looks like an accountId already, return as-is
+   * - If it contains '@', search by email
+   * - Otherwise, search by display name
+   */
   private async resolveAssigneeAccountId(assignee: string): Promise<string> {
-    // If it doesn't contain '@', assume it's already an accountId
-    if (!assignee.includes('@')) {
+    // Special values that Jira handles natively
+    if (assignee === 'currentUser()') return assignee;
+
+    // If it already looks like an accountId, return as-is
+    if (this.isAccountId(assignee)) {
       return assignee;
     }
 
-    // It's an email, look up the user
+    // Search Jira for the user (works for both email and display name)
     const queryParams = new URLSearchParams({
       query: assignee,
     });
@@ -242,15 +260,13 @@ export class JiraBubble<
         'GET'
       );
 
-      // Jira user search API returns an array directly
-      // Handle both array response and object-wrapped response
       const usersArray = Array.isArray(response)
         ? response
         : (response as unknown as { values?: unknown[] }).values;
 
       if (!Array.isArray(usersArray) || usersArray.length === 0) {
         throw new Error(
-          `No user found with email "${assignee}". Please verify the email address or use an accountId instead.`
+          `No user found matching "${assignee}". Please verify the name, email, or use an accountId instead.`
         );
       }
 
@@ -260,26 +276,81 @@ export class JiraBubble<
         displayName?: string;
       }>;
 
-      // Find exact email match (case-insensitive)
-      const matchingUser = users.find(
-        (user) => user.emailAddress?.toLowerCase() === assignee.toLowerCase()
-      );
-
-      if (!matchingUser || !matchingUser.accountId) {
-        throw new Error(
-          `No user found with email "${assignee}". Please verify the email address or use an accountId instead.`
+      // Try exact email match first (case-insensitive)
+      if (assignee.includes('@')) {
+        const emailMatch = users.find(
+          (user) => user.emailAddress?.toLowerCase() === assignee.toLowerCase()
         );
+        if (emailMatch?.accountId) return emailMatch.accountId;
       }
 
-      return matchingUser.accountId;
+      // Try exact display name match (case-insensitive)
+      const nameMatch = users.find(
+        (user) => user.displayName?.toLowerCase() === assignee.toLowerCase()
+      );
+      if (nameMatch?.accountId) return nameMatch.accountId;
+
+      // Fall back to first result if only one user returned
+      if (users.length === 1 && users[0].accountId) {
+        return users[0].accountId;
+      }
+
+      // Multiple ambiguous results
+      const userList = users
+        .slice(0, 5)
+        .map((u) => `"${u.displayName}" (${u.emailAddress ?? u.accountId})`)
+        .join(', ');
+      throw new Error(
+        `Multiple users match "${assignee}": ${userList}. Please use a more specific name, email, or accountId.`
+      );
     } catch (error) {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error(
-        `Failed to lookup user with email "${assignee}": ${String(error)}`
-      );
+      throw new Error(`Failed to lookup user "${assignee}": ${String(error)}`);
     }
+  }
+
+  /**
+   * Pre-process a JQL string to resolve display names in assignee/reporter clauses
+   * to account IDs. Jira Cloud GDPR changes require accountIds in JQL.
+   *
+   * Handles: assignee = "Display Name", reporter = "Display Name"
+   */
+  private async resolveJqlUserReferences(jql: string): Promise<string> {
+    // Match patterns like: assignee = "Some Name" or reporter = "Some Name"
+    // Also handles: assignee = 'Some Name' (single quotes)
+    const userFieldPattern = /\b(assignee|reporter)\s*=\s*["']([^"']+)["']/gi;
+
+    let resolvedJql = jql;
+    const matches = [...jql.matchAll(userFieldPattern)];
+
+    for (const match of matches) {
+      const [fullMatch, field, value] = match;
+      // Skip special JQL functions and values that look like accountIds
+      if (
+        value === 'currentUser()' ||
+        value === 'EMPTY' ||
+        value === 'empty' ||
+        this.isAccountId(value)
+      ) {
+        continue;
+      }
+
+      try {
+        const accountId = await this.resolveAssigneeAccountId(value);
+        if (accountId !== value) {
+          resolvedJql = resolvedJql.replace(
+            fullMatch,
+            `${field} = "${accountId}"`
+          );
+        }
+      } catch {
+        // If resolution fails, leave the original JQL — Jira will return its own error
+      }
+    }
+
+    return resolvedJql;
   }
 
   protected async performAction(
@@ -348,7 +419,10 @@ export class JiraBubble<
   private async search(
     params: JiraSearchParams
   ): Promise<Extract<JiraResult, { operation: 'search' }>> {
-    const { jql, limit, offset, fields } = params;
+    const { jql: rawJql, limit, offset, fields } = params;
+
+    // Resolve display names in assignee/reporter to accountIds (Jira Cloud GDPR)
+    const jql = await this.resolveJqlUserReferences(rawJql);
 
     const queryParams = new URLSearchParams({
       jql,
