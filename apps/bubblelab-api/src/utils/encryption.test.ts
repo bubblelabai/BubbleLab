@@ -47,24 +47,19 @@ describe('CredentialEncryption', () => {
     expect(decrypted).not.toBe('pass%23word%24with%40special%26chars!');
   });
 
-  it('should decrypt actual encrypted credential from database (shows URL encoding issue)', async () => {
-    // Test decrypting an actual encrypted value from the database
-    const encryptedValue =
-      'UieNwEEC2VhksgAk57npKXKu2NgCLx7DTRpLs+2/o6ARZAccYB4yDEmcR5JKLL/Pdacd4xxJ+REeaVtJWh7vMdpxAifWgQDEiel13eUZvVSf/YPISJcH0Ru3kSmi5T0afOZ509ilRB2u/C+QS36HxncDWu0tOpjCtCvL5bszxrKYxRMVmxn5PWk72gkm+Avu1jL6BAfQZb6hCPTR1p3v440JX8T33g0LuxTthKm1';
+  it('should preserve URL-encoded credentials through encrypt/decrypt', async () => {
+    const urlEncodedSecret = encodeURIComponent(
+      'postgresql://user:pass#word$with@special&chars!'
+    );
 
-    const decrypted = await CredentialEncryption.decrypt(encryptedValue);
+    const encrypted = await CredentialEncryption.encrypt(urlEncodedSecret);
+    const decrypted = await CredentialEncryption.decrypt(encrypted);
 
-    console.log('Decrypted value (URL encoded):', decrypted);
+    expect(decrypted).toBe(urlEncodedSecret);
+    expect(decrypted).toContain('%23');
+    expect(decrypted).toContain('%40');
 
-    // This demonstrates the issue - the stored credential was URL encoded before encryption
-    expect(decrypted).toContain('%23'); // Contains URL encoded #
-    expect(decrypted).toContain('%40'); // Contains URL encoded @
-
-    // Show what it should look like after URL decoding
     const urlDecoded = decodeURIComponent(decrypted);
-    console.log('After URL decoding:', urlDecoded);
-
-    // The URL decoded version should have the original special characters
     expect(urlDecoded).toContain('#');
     expect(urlDecoded).toContain('@');
   });
