@@ -109,6 +109,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.RAMP_CRED]: 'Ramp',
     [CredentialType.ZENDESK_CRED]: 'Zendesk',
     [CredentialType.SLAB_CRED]: 'Slab',
+    [CredentialType.SNOWFLAKE_CRED]: 'Snowflake',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

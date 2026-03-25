@@ -113,6 +113,9 @@ export enum CredentialType {
 
   // Slab Credentials
   SLAB_CRED = 'SLAB_CRED',
+
+  // Snowflake Credentials
+  SNOWFLAKE_CRED = 'SNOWFLAKE_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -194,4 +197,5 @@ export type BubbleName =
   | 'xero'
   | 'ramp'
   | 'zendesk'
-  | 'slab';
+  | 'slab'
+  | 'snowflake';

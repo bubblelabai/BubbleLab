@@ -555,6 +555,70 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Slab API Token',
       credentialConfigurations: {},
     },
+    [CredentialType.SNOWFLAKE_CRED]: {
+      label: 'Snowflake',
+      description:
+        'Key-pair credentials for Snowflake data warehouse (account, username, RSA private key)',
+      placeholder: '',
+      namePlaceholder: 'My Snowflake Connection',
+      credentialConfigurations: {},
+      fields: [
+        {
+          key: 'account',
+          label: 'Account Identifier',
+          placeholder: 'ORGNAME-ACCOUNTNAME (from your Snowflake URL)',
+          type: 'text',
+        },
+        {
+          key: 'username',
+          label: 'Username',
+          placeholder: 'Your Snowflake login username',
+          type: 'text',
+        },
+        {
+          key: 'privateKey',
+          label: 'Private Key (RSA PEM)',
+          placeholder:
+            '-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----',
+          type: 'password',
+        },
+        {
+          key: 'privateKeyPassword',
+          label: 'Private Key Password',
+          placeholder: 'Leave empty if key is not encrypted',
+          type: 'password',
+          required: false,
+        },
+        {
+          key: 'warehouse',
+          label: 'Warehouse',
+          placeholder: 'COMPUTE_WH (optional default warehouse)',
+          type: 'text',
+          required: false,
+        },
+        {
+          key: 'database',
+          label: 'Database',
+          placeholder: 'Optional default database',
+          type: 'text',
+          required: false,
+        },
+        {
+          key: 'schema',
+          label: 'Schema',
+          placeholder: 'Optional default schema',
+          type: 'text',
+          required: false,
+        },
+        {
+          key: 'role',
+          label: 'Role',
+          placeholder: 'Optional default role',
+          type: 'text',
+          required: false,
+        },
+      ],
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -632,6 +696,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.RAMP_CRED]: '', // OAuth credential, no env var
   [CredentialType.ZENDESK_CRED]: '', // OAuth credential, no env var
   [CredentialType.SLAB_CRED]: 'SLAB_API_TOKEN',
+  [CredentialType.SNOWFLAKE_CRED]: '', // Multi-field credential (account + username + privateKey + optional fields), no single env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -2211,6 +2276,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   ramp: [CredentialType.RAMP_CRED],
   zendesk: [CredentialType.ZENDESK_CRED],
   slab: [CredentialType.SLAB_CRED],
+  snowflake: [CredentialType.SNOWFLAKE_CRED],
 };
 
 export interface CredentialSiblingEntry {
