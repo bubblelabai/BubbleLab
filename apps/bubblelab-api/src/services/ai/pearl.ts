@@ -580,7 +580,7 @@ export async function runPearl(
         if (recoveryParse.success && recoveryParse.parsed) {
           try {
             // If we can parse it as a valid Pearl message, use it
-            const recoveredOutput = PearlAgentOutputSchema.parse(recoveryParse.parsed);
+            PearlAgentOutputSchema.parse(recoveryParse.parsed);
             // Return success immediately with the recovered output
             // This will be handled by the same logic as the main success path, 
             // but we need to jump there or just process it here.
