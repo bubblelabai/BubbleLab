@@ -350,7 +350,7 @@ const AIAgentParamsSchema = z.object({
     .number()
     .positive()
     .min(4)
-    .default(40)
+    .default(80)
     .describe(
       'Maximum number of iterations for the agent workflow, 5 iterations per turn of conversation'
     ),
