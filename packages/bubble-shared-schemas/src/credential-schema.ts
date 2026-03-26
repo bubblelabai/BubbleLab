@@ -1705,22 +1705,22 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'settings.users.read',
             description: 'View user account settings',
-            defaultEnabled: true,
+            defaultEnabled: false,
           },
           {
             scope: 'settings.users.write',
             description: 'Modify user account settings',
-            defaultEnabled: true,
+            defaultEnabled: false,
           },
           {
             scope: 'settings.users.teams.read',
             description: 'View team assignments and structure',
-            defaultEnabled: true,
+            defaultEnabled: false,
           },
           {
             scope: 'settings.users.teams.write',
             description: 'Modify team assignments',
-            defaultEnabled: true,
+            defaultEnabled: false,
           },
           {
             scope: 'crm.objects.line_items.read',
