@@ -175,7 +175,7 @@ const ModelConfigSchema = z.object({
       'When true, returns clean JSON response, you must provide the exact JSON schema in the system prompt'
     ),
   backupModel: BackupModelConfigSchema.default({
-    model: RECOMMENDED_MODELS.FAST,
+    model: RECOMMENDED_MODELS.FLAGSHIP,
   })
     .optional()
     .describe('Backup model configuration to use if the primary model fails.'),
@@ -325,7 +325,7 @@ const AIAgentParamsSchema = z.object({
     .optional()
     .describe('A friendly name for the AI agent'),
   model: ModelConfigSchema.default({
-    model: RECOMMENDED_MODELS.FAST,
+    model: RECOMMENDED_MODELS.FLAGSHIP,
     temperature: 1,
     maxTokens: 65536,
     maxRetries: 3,

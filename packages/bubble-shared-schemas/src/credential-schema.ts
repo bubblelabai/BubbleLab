@@ -1703,6 +1703,51 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
             defaultEnabled: true,
           },
           {
+            scope: 'settings.users.read',
+            description: 'View user account settings',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'settings.users.write',
+            description: 'Modify user account settings',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'settings.users.teams.read',
+            description: 'View team assignments and structure',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'settings.users.teams.write',
+            description: 'Modify team assignments',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'crm.objects.line_items.read',
+            description: 'View line items on deals',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.objects.line_items.write',
+            description: 'Create, update, and delete line items',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.schemas.contacts.read',
+            description: 'View contact property definitions',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.schemas.companies.read',
+            description: 'View company property definitions',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.schemas.deals.read',
+            description: 'View deal property definitions',
+            defaultEnabled: true,
+          },
+          {
             scope: 'tickets',
             description: 'Manage support tickets',
             defaultEnabled: true,
