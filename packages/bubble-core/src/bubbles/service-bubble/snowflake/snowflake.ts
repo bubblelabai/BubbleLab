@@ -192,7 +192,14 @@ export class SnowflakeBubble<
       );
     }
 
-    const result = await response.json();
+    const result = (await response.json()) as {
+      resultSetMetaData?: {
+        numRows: number;
+        rowType: { name: string; type: string; nullable: boolean }[];
+      };
+      data?: (string | null)[][];
+      statementHandle?: string;
+    };
 
     // Handle async execution (202 status)
     if (response.status === 202) {
