@@ -59,6 +59,7 @@ export const RECOMMENDED_MODELS = {
   // Legacy aliases (unchanged behavior)
   BEST: 'google/gemini-3-pro-preview',
   BEST_ALT: 'openai/gpt-5.2',
+  FLAGSHIP: 'google/gemini-3-flash-preview',
   PRO: 'google/gemini-3-flash-preview',
   PRO_ALT: 'anthropic/claude-sonnet-4-5',
   FAST: 'google/gemini-2.5-flash-lite',
