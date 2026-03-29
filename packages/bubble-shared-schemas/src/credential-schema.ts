@@ -10,6 +10,7 @@ import {
   confluenceOAuthMetadataSchema,
   stripeOAuthMetadataSchema,
   linearOAuthMetadataSchema,
+  asanaOAuthMetadataSchema,
   credentialPreferencesSchema,
   browserSessionMetadataSchema,
 } from './database-definition-schema.js';
@@ -555,6 +556,13 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Salesforce Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.ASANA_CRED]: {
+      label: 'Asana',
+      description: 'OAuth connection to Asana for project and task management',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Asana Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.SLAB_CRED]: {
       label: 'Slab',
       description:
@@ -706,6 +714,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.SLAB_CRED]: 'SLAB_API_TOKEN',
   [CredentialType.SNOWFLAKE_CRED]: '', // Multi-field credential (account + username + privateKey + optional fields), no single env var
   [CredentialType.SALESFORCE_CRED]: '', // OAuth credential, no env var
+  [CredentialType.ASANA_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -754,7 +763,8 @@ export type OAuthProvider =
   | 'xero'
   | 'ramp'
   | 'zendesk'
-  | 'salesforce';
+  | 'salesforce'
+  | 'asana';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -2017,6 +2027,191 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       prompt: 'login', // Force login screen so user can choose which Salesforce org to connect
     },
   },
+  asana: {
+    name: 'asana',
+    displayName: 'Asana',
+    credentialTypes: {
+      [CredentialType.ASANA_CRED]: {
+        displayName: 'Asana',
+        defaultScopes: [
+          // OpenID scopes
+          'openid',
+          'email',
+          'profile',
+          // Base scopes — must be requested explicitly
+          'tasks:read',
+          'tasks:write',
+          'tasks:delete',
+          'projects:read',
+          'projects:write',
+          'projects:delete',
+          'workspaces:read',
+          'users:read',
+          'teams:read',
+          'team_memberships:read',
+          'tags:read',
+          'tags:write',
+          'stories:read',
+          'stories:write',
+          'attachments:read',
+          'attachments:write',
+          'attachments:delete',
+          'custom_fields:read',
+          'custom_fields:write',
+          'portfolios:read',
+          'portfolios:write',
+          'goals:read',
+          'jobs:read',
+          'webhooks:read',
+          'webhooks:write',
+          'webhooks:delete',
+        ],
+        description:
+          'Access Asana for managing projects, tasks, and workspaces',
+        scopeDescriptions: [
+          // Base scopes
+          {
+            scope: 'tasks:read',
+            description:
+              'Read tasks including title, description, and assignee',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'tasks:write',
+            description: 'Create and update tasks',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'tasks:delete',
+            description: 'Delete tasks permanently',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'projects:read',
+            description: 'Read project information and status updates',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'projects:write',
+            description: 'Create and update projects',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'projects:delete',
+            description: 'Delete projects permanently',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'workspaces:read',
+            description: 'Read workspace information',
+            defaultEnabled: true,
+          },
+          // Users & Teams
+          {
+            scope: 'users:read',
+            description: 'Read user profiles, names, and emails',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'teams:read',
+            description: 'Read team information and members',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'team_memberships:read',
+            description: 'Read team membership details',
+            defaultEnabled: true,
+          },
+          // Tags
+          {
+            scope: 'tags:read',
+            description: 'Read tags in workspaces',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'tags:write',
+            description: 'Create tags and tag/untag tasks',
+            defaultEnabled: true,
+          },
+          // Stories (comments)
+          {
+            scope: 'stories:read',
+            description: 'Read task comments and activity',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'stories:write',
+            description: 'Post comments on tasks',
+            defaultEnabled: true,
+          },
+          // Attachments
+          {
+            scope: 'attachments:read',
+            description: 'Read task attachments',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'attachments:write',
+            description: 'Upload attachments to tasks',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'attachments:delete',
+            description: 'Delete task attachments',
+            defaultEnabled: true,
+          },
+          // Custom fields
+          {
+            scope: 'custom_fields:read',
+            description: 'Read custom field definitions and values',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'custom_fields:write',
+            description: 'Create and update custom fields',
+            defaultEnabled: true,
+          },
+          // Portfolios & Goals
+          {
+            scope: 'portfolios:read',
+            description: 'Read portfolio information',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'portfolios:write',
+            description: 'Create and update portfolios',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'goals:read',
+            description: 'Read goal information and metrics',
+            defaultEnabled: true,
+          },
+          // Jobs & Webhooks
+          {
+            scope: 'jobs:read',
+            description: 'Read async job status',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'webhooks:read',
+            description: 'Read webhook configurations',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'webhooks:write',
+            description: 'Create and update webhooks',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'webhooks:delete',
+            description: 'Delete webhooks',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+  },
 };
 
 /**
@@ -2379,6 +2574,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   slab: [CredentialType.SLAB_CRED],
   snowflake: [CredentialType.SNOWFLAKE_CRED],
   salesforce: [CredentialType.SALESFORCE_CRED],
+  asana: [CredentialType.ASANA_CRED],
 };
 
 export interface CredentialSiblingEntry {
@@ -2537,6 +2733,7 @@ export const credentialResponseSchema = z
         confluenceOAuthMetadataSchema,
         stripeOAuthMetadataSchema,
         linearOAuthMetadataSchema,
+        asanaOAuthMetadataSchema,
         browserSessionMetadataSchema,
         credentialPreferencesSchema,
       ])
