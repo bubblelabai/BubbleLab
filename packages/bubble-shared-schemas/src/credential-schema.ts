@@ -547,6 +547,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Zendesk Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.LOOKER_CRED]: {
+      label: 'Looker',
+      description:
+        'OAuth connection to Looker for querying data models, pulling dashboards, and running reports',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Looker Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.SALESFORCE_CRED]: {
       label: 'Salesforce',
       description:
@@ -706,6 +714,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.SLAB_CRED]: 'SLAB_API_TOKEN',
   [CredentialType.SNOWFLAKE_CRED]: '', // Multi-field credential (account + username + privateKey + optional fields), no single env var
   [CredentialType.SALESFORCE_CRED]: '', // OAuth credential, no env var
+  [CredentialType.LOOKER_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -870,6 +879,19 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'https://www.googleapis.com/auth/calendar',
             description: 'View and manage events on all your calendars',
+            defaultEnabled: true,
+          },
+        ],
+      },
+      [CredentialType.LOOKER_CRED]: {
+        displayName: 'Looker',
+        defaultScopes: ['https://www.googleapis.com/auth/cloud-platform'],
+        description:
+          'Access Looker for querying data models, pulling dashboard data, and running reports',
+        scopeDescriptions: [
+          {
+            scope: 'https://www.googleapis.com/auth/cloud-platform',
+            description: 'Access Looker resources via Google Cloud Platform',
             defaultEnabled: true,
           },
         ],
@@ -2379,6 +2401,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   slab: [CredentialType.SLAB_CRED],
   snowflake: [CredentialType.SNOWFLAKE_CRED],
   salesforce: [CredentialType.SALESFORCE_CRED],
+  looker: [CredentialType.LOOKER_CRED],
 };
 
 export interface CredentialSiblingEntry {

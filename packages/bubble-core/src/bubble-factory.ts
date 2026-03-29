@@ -185,6 +185,7 @@ export class BubbleFactory {
       'slab',
       'snowflake',
       'salesforce',
+      'looker',
     ];
   }
 
@@ -438,6 +439,9 @@ export class BubbleFactory {
     const { SalesforceBubble } = await import(
       './bubbles/service-bubble/salesforce/index.js'
     );
+    const { LookerBubble } = await import(
+      './bubbles/service-bubble/looker/index.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -608,6 +612,7 @@ export class BubbleFactory {
     this.register('slab', SlabBubble as BubbleClassWithMetadata);
     this.register('snowflake', SnowflakeBubble as BubbleClassWithMetadata);
     this.register('salesforce', SalesforceBubble as BubbleClassWithMetadata);
+    this.register('looker', LookerBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {

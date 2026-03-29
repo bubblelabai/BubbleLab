@@ -111,6 +111,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.SLAB_CRED]: 'Slab',
     [CredentialType.SNOWFLAKE_CRED]: 'Snowflake',
     [CredentialType.SALESFORCE_CRED]: 'Salesforce',
+    [CredentialType.LOOKER_CRED]: 'Looker',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

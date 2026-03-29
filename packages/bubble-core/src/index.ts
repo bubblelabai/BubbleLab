@@ -94,6 +94,8 @@ export { SnowflakeBubble } from './bubbles/service-bubble/snowflake/index.js';
 export type { SnowflakeParamsInput } from './bubbles/service-bubble/snowflake/index.js';
 export { SalesforceBubble } from './bubbles/service-bubble/salesforce/index.js';
 export type { SalesforceParamsInput } from './bubbles/service-bubble/salesforce/index.js';
+export { LookerBubble } from './bubbles/service-bubble/looker/index.js';
+export type { LookerParamsInput } from './bubbles/service-bubble/looker/index.js';
 export { ConfluenceBubble } from './bubbles/service-bubble/confluence/index.js';
 export type { ConfluenceParamsInput } from './bubbles/service-bubble/confluence/index.js';
 export { AshbyBubble } from './bubbles/service-bubble/ashby/index.js';

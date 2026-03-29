@@ -81,6 +81,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.SLAB_CRED]: {},
   [CredentialType.SNOWFLAKE_CRED]: {},
   [CredentialType.SALESFORCE_CRED]: {},
+  [CredentialType.LOOKER_CRED]: {},
   [CredentialType.CREDENTIAL_WILDCARD]: {}, // Wildcard marker, not a real credential
 };
 
