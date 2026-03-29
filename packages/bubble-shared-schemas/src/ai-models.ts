@@ -57,6 +57,7 @@ export const RECOMMENDED_MODELS = {
   // Special-purpose
   IMAGE: 'google/gemini-3-pro-image-preview',
   // Legacy aliases (unchanged behavior)
+  FLAGSHIP: 'google/gemini-3-flash-preview',
   BEST: 'google/gemini-3-pro-preview',
   BEST_ALT: 'openai/gpt-5.2',
   PRO: 'google/gemini-3-flash-preview',
