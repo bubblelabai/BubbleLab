@@ -547,6 +547,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Zendesk Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.SALESFORCE_CRED]: {
+      label: 'Salesforce',
+      description:
+        'OAuth connection to Salesforce for managing accounts, contacts, opportunities, and records',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Salesforce Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.SLAB_CRED]: {
       label: 'Slab',
       description:
@@ -697,6 +705,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.ZENDESK_CRED]: '', // OAuth credential, no env var
   [CredentialType.SLAB_CRED]: 'SLAB_API_TOKEN',
   [CredentialType.SNOWFLAKE_CRED]: '', // Multi-field credential (account + username + privateKey + optional fields), no single env var
+  [CredentialType.SALESFORCE_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -744,7 +753,8 @@ export type OAuthProvider =
   | 'hubspot'
   | 'xero'
   | 'ramp'
-  | 'zendesk';
+  | 'zendesk'
+  | 'salesforce';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -1961,6 +1971,52 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       },
     },
   },
+  salesforce: {
+    name: 'salesforce',
+    displayName: 'Salesforce',
+    credentialTypes: {
+      [CredentialType.SALESFORCE_CRED]: {
+        displayName: 'Salesforce',
+        defaultScopes: ['api', 'refresh_token', 'openid'],
+        description:
+          'Access Salesforce for managing accounts, contacts, opportunities, and records via REST API',
+        scopeDescriptions: [
+          {
+            scope: 'api',
+            description:
+              'Access Salesforce REST API for reading and writing data (accounts, contacts, opportunities, etc.)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'refresh_token',
+            description:
+              'Obtain a refresh token for maintaining access without re-authorization',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'openid',
+            description:
+              'Access unique user identifiers and profile information',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'full',
+            description:
+              'Full access to all permitted Salesforce resources and features',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'chatter_api',
+            description: 'Access Chatter feeds and social features',
+            defaultEnabled: false,
+          },
+        ],
+      },
+    },
+    authorizationParams: {
+      prompt: 'login', // Force login screen so user can choose which Salesforce org to connect
+    },
+  },
 };
 
 /**
@@ -2322,6 +2378,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   zendesk: [CredentialType.ZENDESK_CRED],
   slab: [CredentialType.SLAB_CRED],
   snowflake: [CredentialType.SNOWFLAKE_CRED],
+  salesforce: [CredentialType.SALESFORCE_CRED],
 };
 
 export interface CredentialSiblingEntry {
