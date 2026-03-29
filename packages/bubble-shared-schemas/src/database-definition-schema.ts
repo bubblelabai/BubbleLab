@@ -212,6 +212,20 @@ export const zendeskOAuthMetadataSchema = z.object({
 export type ZendeskOAuthMetadata = z.infer<typeof zendeskOAuthMetadataSchema>;
 
 /**
+ * Salesforce OAuth metadata - stored after OAuth callback with instance URL for API calls
+ */
+export const salesforceOAuthMetadataSchema = z.object({
+  instanceUrl: z.string(),
+  organizationId: z.string().optional(),
+  /** Human-readable display name for the credential */
+  displayName: z.string().optional(),
+});
+
+export type SalesforceOAuthMetadata = z.infer<
+  typeof salesforceOAuthMetadataSchema
+>;
+
+/**
  * Base preference fields that can be added to any credential metadata.
  * These are used for default credential selection and usage tracking.
  */
@@ -287,4 +301,5 @@ export type CredentialMetadata =
   | StripeOAuthMetadata
   | LinearOAuthMetadata
   | BrowserSessionMetadata
+  | SalesforceOAuthMetadata
   | CredentialPreferences;
