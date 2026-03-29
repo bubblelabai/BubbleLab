@@ -226,6 +226,18 @@ export type SalesforceOAuthMetadata = z.infer<
 >;
 
 /**
+ * Asana OAuth metadata - stored after OAuth callback with workspace info
+ */
+export const asanaOAuthMetadataSchema = z.object({
+  workspaceId: z.string(),
+  workspaceName: z.string().optional(),
+  /** Human-readable display name for the credential */
+  displayName: z.string().optional(),
+});
+
+export type AsanaOAuthMetadata = z.infer<typeof asanaOAuthMetadataSchema>;
+
+/**
  * Base preference fields that can be added to any credential metadata.
  * These are used for default credential selection and usage tracking.
  */
@@ -302,4 +314,5 @@ export type CredentialMetadata =
   | LinearOAuthMetadata
   | BrowserSessionMetadata
   | SalesforceOAuthMetadata
+  | AsanaOAuthMetadata
   | CredentialPreferences;

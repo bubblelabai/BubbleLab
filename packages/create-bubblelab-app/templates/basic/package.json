@@ -11,9 +11,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@bubblelab/bubble-core": "^0.1.257",
-    "@bubblelab/bubble-runtime": "^0.1.257",
-    "@bubblelab/shared-schemas": "^0.1.257",
+    "@bubblelab/bubble-core": "^0.1.258",
+    "@bubblelab/bubble-runtime": "^0.1.258",
+    "@bubblelab/shared-schemas": "^0.1.258",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
