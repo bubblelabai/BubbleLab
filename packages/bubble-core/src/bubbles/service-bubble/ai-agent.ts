@@ -2292,6 +2292,16 @@ export class AIAgentBubble extends ServiceBubble<
           bubbleContext: this.context,
         });
 
+        // One-shot state save callback (e.g., ask_user saves agent messages for resume)
+        const saveStateCb = this.context?.executionMeta
+          ?._saveAgentStateCallback as
+          | ((msgs: BaseMessage[]) => Promise<void>)
+          | undefined;
+        if (saveStateCb) {
+          delete this.context!.executionMeta!._saveAgentStateCallback;
+          await saveStateCb(currentMessages).catch(() => {});
+        }
+
         // Trace hook result
         if (afterHook) {
           this._trace('hook', `afterToolCall:${toolCall.name}`, {
