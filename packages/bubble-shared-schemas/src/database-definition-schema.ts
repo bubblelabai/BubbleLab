@@ -238,6 +238,18 @@ export const asanaOAuthMetadataSchema = z.object({
 export type AsanaOAuthMetadata = z.infer<typeof asanaOAuthMetadataSchema>;
 
 /**
+ * Discord OAuth metadata - stored after OAuth callback with guild info
+ */
+export const discordOAuthMetadataSchema = z.object({
+  guildId: z.string(),
+  guildName: z.string().optional(),
+  /** Human-readable display name for the credential */
+  displayName: z.string().optional(),
+});
+
+export type DiscordOAuthMetadata = z.infer<typeof discordOAuthMetadataSchema>;
+
+/**
  * Base preference fields that can be added to any credential metadata.
  * These are used for default credential selection and usage tracking.
  */
@@ -315,4 +327,5 @@ export type CredentialMetadata =
   | BrowserSessionMetadata
   | SalesforceOAuthMetadata
   | AsanaOAuthMetadata
+  | DiscordOAuthMetadata
   | CredentialPreferences;
