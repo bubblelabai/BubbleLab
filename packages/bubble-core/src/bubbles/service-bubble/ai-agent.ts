@@ -174,11 +174,15 @@ const ModelConfigSchema = z.object({
     .describe(
       'When true, returns clean JSON response, you must provide the exact JSON schema in the system prompt'
     ),
-  backupModel: BackupModelConfigSchema.default({
-    model: RECOMMENDED_MODELS.FLAGSHIP,
-  })
-    .optional()
-    .describe('Backup model configuration to use if the primary model fails.'),
+  // Use .optional().default() so omitted backupModel receives the default (Zod’s
+  // .default().optional() does not apply the default when the key is missing).
+  backupModel: BackupModelConfigSchema.optional()
+    .default({
+      model: RECOMMENDED_MODELS.GOOGLE_FLAGSHIP,
+    })
+    .describe(
+      'Backup model if the primary fails. Defaults to GOOGLE_FLAGSHIP (Gemini 3 Flash) when omitted.'
+    ),
 });
 
 // Define tool configuration for pre-registered tools
@@ -462,6 +466,17 @@ export type AIAgentParamsParsed = z.output<typeof AIAgentParamsSchema> & {
 
 export type AIAgentResult = z.output<typeof AIAgentResultSchema>;
 
+// Internal runtime model config for execution passes.
+// The parsed input model may always include backupModel via schema defaults, but
+// backup execution should be single-hop (no chained fallback), so this shape
+// intentionally allows backupModel to be absent.
+type ExecutionModelConfig = Omit<
+  AIAgentParamsParsed['model'],
+  'backupModel'
+> & {
+  backupModel?: z.infer<typeof BackupModelConfigSchema>;
+};
+
 function mergeCapabilityInputDefaults(
   inputDefs: CapabilityInput[] | undefined,
   userInputs: Record<string, string | number | boolean | string[]> | undefined
@@ -567,9 +582,9 @@ export class AIAgentBubble extends ServiceBubble<
    * Build effective model config from primary and optional backup settings
    */
   private buildModelConfig(
-    primaryConfig: AIAgentParamsParsed['model'],
+    primaryConfig: ExecutionModelConfig,
     backupConfig?: z.infer<typeof BackupModelConfigSchema>
-  ): AIAgentParamsParsed['model'] {
+  ): ExecutionModelConfig {
     if (!backupConfig) {
       return primaryConfig;
     }
@@ -578,6 +593,8 @@ export class AIAgentBubble extends ServiceBubble<
       model: backupConfig.model,
       temperature: backupConfig.temperature ?? primaryConfig.temperature,
       maxTokens: backupConfig.maxTokens ?? primaryConfig.maxTokens,
+      reasoningEffort:
+        backupConfig.reasoningEffort ?? primaryConfig.reasoningEffort,
       maxRetries: backupConfig.maxRetries ?? primaryConfig.maxRetries,
       provider: primaryConfig.provider,
       jsonMode: primaryConfig.jsonMode,
@@ -589,7 +606,7 @@ export class AIAgentBubble extends ServiceBubble<
    * Core execution logic for running the agent with a given model config
    */
   private async executeWithModel(
-    modelConfig: AIAgentParamsParsed['model']
+    modelConfig: ExecutionModelConfig
   ): Promise<AIAgentResult> {
     const {
       message,
@@ -675,7 +692,6 @@ export class AIAgentBubble extends ServiceBubble<
       this.resolveCapabilityCredentials.bind(this),
       this.params.credentialPool
     );
-
     // Extract execution metadata (used for conversation history + agent memory)
     const execMeta = this.context?.executionMeta;
 
@@ -1265,7 +1281,7 @@ export class AIAgentBubble extends ServiceBubble<
     }
   }
 
-  private initializeModel(modelConfig: AIAgentParamsParsed['model']) {
+  private initializeModel(modelConfig: ExecutionModelConfig) {
     const { model, temperature, maxTokens, maxRetries } = modelConfig;
     const slashIndex = model.indexOf('/');
     const provider = model.substring(0, slashIndex);
@@ -1697,7 +1713,17 @@ export class AIAgentBubble extends ServiceBubble<
             const credentialOverrides = input.credentials as
               | Record<string, string | number>
               | undefined;
-            const capConfig = caps.find((c) => c.id === capabilityId) ?? {
+            const capConfig: {
+              id: string;
+              inputs?: Record<string, string | number | boolean | string[]>;
+              credentials?: Partial<Record<CredentialType, string>>;
+              context?: string;
+            } = (caps.find((c) => c.id === capabilityId) as {
+              id: string;
+              inputs?: Record<string, string | number | boolean | string[]>;
+              credentials?: Partial<Record<CredentialType, string>>;
+              context?: string;
+            }) ?? {
               id: capabilityId,
             };
             const capDef = getCapability(capabilityId);
@@ -1755,11 +1781,11 @@ export class AIAgentBubble extends ServiceBubble<
             // Dynamic credentials (from manage_capability set_credential) are
             // merged via resolveCapabilityCredentials() on the subagent — no
             // need to merge here since the subagent inherits executionMeta.
+            const execMeta = this.context?.executionMeta;
 
             // Snapshot master agent state before delegation so that the
             // subagent's beforeToolCall hook can save both states if an
             // approval interrupt is triggered (fixes multi-cap state leak).
-            const execMeta = this.context?.executionMeta;
             if (execMeta && this._currentGraphMessages.length > 0) {
               const { mapChatMessagesToStoredMessages } = await import(
                 '@langchain/core/messages'
@@ -2838,7 +2864,7 @@ export class AIAgentBubble extends ServiceBubble<
     message: string,
     images: AIAgentParamsParsed['images'],
     maxIterations: number,
-    modelConfig: AIAgentParamsParsed['model'],
+    modelConfig: ExecutionModelConfig,
     conversationHistory?: AIAgentParamsParsed['conversationHistory'],
     tools?: DynamicStructuredTool[]
   ): Promise<AIAgentResult> {
