@@ -1752,6 +1752,10 @@ export class AIAgentBubble extends ServiceBubble<
               }
             }
 
+            // Dynamic credentials (from manage_capability set_credential) are
+            // merged via resolveCapabilityCredentials() on the subagent — no
+            // need to merge here since the subagent inherits executionMeta.
+
             // Snapshot master agent state before delegation so that the
             // subagent's beforeToolCall hook can save both states if an
             // approval interrupt is triggered (fixes multi-cap state leak).
@@ -1963,6 +1967,19 @@ export class AIAgentBubble extends ServiceBubble<
     for (const credType of allCredTypes) {
       if (this.params.credentials && this.params.credentials[credType]) {
         resolved[credType] = this.params.credentials[credType];
+      }
+    }
+
+    // Check dynamically-set credentials (from manage_capability set_credential
+    // in current execution) as fallback for any missing credential types
+    const dynamicCreds = (
+      this.context?.executionMeta as Record<string, unknown> | undefined
+    )?._dynamicCredentials as Record<string, string> | undefined;
+    if (dynamicCreds) {
+      for (const credType of allCredTypes) {
+        if (!resolved[credType] && dynamicCreds[credType]) {
+          resolved[credType] = dynamicCreds[credType];
+        }
       }
     }
 
