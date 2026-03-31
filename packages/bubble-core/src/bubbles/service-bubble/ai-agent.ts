@@ -1977,7 +1977,7 @@ export class AIAgentBubble extends ServiceBubble<
     )?._dynamicCredentials as Record<string, string> | undefined;
     if (dynamicCreds) {
       for (const credType of allCredTypes) {
-        if (!resolved[credType] && dynamicCreds[credType]) {
+        if (dynamicCreds[credType]) {
           resolved[credType] = dynamicCreds[credType];
         }
       }
