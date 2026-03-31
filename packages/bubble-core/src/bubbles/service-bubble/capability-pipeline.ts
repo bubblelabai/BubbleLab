@@ -88,26 +88,39 @@ export async function applyCapabilityPreprocessing(
           hint ??= def.metadata.delegationHint;
           if (hint) summary += `\n   When to use: ${hint}`;
 
-          // List available credentials when multiple exist for a type
-          if (credentialPool) {
-            const capCredTypes = [
-              ...def.metadata.requiredCredentials,
-              ...(def.metadata.optionalCredentials ?? []),
-            ];
-            for (const credType of capCredTypes) {
-              const pool = credentialPool[credType];
-              if (pool && pool.length > 1) {
-                summary += `\n   Available ${credType} accounts:`;
-                for (const entry of pool) {
-                  // Sanitize name to prevent prompt injection via credential names
-                  const safeName = entry.name
-                    .replace(/[\n\r]/g, ' ')
-                    .slice(0, 100);
-                  summary += `\n   - "${safeName}"`;
-                }
-                summary += `\n   Pass 'credentials: { ${credType}: "<account name>" }' to use-capability to select a specific account.`;
+          // Show credential status for each credential type the capability uses
+          const resolvedCreds = resolveCapabilityCredentials(def, c);
+          const allCredTypes = [
+            ...def.metadata.requiredCredentials,
+            ...(def.metadata.optionalCredentials ?? []),
+          ];
+          if (allCredTypes.length > 0) {
+            const credLines: string[] = [];
+            for (const credType of allCredTypes) {
+              const isSet = !!resolvedCreds[credType];
+              const pool = credentialPool?.[credType];
+              if (isSet && pool && pool.length > 1) {
+                // Multiple accounts available — list them
+                const names = pool
+                  .map(
+                    (e) => `"${e.name.replace(/[\n\r]/g, ' ').slice(0, 100)}"`
+                  )
+                  .join(', ');
+                credLines.push(
+                  `${credType}: ✓ SET (${pool.length} accounts: ${names})`
+                );
+              } else if (isSet) {
+                const name = pool?.[0]?.name;
+                credLines.push(
+                  `${credType}: ✓ SET${name ? ` ("${name.replace(/[\n\r]/g, ' ').slice(0, 80)}")` : ''}`
+                );
+              } else {
+                credLines.push(
+                  `${credType}: ✗ NOT SET — use initiate-credential-creation then manage_capability set_credential`
+                );
               }
             }
+            summary += `\n   Credentials: ${credLines.join(', ')}`;
           }
 
           return summary;
