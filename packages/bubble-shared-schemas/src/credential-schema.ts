@@ -563,6 +563,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Asana Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.DISCORD_CRED]: {
+      label: 'Discord',
+      description:
+        'OAuth connection to Discord for server messaging and bot management',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Discord Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.SLAB_CRED]: {
       label: 'Slab',
       description:
@@ -715,6 +723,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.SNOWFLAKE_CRED]: '', // Multi-field credential (account + username + privateKey + optional fields), no single env var
   [CredentialType.SALESFORCE_CRED]: '', // OAuth credential, no env var
   [CredentialType.ASANA_CRED]: '', // OAuth credential, no env var
+  [CredentialType.DISCORD_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -764,7 +773,8 @@ export type OAuthProvider =
   | 'ramp'
   | 'zendesk'
   | 'salesforce'
-  | 'asana';
+  | 'asana'
+  | 'discord';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -2212,6 +2222,66 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       },
     },
   },
+  discord: {
+    name: 'discord',
+    displayName: 'Discord',
+    credentialTypes: {
+      [CredentialType.DISCORD_CRED]: {
+        displayName: 'Discord',
+        defaultScopes: [
+          'identify',
+          'email',
+          'guilds',
+          'guilds.members.read',
+          'bot',
+          'messages.read',
+        ],
+        description:
+          'Connect to Discord for server messaging, channel management, and bot interactions',
+        scopeDescriptions: [
+          {
+            scope: 'identify',
+            description: 'Read your user profile information',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'email',
+            description: 'Read your email address',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'guilds',
+            description: 'List the servers you are a member of',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'guilds.members.read',
+            description: 'Read member information in your servers',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'bot',
+            description:
+              'Add the bot to your server with configured permissions',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'messages.read',
+            description: 'Read messages in channels the bot has access to',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+    authorizationParams: {
+      // Bot permissions integer: Manage Channels, View Channels, Send Messages,
+      // Create Public/Private Threads, Send Messages in Threads, Manage Messages,
+      // Embed Links, Attach Files, Read Message History, Mention Everyone,
+      // Use External Emojis/Stickers, Add Reactions, Manage Webhooks,
+      // Manage Threads, Create Polls
+      permissions: '563483066756176',
+    },
+  },
 };
 
 /**
@@ -2575,6 +2645,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   snowflake: [CredentialType.SNOWFLAKE_CRED],
   salesforce: [CredentialType.SALESFORCE_CRED],
   asana: [CredentialType.ASANA_CRED],
+  discord: [CredentialType.DISCORD_CRED],
 };
 
 export interface CredentialSiblingEntry {

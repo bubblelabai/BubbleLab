@@ -186,6 +186,7 @@ export class BubbleFactory {
       'snowflake',
       'salesforce',
       'asana',
+      'discord',
     ];
   }
 
@@ -442,6 +443,9 @@ export class BubbleFactory {
     const { AsanaBubble } = await import(
       './bubbles/service-bubble/asana/index.js'
     );
+    const { DiscordBubble } = await import(
+      './bubbles/service-bubble/discord/index.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -613,6 +617,7 @@ export class BubbleFactory {
     this.register('snowflake', SnowflakeBubble as BubbleClassWithMetadata);
     this.register('salesforce', SalesforceBubble as BubbleClassWithMetadata);
     this.register('asana', AsanaBubble as BubbleClassWithMetadata);
+    this.register('discord', DiscordBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {

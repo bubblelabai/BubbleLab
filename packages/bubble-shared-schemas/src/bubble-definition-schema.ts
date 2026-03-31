@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@hono/zod-openapi';
 import { CredentialType, BubbleName } from './types';
 
 // Bubble parameter type enum
@@ -82,6 +82,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.SNOWFLAKE_CRED]: {},
   [CredentialType.SALESFORCE_CRED]: {},
   [CredentialType.ASANA_CRED]: {},
+  [CredentialType.DISCORD_CRED]: {},
   [CredentialType.CREDENTIAL_WILDCARD]: {}, // Wildcard marker, not a real credential
 };
 

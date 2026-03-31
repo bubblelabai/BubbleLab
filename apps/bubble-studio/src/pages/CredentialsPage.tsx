@@ -112,6 +112,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.SNOWFLAKE_CRED]: 'Snowflake',
     [CredentialType.SALESFORCE_CRED]: 'Salesforce',
     [CredentialType.ASANA_CRED]: 'Asana',
+    [CredentialType.DISCORD_CRED]: 'Discord',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

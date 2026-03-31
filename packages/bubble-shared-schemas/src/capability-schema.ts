@@ -45,7 +45,8 @@ export type CapabilityId =
   | 'zendesk-assistant'
   | 'slab-assistant'
   | 'salesforce-assistant'
-  | 'asana-assistant';
+  | 'asana-assistant'
+  | 'discord-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.

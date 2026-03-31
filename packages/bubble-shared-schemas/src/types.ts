@@ -20,6 +20,7 @@ export enum CredentialType {
   SLACK_CRED = 'SLACK_CRED',
   SLACK_API = 'SLACK_API',
   TELEGRAM_BOT_TOKEN = 'TELEGRAM_BOT_TOKEN',
+  DISCORD_CRED = 'DISCORD_CRED',
   // Email Credentials
   RESEND_CRED = 'RESEND_CRED',
   // Storage Credentials
@@ -206,4 +207,5 @@ export type BubbleName =
   | 'slab'
   | 'snowflake'
   | 'salesforce'
-  | 'asana';
+  | 'asana'
+  | 'discord';
