@@ -77,17 +77,31 @@ export class DiscordBubble<
       throw new Error('Discord credentials are required');
     }
 
-    const response = await fetch(`${DISCORD_API_BASE}/users/@me`, {
+    // Try Bot auth first (runtime credential with bot token from env)
+    const botResponse = await fetch(`${DISCORD_API_BASE}/users/@me`, {
       headers: {
         Authorization: `Bot ${creds.botToken}`,
         Accept: 'application/json',
       },
     });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Discord API error (${response.status}): ${text}`);
+    if (botResponse.ok) return true;
+
+    // At validation time, the credential is a raw OAuth access token
+    // (not yet encoded with bot token by credential-helper), so try Bearer auth
+    if (botResponse.status === 401) {
+      const bearerResponse = await fetch(`${DISCORD_API_BASE}/users/@me`, {
+        headers: {
+          Authorization: `Bearer ${creds.botToken}`,
+          Accept: 'application/json',
+        },
+      });
+      if (bearerResponse.ok) return true;
+      const text = await bearerResponse.text();
+      throw new Error(`Discord API error (${bearerResponse.status}): ${text}`);
     }
-    return true;
+
+    const text = await botResponse.text();
+    throw new Error(`Discord API error (${botResponse.status}): ${text}`);
   }
 
   private parseCredentials(): {
