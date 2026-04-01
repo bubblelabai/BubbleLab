@@ -378,6 +378,20 @@ export const bubbleFlowDetailsResponseSchema = z
     webhook_url: z
       .string()
       .openapi({ description: 'Webhook URL for this bubble flow' }),
+    webhookAuthConfig: z
+      .object({
+        authType: z.string().openapi({
+          description: 'Auth type for incoming webhook verification',
+        }),
+        authHeader: z.string().optional().openapi({
+          description: 'Custom header name for auth verification',
+        }),
+      })
+      .nullable()
+      .optional()
+      .openapi({
+        description: 'Webhook auth configuration (null if no auth)',
+      }),
   })
   .openapi('BubbleFlowDetailsResponse');
 
