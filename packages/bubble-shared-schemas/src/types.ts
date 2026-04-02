@@ -208,4 +208,5 @@ export type BubbleName =
   | 'snowflake'
   | 'salesforce'
   | 'asana'
-  | 'discord';
+  | 'discord'
+  | 'sortly';
