@@ -207,7 +207,10 @@ export class SortlyBubble<
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Sortly API error (HTTP ${response.status}): ${text}`);
+      const truncated = text.length > 500 ? text.slice(0, 500) + '...' : text;
+      throw new Error(
+        `Sortly API error (HTTP ${response.status}): ${truncated}`
+      );
     }
 
     return await response.json();
@@ -221,9 +224,11 @@ export class SortlyBubble<
     params: SortlyListItemsParams
   ): Promise<Extract<SortlyResult, { operation: 'list_items' }>> {
     const qs = new URLSearchParams();
-    if (params.page) qs.set('page', String(params.page));
-    if (params.per_page) qs.set('per_page', String(params.per_page));
-    if (params.folder_id) qs.set('folder_id', String(params.folder_id));
+    if (params.page !== undefined) qs.set('page', String(params.page));
+    if (params.per_page !== undefined)
+      qs.set('per_page', String(params.per_page));
+    if (params.folder_id !== undefined)
+      qs.set('folder_id', String(params.folder_id));
     qs.set('include', 'custom_attributes,photos');
 
     const data = (await this.makeSortlyRequest(
@@ -327,9 +332,9 @@ export class SortlyBubble<
     params: SortlySearchItemsParams
   ): Promise<Extract<SortlyResult, { operation: 'search_items' }>> {
     const body: Record<string, unknown> = { name: params.name };
-    if (params.type) body.type = params.type;
-    if (params.page) body.page = params.page;
-    if (params.per_page) body.per_page = params.per_page;
+    if (params.type !== undefined) body.type = params.type;
+    if (params.page !== undefined) body.page = params.page;
+    if (params.per_page !== undefined) body.per_page = params.per_page;
 
     const data = (await this.makeSortlyRequest(
       '/items/search',

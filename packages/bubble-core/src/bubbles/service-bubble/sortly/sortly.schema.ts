@@ -316,7 +316,3 @@ export type SortlyMoveItemParams = Extract<
   SortlyParams,
   { operation: 'move_item' }
 >;
-export type SortlyListCustomFieldsParams = Extract<
-  SortlyParams,
-  { operation: 'list_custom_fields' }
->;
