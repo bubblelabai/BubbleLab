@@ -2646,6 +2646,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   salesforce: [CredentialType.SALESFORCE_CRED],
   asana: [CredentialType.ASANA_CRED],
   discord: [CredentialType.DISCORD_CRED],
+  sortly: [CredentialType.SORTLY_API_KEY],
 };
 
 export interface CredentialSiblingEntry {
