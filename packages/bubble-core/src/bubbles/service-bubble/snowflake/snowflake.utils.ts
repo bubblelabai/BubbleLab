@@ -13,6 +13,46 @@ export interface SnowflakeCredentials {
 }
 
 /**
+ * Normalize a PEM private key so crypto.createPrivateKey() can always parse it.
+ *
+ * Handles every common way the key gets mangled:
+ *  - Newlines stripped entirely (single-line paste into <input>)
+ *  - Literal "\n" or "\\n" strings instead of real newlines
+ *  - Windows \r\n line endings
+ *  - Extra leading/trailing whitespace or Unicode BOM
+ *  - Mixed whitespace inside the base64 body
+ *  - Both PKCS#8 (BEGIN PRIVATE KEY) and PKCS#1 (BEGIN RSA PRIVATE KEY)
+ *  - Keys that are already correctly formatted (no-op)
+ */
+function normalizePemKey(key: string): string {
+  // Strip BOM and outer whitespace
+  let cleaned = key.replace(/^\uFEFF/, '').trim();
+
+  // Replace literal backslash-n sequences with real newlines
+  cleaned = cleaned.replace(/\\n/g, '\n');
+
+  // Normalize Windows line endings
+  cleaned = cleaned.replace(/\r\n/g, '\n');
+
+  // Extract header, body, footer — works for any PEM label
+  const match = cleaned.match(
+    /^(-----BEGIN [A-Z0-9 ]+-----)\s*([\s\S]*?)\s*(-----END [A-Z0-9 ]+-----)$/
+  );
+  if (!match) {
+    return cleaned; // Not recognizable PEM — return as-is, let crypto throw a clear error
+  }
+
+  const header = match[1];
+  const footer = match[3];
+
+  // Strip ALL whitespace from the base64 body then re-wrap at 64 chars
+  const body = match[2].replace(/\s+/g, '');
+  const wrapped = body.match(/.{1,64}/g)?.join('\n') ?? body;
+
+  return `${header}\n${wrapped}\n${footer}\n`;
+}
+
+/**
  * Parse a multi-field credential value into typed Snowflake fields.
  * Uses the shared decodeCredentialPayload() which handles both
  * base64 (injection path) and raw JSON (validator path).
@@ -27,7 +67,7 @@ export function parseSnowflakeCredential(value: string): SnowflakeCredentials {
   return {
     account: parsed.account,
     username: parsed.username,
-    privateKey: parsed.privateKey,
+    privateKey: normalizePemKey(parsed.privateKey),
     privateKeyPassword: parsed.privateKeyPassword || undefined,
     warehouse: parsed.warehouse || undefined,
     database: parsed.database || undefined,
