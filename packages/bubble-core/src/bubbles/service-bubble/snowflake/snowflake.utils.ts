@@ -25,6 +25,11 @@ export interface SnowflakeCredentials {
  *  - Keys that are already correctly formatted (no-op)
  */
 function normalizePemKey(key: string): string {
+  const tag = '[Snowflake:PEM]';
+  console.log(
+    `${tag} input: len=${key.length}, first80=${JSON.stringify(key.slice(0, 80))}, last40=${JSON.stringify(key.slice(-40))}`
+  );
+
   // Strip BOM and outer whitespace
   let cleaned = key.replace(/^\uFEFF/, '').trim();
 
@@ -39,6 +44,9 @@ function normalizePemKey(key: string): string {
     /^(-----BEGIN [A-Z0-9 ]+-----)\s*([\s\S]*?)\s*(-----END [A-Z0-9 ]+-----)$/
   );
   if (!match) {
+    console.log(
+      `${tag} NO PEM MATCH — returning as-is, first80=${JSON.stringify(cleaned.slice(0, 80))}`
+    );
     return cleaned; // Not recognizable PEM — return as-is, let crypto throw a clear error
   }
 
@@ -49,7 +57,11 @@ function normalizePemKey(key: string): string {
   const body = match[2].replace(/\s+/g, '');
   const wrapped = body.match(/.{1,64}/g)?.join('\n') ?? body;
 
-  return `${header}\n${wrapped}\n${footer}\n`;
+  const result = `${header}\n${wrapped}\n${footer}\n`;
+  console.log(
+    `${tag} normalized: header=${header}, bodyLen=${body.length}, totalLen=${result.length}, lines=${result.split('\n').length}`
+  );
+  return result;
 }
 
 /**
@@ -58,16 +70,31 @@ function normalizePemKey(key: string): string {
  * base64 (injection path) and raw JSON (validator path).
  */
 export function parseSnowflakeCredential(value: string): SnowflakeCredentials {
+  const tag = '[Snowflake:parse]';
+  console.log(
+    `${tag} raw value: len=${value.length}, isBase64=${!/^{/.test(value.trim())}, first40=${JSON.stringify(value.slice(0, 40))}`
+  );
+
   const parsed = decodeCredentialPayload<Record<string, string>>(value);
+  console.log(
+    `${tag} decoded: account=${parsed.account}, username=${parsed.username}, hasPrivateKey=${!!parsed.privateKey}, pkLen=${parsed.privateKey?.length ?? 0}`
+  );
+
   if (!parsed.account || !parsed.username || !parsed.privateKey) {
     throw new Error(
       'Snowflake credential is missing required fields: account, username, privateKey'
     );
   }
+
+  const normalizedKey = normalizePemKey(parsed.privateKey);
+  console.log(
+    `${tag} after normalize: pkLen=${normalizedKey.length}, startsWithHeader=${normalizedKey.startsWith('-----BEGIN')}`
+  );
+
   return {
     account: parsed.account,
     username: parsed.username,
-    privateKey: normalizePemKey(parsed.privateKey),
+    privateKey: normalizedKey,
     privateKeyPassword: parsed.privateKeyPassword || undefined,
     warehouse: parsed.warehouse || undefined,
     database: parsed.database || undefined,
@@ -86,17 +113,35 @@ export function parseSnowflakeCredential(value: string): SnowflakeCredentials {
  * - exp: current timestamp + 1 hour
  */
 export function generateSnowflakeJWT(creds: SnowflakeCredentials): string {
+  const tag = '[Snowflake:JWT]';
   // Snowflake JWT requires the account identifier as-is (keep hyphens)
   const accountUpper = creds.account.toUpperCase();
   const userUpper = creds.username.toUpperCase();
 
+  console.log(
+    `${tag} generating: account=${accountUpper}, user=${userUpper}, pkLen=${creds.privateKey.length}, hasPassphrase=${!!creds.privateKeyPassword}`
+  );
+
   // Create key object from PEM private key
-  const keyObject = crypto.createPrivateKey({
-    key: creds.privateKey,
-    ...(creds.privateKeyPassword && {
-      passphrase: creds.privateKeyPassword,
-    }),
-  });
+  let keyObject: crypto.KeyObject;
+  try {
+    keyObject = crypto.createPrivateKey({
+      key: creds.privateKey,
+      ...(creds.privateKeyPassword && {
+        passphrase: creds.privateKeyPassword,
+      }),
+    });
+    console.log(
+      `${tag} createPrivateKey succeeded: type=${keyObject.asymmetricKeyType}`
+    );
+  } catch (err) {
+    console.error(
+      `${tag} createPrivateKey FAILED: ${err instanceof Error ? err.message : String(err)}`,
+      `pkFirst80=${JSON.stringify(creds.privateKey.slice(0, 80))}`,
+      `pkLast40=${JSON.stringify(creds.privateKey.slice(-40))}`
+    );
+    throw err;
+  }
 
   // Extract public key and compute SHA-256 fingerprint
   const publicKey = crypto.createPublicKey(keyObject);
