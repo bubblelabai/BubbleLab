@@ -420,10 +420,21 @@ export class S3Bubble<
 
     await this.s3Client.send(command);
 
+    // Generate a presigned download URL for the uploaded file
+    const getCommand = new GetObjectCommand({
+      Bucket: params.bucketName,
+      Key: key,
+    });
+    const expirationSeconds = (params.expirationMinutes ?? 10080) * 60; // default 7 days
+    const fileUrl = await getSignedUrl(this.s3Client, getCommand, {
+      expiresIn: expirationSeconds,
+    });
+
     return {
       operation: 'updateFile',
       success: true,
       fileName: key,
+      fileUrl,
       updated: true,
       contentType: params.contentType,
       error: '',

@@ -82,7 +82,9 @@ export const S3ParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('updateFile')
-      .describe('Upload or replace file content'),
+      .describe(
+        'Upload or replace file content. Returns a presigned fileUrl for the uploaded file (default 7-day expiry).'
+      ),
     bucketName: z
       .string()
       .min(1, 'Bucket name is required')
@@ -97,6 +99,13 @@ export const S3ParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .optional()
       .describe('AWS region override (defaults from credential or us-east-1)'),
+    expirationMinutes: z
+      .number()
+      .optional()
+      .default(10080)
+      .describe(
+        'Presigned fileUrl expiration in minutes (default 10080 = 7 days, max 7 days for R2/S3)'
+      ),
     contentType: z.string().optional().describe('Content type for uploads'),
     fileContent: z
       .string()
@@ -196,7 +205,13 @@ export const S3ResultSchema = z.discriminatedUnion('operation', [
       .string()
       .optional()
       .describe(
-        'Secure filename for the updated file (different from the original filename)'
+        'Secure filename for the updated file (different from the original filename). Use this key with getFile to generate new download URLs.'
+      ),
+    fileUrl: z
+      .string()
+      .optional()
+      .describe(
+        'Presigned download URL for the uploaded file. Expires after expirationMinutes (default 7 days). Do NOT construct URLs manually — always use this field.'
       ),
     updated: z
       .boolean()
