@@ -75,6 +75,7 @@ export const fixtures = {
   'slack-with-custom-input': '',
   'custom-tool-spread-param': '',
   'agent-with-capability': '',
+  'ai-snack-club-backfill': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

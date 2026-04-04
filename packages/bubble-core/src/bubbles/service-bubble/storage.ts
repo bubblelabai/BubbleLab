@@ -105,7 +105,11 @@ const StorageParamsSchema = z.discriminatedUnion('operation', [
 
   // Update file operation
   z.object({
-    operation: z.literal('updateFile').describe('Update/replace file content'),
+    operation: z
+      .literal('updateFile')
+      .describe(
+        'Upload or replace file content. Returns a presigned fileUrl for the uploaded file (default 7-day expiry).'
+      ),
     bucketName: z
       .string()
       .min(1, 'Bucket name is required')
@@ -123,6 +127,13 @@ const StorageParamsSchema = z.discriminatedUnion('operation', [
       .optional()
       .default('auto')
       .describe('AWS region for R2 storage (defaults to auto)'),
+    expirationMinutes: z
+      .number()
+      .optional()
+      .default(10080)
+      .describe(
+        'Presigned fileUrl expiration in minutes (default 10080 = 7 days, max 7 days for R2)'
+      ),
     contentType: z.string().optional().describe('Content type for uploads'),
     fileContent: z
       .string()
@@ -226,7 +237,13 @@ const StorageResultSchema = z.discriminatedUnion('operation', [
       .string()
       .optional()
       .describe(
-        'Secure filename for the updated file (different from the original filename)'
+        'Secure filename for the updated file (different from the original filename). Use this key with getFile to generate new download URLs.'
+      ),
+    fileUrl: z
+      .string()
+      .optional()
+      .describe(
+        'Presigned download URL for the uploaded file. Expires after expirationMinutes (default 7 days). Do NOT construct URLs manually — always use this field.'
       ),
     updated: z
       .boolean()
@@ -568,10 +585,21 @@ export class StorageBubble<
 
     await this.s3Client.send(command);
 
+    // Generate a presigned download URL for the uploaded file
+    const getCommand = new GetObjectCommand({
+      Bucket: params.bucketName,
+      Key: secureFileName,
+    });
+    const expirationSeconds = (params.expirationMinutes ?? 10080) * 60; // default 7 days
+    const fileUrl = await getSignedUrl(this.s3Client, getCommand, {
+      expiresIn: expirationSeconds,
+    });
+
     return {
       operation: 'updateFile',
       success: true,
       fileName: secureFileName,
+      fileUrl,
       updated: true,
       contentType: params.contentType,
       error: '',

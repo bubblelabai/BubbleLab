@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import ts from 'typescript';
 import {
   enforcePayloadTypeRule,
+  noCastPayloadInHandleRule,
   noToStringOnExpectedOutputSchemaRule,
   noJsonStringifyOnExpectedOutputSchemaRule,
   noCapabilityInputsRule,
@@ -404,6 +405,77 @@ const config = {
 
     const registry = new LintRuleRegistry();
     registry.register(noCapabilityInputsRule);
+
+    const errors = registry.validateAll(sourceFile);
+
+    expect(errors.length).toBe(0);
+  });
+});
+
+describe('no-cast-payload-in-handle lint rule', () => {
+  it('should error when payload.body is cast via as unknown as', () => {
+    const code = `
+import { BubbleFlow, HttpBubble, type WebhookEvent } from '@bubblelab/bubble-core';
+
+interface FlowInputs {
+  google_doc_url: string;
+  to_email: string;
+}
+
+export class MyFlow extends BubbleFlow<'webhook/http'> {
+  async handle(payload: WebhookEvent): Promise<{ success: boolean }> {
+    const inputs = payload.body as unknown as FlowInputs;
+    return { success: true };
+  }
+}
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noCastPayloadInHandleRule);
+
+    const errors = registry.validateAll(sourceFile);
+
+    expect(errors.length).toBe(1);
+    expect(errors[0].message).toContain(
+      'Do not access payload.body and cast it'
+    );
+    expect(errors[0].message).toContain('extending the trigger event type');
+    expect(errors[0].message).toContain('handle(payload: FlowInputs)');
+  });
+
+  it('should not error when payload interface properly extends WebhookEvent', () => {
+    const code = `
+import { BubbleFlow, HttpBubble, type WebhookEvent } from '@bubblelab/bubble-core';
+
+export interface MyPayload extends WebhookEvent {
+  google_doc_url: string;
+  to_email: string;
+}
+
+export class MyFlow extends BubbleFlow<'webhook/http'> {
+  async handle(payload: MyPayload): Promise<{ success: boolean }> {
+    const { google_doc_url, to_email } = payload;
+    return { success: true };
+  }
+}
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noCastPayloadInHandleRule);
 
     const errors = registry.validateAll(sourceFile);
 

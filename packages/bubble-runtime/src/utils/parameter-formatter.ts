@@ -274,6 +274,34 @@ function replaceLines(
 }
 
 /**
+ * Extract any trailing characters (comma, semicolon, etc.) that appear after the
+ * bubble instantiation's closing paren/`.action()` on the last line of the bubble.
+ * These must be preserved when the multi-line instantiation is condensed into one line.
+ */
+function getTrailingSuffix(
+  lines: string[],
+  lastLineIndex: number,
+  hasActionCall: boolean
+): string {
+  if (lastLineIndex < 0 || lastLineIndex >= lines.length) return '';
+  const lastLine = lines[lastLineIndex].trimEnd();
+
+  // Find the end of the bubble expression on this line.
+  // If it has .action(), look for content after ".action()"; otherwise after the closing ")".
+  const marker = hasActionCall ? '.action()' : ')';
+  const markerPos = lastLine.lastIndexOf(marker);
+  if (markerPos === -1) return '';
+
+  const afterMarker = lastLine.substring(markerPos + marker.length).trim();
+  // Only preserve simple trailing punctuation (comma, semicolon, closing paren/bracket)
+  // to avoid carrying over unrelated code.
+  if (/^[,;)\]]*$/.test(afterMarker)) {
+    return afterMarker;
+  }
+  return '';
+}
+
+/**
  * Replace a bubble instantiation with updated parameters
  *
  * This function:
@@ -325,6 +353,15 @@ export function replaceBubbleInstantiation(
     const line = lines[i];
 
     if (line.includes(`new ${className}`)) {
+      // Determine trailing content after the bubble instantiation ends
+      // (e.g., a trailing comma, semicolon, or closing paren on the last line)
+      const lastLineIndex = location.endLine - 1;
+      const trailingSuffix = getTrailingSuffix(
+        lines,
+        lastLineIndex,
+        bubble.hasActionCall
+      );
+
       // Pattern 1: Variable assignment (const foo = new Bubble(...))
       const variableMatch = line.match(
         /^(\s*)(const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[^=]+)?=\s*/
@@ -334,7 +371,7 @@ export function replaceBubbleInstantiation(
         const [, indentation, declaration, variableName] = variableMatch;
         const hadAwait = /\bawait\b/.test(line);
         const actionCall = bubble.hasActionCall ? '.action()' : '';
-        const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}`;
+        const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}${trailingSuffix}`;
         const replacement = `${indentation}${declaration} ${variableName} = ${newExpression}`;
 
         const linesToDelete = location.endLine - (i + 1);
@@ -348,7 +385,7 @@ export function replaceBubbleInstantiation(
         );
         const hadAwait = /\bawait\b/.test(beforePattern);
         const actionCall = bubble.hasActionCall ? '.action()' : '';
-        const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}`;
+        const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}${trailingSuffix}`;
         const beforeClean = beforePattern.replace(/\bawait\s*$/, '');
         const replacement = `${beforeClean}${newExpression}`;
 
