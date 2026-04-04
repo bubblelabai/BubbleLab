@@ -1239,19 +1239,41 @@ export const noCastPayloadInHandleRule: LintRule = {
       }
     }
 
+    // Unwrap nested `as` expressions to get the innermost expression.
+    // e.g. `payload.body as unknown as FlowInputs` → `payload.body`
+    const unwrapAsExpressions = (node: ts.Expression): ts.Expression => {
+      while (ts.isAsExpression(node)) {
+        node = node.expression;
+      }
+      return node;
+    };
+
+    // Check if an expression references the payload parameter (directly or via property access).
+    // Matches: `payload`, `payload.body`, `payload.something`
+    const referencesPayload = (expr: ts.Expression): boolean => {
+      if (ts.isIdentifier(expr) && expr.text === payloadParamName) {
+        return true;
+      }
+      if (
+        ts.isPropertyAccessExpression(expr) &&
+        ts.isIdentifier(expr.expression) &&
+        expr.expression.text === payloadParamName
+      ) {
+        return true;
+      }
+      return false;
+    };
+
     // Walk the handle method body looking for 'as' expressions on the payload
     const findPayloadCasts = (node: ts.Node): void => {
-      // Check for type assertion: payload as SomeType
+      // Check for type assertion: payload as SomeType or payload.body as unknown as SomeType
       if (ts.isAsExpression(node)) {
-        const expression = node.expression;
         const targetType = node.type;
+        const innerExpr = unwrapAsExpressions(node);
 
-        // Check if the expression is the payload parameter
-        if (
-          ts.isIdentifier(expression) &&
-          expression.text === payloadParamName
-        ) {
-          // Get the target type name
+        // Check if the innermost expression references the payload parameter
+        if (referencesPayload(innerExpr)) {
+          // Get the outermost target type name
           let targetTypeName: string | null = null;
           if (ts.isTypeReferenceNode(targetType)) {
             if (ts.isIdentifier(targetType.typeName)) {
@@ -1265,10 +1287,19 @@ export const noCastPayloadInHandleRule: LintRule = {
               context.sourceFile.getLineAndCharacterOfPosition(
                 node.getStart(context.sourceFile)
               );
+
+            // Tailor the message for payload.body casts vs direct payload casts
+            const isBodyAccess =
+              ts.isPropertyAccessExpression(innerExpr) &&
+              innerExpr.name.text === 'body';
+            const fixHint = isBodyAccess
+              ? `Do not access payload.body and cast it. Instead, declare your input fields by extending the trigger event type: 'export interface ${targetTypeName} extends ${declaredTypeName ?? 'WebhookEvent'} { ... }' and use it as the parameter type: handle(payload: ${targetTypeName}).`
+              : `Do not cast payload to '${targetTypeName}' inside handle(). Instead, use '${targetTypeName}' as the parameter type directly: handle(payload: ${targetTypeName}).`;
+
             errors.push({
               line: line + 1,
               column: character + 1,
-              message: `Do not cast payload to '${targetTypeName}' inside handle(). Instead, use '${targetTypeName}' as the parameter type directly: handle(payload: ${targetTypeName}). This allows the parser to extract custom fields from your payload interface.`,
+              message: `${fixHint} This allows the parser to extract custom fields from your payload interface.`,
             });
           }
         }
