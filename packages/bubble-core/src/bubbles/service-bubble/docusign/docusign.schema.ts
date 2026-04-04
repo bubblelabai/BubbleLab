@@ -388,6 +388,22 @@ export const DocuSignParamsSchema = z.discriminatedUnion('operation', [
       ),
   }),
 
+  // Get template details
+  z.object({
+    operation: z
+      .literal('get_template')
+      .describe(
+        'Get details of a DocuSign template including its roles and fields'
+      ),
+    template_id: z.string().min(1).describe('DocuSign template ID'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
   // Download document
   z.object({
     operation: z
@@ -673,6 +689,41 @@ export const DocuSignResultSchema = z.discriminatedUnion('operation', [
       .optional()
       .describe('Number of results returned'),
     total_set_size: z.string().optional().describe('Total matching templates'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+  z.object({
+    operation: z.literal('get_template'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    template_id: z.string().optional().describe('Template ID'),
+    name: z.string().optional().describe('Template name'),
+    description: z.string().optional().describe('Template description'),
+    roles: z
+      .array(
+        z.object({
+          role_name: z.string().describe('Role name used for signer mapping'),
+          role_id: z.string().optional().describe('Role ID'),
+          signing_order: z.string().optional().describe('Signing order'),
+        })
+      )
+      .optional()
+      .describe('Template roles that signers can be mapped to'),
+    fields: z
+      .array(
+        z.object({
+          tab_label: z
+            .string()
+            .describe('Field label (use as key in template_data)'),
+          tab_type: z
+            .string()
+            .describe('Field type (e.g., text, signHere, dateSigned)'),
+          role_name: z
+            .string()
+            .optional()
+            .describe('Which role this field belongs to'),
+        })
+      )
+      .optional()
+      .describe('Template fields/tabs that can be pre-filled'),
     error: z.string().describe('Error message if operation failed'),
   }),
   z.object({

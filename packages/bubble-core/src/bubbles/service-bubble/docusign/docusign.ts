@@ -256,6 +256,13 @@ export class DocuSignBubble<
                 { operation: 'list_templates' }
               >
             );
+          case 'get_template':
+            return await this.getTemplate(
+              parsedParams as Extract<
+                DocuSignParams,
+                { operation: 'get_template' }
+              >
+            );
           case 'download_document':
             return await this.downloadDocument(
               parsedParams as Extract<
@@ -778,6 +785,71 @@ export class DocuSignBubble<
       templates,
       result_set_size: response.resultSetSize,
       total_set_size: response.totalSetSize,
+      error: '',
+    };
+  }
+
+  private async getTemplate(
+    params: Extract<DocuSignParams, { operation: 'get_template' }>
+  ): Promise<Extract<DocuSignResult, { operation: 'get_template' }>> {
+    const response = await this.makeDocuSignRequest(
+      `/templates/${params.template_id}?include=recipients,tabs`
+    );
+
+    // Extract roles from template recipients (signers)
+    const signers = response.recipients?.signers || [];
+    const roles = signers.map((s: Record<string, unknown>) => ({
+      role_name: (s.roleName as string) || '',
+      role_id: (s.recipientId as string) || '',
+      signing_order: (s.routingOrder as string) || '1',
+    }));
+
+    // Extract fields/tabs from all signers' tab definitions
+    const fields: Array<{
+      tab_label: string;
+      tab_type: string;
+      role_name: string;
+    }> = [];
+
+    for (const signer of signers) {
+      const roleName = (signer.roleName as string) || '';
+      const tabs = (signer.tabs || {}) as Record<string, unknown[]>;
+
+      const tabTypeMap: Record<string, string> = {
+        signHereTabs: 'signHere',
+        dateSignedTabs: 'dateSigned',
+        textTabs: 'text',
+        fullNameTabs: 'fullName',
+        emailTabs: 'email',
+        companyTabs: 'company',
+        titleTabs: 'title',
+        checkboxTabs: 'checkbox',
+        numberTabs: 'number',
+        dateTabs: 'date',
+      };
+
+      for (const [tabKey, tabArray] of Object.entries(tabs)) {
+        if (!Array.isArray(tabArray)) continue;
+        const tabType = tabTypeMap[tabKey] || tabKey.replace(/Tabs$/, '');
+        for (const tab of tabArray) {
+          const t = tab as Record<string, unknown>;
+          fields.push({
+            tab_label: (t.tabLabel as string) || tabType,
+            tab_type: tabType,
+            role_name: roleName,
+          });
+        }
+      }
+    }
+
+    return {
+      operation: 'get_template',
+      success: true,
+      template_id: response.templateId,
+      name: response.name,
+      description: response.description,
+      roles,
+      fields,
       error: '',
     };
   }
