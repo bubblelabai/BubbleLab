@@ -18,6 +18,7 @@ describe('BubbleRunner correctly runs and plans', () => {
   const helloWorldMultipleScript = getFixture('hello-world-multiple');
   const researchWeatherScript = getFixture('research-weather');
   const customToolSpreadParamScript = getFixture('custom-tool-spread-param');
+  const aiSnackClubBackfillScript = getFixture('ai-snack-club-backfill');
   beforeEach(async () => {
     await bubbleFactory.registerDefaults();
   });
@@ -159,6 +160,30 @@ describe('BubbleRunner correctly runs and plans', () => {
         result.success ||
           result.error?.includes('credentials') ||
           result.error?.includes('Google')
+      ).toBe(true);
+    }, 300000);
+
+    it('should execute ai-snack-club-backfill flow (complex retry + zod + multi-bubble private methods)', async () => {
+      const runner = new BubbleRunner(
+        aiSnackClubBackfillScript,
+        bubbleFactory,
+        {
+          pricingTable: {},
+        }
+      );
+
+      runner.injector.injectCredentials([], getUserCredential());
+
+      const result = await runner.runAll();
+      console.log(runner.getLogger()?.getExecutionSummary());
+      console.log(runner.getLogger()?.getLogs());
+      console.log(result);
+      expect(result).toBeDefined();
+      expect(
+        result.success ||
+          result.error?.includes('credentials') ||
+          result.error?.includes('Google') ||
+          result.error?.includes('Cannot find package')
       ).toBe(true);
     }, 300000);
   });
