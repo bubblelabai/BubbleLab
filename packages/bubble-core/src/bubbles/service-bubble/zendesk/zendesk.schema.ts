@@ -120,6 +120,12 @@ export const ZendeskParamsSchema = z.discriminatedUnion('operation', [
       .describe(
         'Custom field values. Use list_ticket_fields to discover available fields and their IDs.'
       ),
+    uploads: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Upload tokens from upload_attachment to attach files to the initial ticket comment'
+      ),
     credentials: credentialsField,
   }),
 
@@ -165,6 +171,12 @@ export const ZendeskParamsSchema = z.discriminatedUnion('operation', [
       .optional()
       .describe(
         'Custom field values to set. Use list_ticket_fields to discover available fields and their IDs.'
+      ),
+    uploads: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Upload tokens from upload_attachment to attach files to the comment'
       ),
     credentials: credentialsField,
   }),
@@ -572,6 +584,29 @@ export const ZendeskParamsSchema = z.discriminatedUnion('operation', [
       .describe('Results per page (1-100, default 25)'),
     credentials: credentialsField,
   }),
+
+  // Upload attachment
+  z.object({
+    operation: z
+      .literal('upload_attachment')
+      .describe(
+        'Upload a file to Zendesk and get an upload token for attaching to tickets'
+      ),
+    filename: z
+      .string()
+      .min(1)
+      .describe(
+        'Filename with extension (e.g., "report.pdf", "screenshot.png")'
+      ),
+    content: z.string().min(1).describe('Base64-encoded file content'),
+    content_type: z
+      .string()
+      .optional()
+      .describe(
+        'MIME type of the file (e.g., "application/pdf"). Defaults to "application/octet-stream"'
+      ),
+    credentials: credentialsField,
+  }),
 ]);
 
 // Zendesk record schemas for response data
@@ -620,6 +655,18 @@ const ZendeskCommentSchema = z
     html_body: z.string().optional().describe('Comment body HTML'),
     public: z.boolean().optional().describe('Whether comment is public'),
     author_id: z.number().optional().describe('Author user ID'),
+    attachments: z
+      .array(
+        z.object({
+          id: z.number().describe('Attachment ID'),
+          file_name: z.string().describe('Filename'),
+          content_url: z.string().describe('URL to download the attachment'),
+          content_type: z.string().describe('MIME type'),
+          size: z.number().describe('File size in bytes'),
+        })
+      )
+      .optional()
+      .describe('File attachments on this comment'),
     created_at: z.string().optional().describe('Created timestamp'),
   })
   .describe('A Zendesk ticket comment');
@@ -1004,6 +1051,30 @@ export const ZendeskResultSchema = z.discriminatedUnion('operation', [
     macros: z.array(ZendeskMacroSchema).optional().describe('Matching macros'),
     count: z.number().optional().describe('Total result count'),
     next_page: z.string().optional().nullable().describe('Next page URL'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Upload attachment result
+  z.object({
+    operation: z.literal('upload_attachment'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    upload: z
+      .object({
+        token: z
+          .string()
+          .describe('Upload token to include in ticket comment uploads array'),
+        attachment: z
+          .object({
+            id: z.number().describe('Attachment ID'),
+            file_name: z.string().describe('Uploaded filename'),
+            content_url: z.string().describe('URL to access the attachment'),
+            size: z.number().describe('File size in bytes'),
+            content_type: z.string().describe('MIME type of the file'),
+          })
+          .describe('Attachment metadata'),
+      })
+      .optional()
+      .describe('Upload result with token and attachment info'),
     error: z.string().describe('Error message if operation failed'),
   }),
 ]);

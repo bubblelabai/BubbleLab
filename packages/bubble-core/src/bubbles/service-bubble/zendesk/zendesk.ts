@@ -147,7 +147,8 @@ export class ZendeskBubble<
   private async makeZendeskApiRequest(
     endpoint: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
-    body?: unknown
+    body?: unknown,
+    options?: { binary?: Buffer; contentType?: string }
   ): Promise<any> {
     const creds = this.parseCredentials();
     if (!creds) {
@@ -160,18 +161,25 @@ export class ZendeskBubble<
       ? endpoint
       : `https://${creds.subdomain}.zendesk.com${endpoint}`;
 
-    const requestInit: RequestInit = {
-      method,
-      headers: {
-        Authorization: `Bearer ${creds.accessToken}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${creds.accessToken}`,
+      Accept: 'application/json',
     };
 
-    if (body && method !== 'GET') {
-      requestInit.body = JSON.stringify(body);
+    const requestInit: RequestInit = { method };
+
+    if (options?.binary) {
+      headers['Content-Type'] =
+        options.contentType ?? 'application/octet-stream';
+      requestInit.body = options.binary;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      if (body && method !== 'GET') {
+        requestInit.body = JSON.stringify(body);
+      }
     }
+
+    requestInit.headers = headers;
 
     const response = await fetch(url, requestInit);
 
@@ -338,6 +346,13 @@ export class ZendeskBubble<
                 { operation: 'search_macros' }
               >
             );
+          case 'upload_attachment':
+            return await this.uploadAttachment(
+              parsedParams as Extract<
+                ZendeskParams,
+                { operation: 'upload_attachment' }
+              >
+            );
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -417,7 +432,10 @@ export class ZendeskBubble<
   ): Promise<Extract<ZendeskResult, { operation: 'create_ticket' }>> {
     const ticketBody: Record<string, unknown> = {
       subject: params.subject,
-      comment: { body: params.body },
+      comment: {
+        body: params.body,
+        ...(params.uploads?.length ? { uploads: params.uploads } : {}),
+      },
     };
 
     if (params.requester_email) {
@@ -461,6 +479,13 @@ export class ZendeskBubble<
       ticketBody.comment = {
         body: params.comment,
         public: params.public ?? true,
+        ...(params.uploads?.length ? { uploads: params.uploads } : {}),
+      };
+    } else if (params.uploads?.length) {
+      ticketBody.comment = {
+        body: '',
+        public: params.public ?? true,
+        uploads: params.uploads,
       };
     }
     if (params.status) ticketBody.status = params.status;
@@ -972,6 +997,89 @@ export class ZendeskBubble<
     };
   }
 
+  private static readonly MIME_TYPES: Record<string, string> = {
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    csv: 'text/csv',
+    txt: 'text/plain',
+    html: 'text/html',
+    htm: 'text/html',
+    json: 'application/json',
+    xml: 'application/xml',
+    zip: 'application/zip',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    svg: 'image/svg+xml',
+    webp: 'image/webp',
+    mp4: 'video/mp4',
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+  };
+
+  private inferContentType(filename: string, explicit?: string): string {
+    if (explicit) return explicit;
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext && ext in ZendeskBubble.MIME_TYPES) {
+      return ZendeskBubble.MIME_TYPES[ext];
+    }
+    return 'application/octet-stream';
+  }
+
+  private async uploadAttachment(
+    params: Extract<ZendeskParams, { operation: 'upload_attachment' }>
+  ): Promise<Extract<ZendeskResult, { operation: 'upload_attachment' }>> {
+    const { filename, content, content_type } = params;
+
+    let fileBuffer = Buffer.from(content, 'base64');
+    const resolvedContentType = this.inferContentType(filename, content_type);
+
+    // Strip UTF-8 BOM if present — Zendesk rejects text files with BOM
+    // as "file type and file extension do not match"
+    if (
+      resolvedContentType.startsWith('text/') &&
+      fileBuffer.length >= 3 &&
+      fileBuffer[0] === 0xef &&
+      fileBuffer[1] === 0xbb &&
+      fileBuffer[2] === 0xbf
+    ) {
+      fileBuffer = fileBuffer.subarray(3);
+    }
+
+    const response = await this.makeZendeskApiRequest(
+      `/api/v2/uploads.json?filename=${encodeURIComponent(filename)}`,
+      'POST',
+      undefined,
+      {
+        binary: fileBuffer,
+        contentType: resolvedContentType,
+      }
+    );
+
+    const upload = response.upload;
+    return {
+      operation: 'upload_attachment',
+      success: true,
+      upload: {
+        token: upload.token,
+        attachment: {
+          id: upload.attachment.id,
+          file_name: upload.attachment.file_name,
+          content_url: upload.attachment.content_url,
+          size: upload.attachment.size,
+          content_type: upload.attachment.content_type,
+        },
+      },
+      error: '',
+    };
+  }
+
   // ---- Mappers ----
 
   private mapTicket = (t: any) => ({
@@ -996,6 +1104,13 @@ export class ZendeskBubble<
     html_body: c.html_body,
     public: c.public,
     author_id: c.author_id,
+    attachments: (c.attachments || []).map((a: any) => ({
+      id: a.id,
+      file_name: a.file_name,
+      content_url: a.content_url,
+      content_type: a.content_type,
+      size: a.size,
+    })),
     created_at: c.created_at,
   });
 
