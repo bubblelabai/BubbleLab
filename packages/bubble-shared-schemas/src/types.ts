@@ -126,6 +126,9 @@ export enum CredentialType {
 
   // DocuSign Credentials
   DOCUSIGN_CRED = 'DOCUSIGN_CRED',
+
+  // Metabase Credentials
+  METABASE_CRED = 'METABASE_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -213,4 +216,5 @@ export type BubbleName =
   | 'asana'
   | 'discord'
   | 'sortly'
-  | 'docusign';
+  | 'docusign'
+  | 'metabase';

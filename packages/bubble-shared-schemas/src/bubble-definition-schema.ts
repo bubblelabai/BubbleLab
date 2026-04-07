@@ -84,6 +84,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.ASANA_CRED]: {},
   [CredentialType.DISCORD_CRED]: {},
   [CredentialType.DOCUSIGN_CRED]: {},
+  [CredentialType.METABASE_CRED]: {},
   [CredentialType.CREDENTIAL_WILDCARD]: {}, // Wildcard marker, not a real credential
 };
 

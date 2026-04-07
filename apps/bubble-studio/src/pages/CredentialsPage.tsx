@@ -114,6 +114,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.ASANA_CRED]: 'Asana',
     [CredentialType.DISCORD_CRED]: 'Discord',
     [CredentialType.DOCUSIGN_CRED]: 'DocuSign',
+    [CredentialType.METABASE_CRED]: 'Metabase',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

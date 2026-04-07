@@ -650,6 +650,28 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My DocuSign Account',
       credentialConfigurations: {},
     },
+    [CredentialType.METABASE_CRED]: {
+      label: 'Metabase',
+      description:
+        'Credentials for Metabase analytics and reporting (instance URL + API key)',
+      placeholder: '',
+      namePlaceholder: 'My Metabase Connection',
+      credentialConfigurations: {},
+      fields: [
+        {
+          key: 'url',
+          label: 'Metabase URL',
+          placeholder: 'https://metabase.example.com',
+          type: 'text',
+        },
+        {
+          key: 'apiKey',
+          label: 'API Key',
+          placeholder: 'Your Metabase API key',
+          type: 'password',
+        },
+      ],
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -732,6 +754,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.ASANA_CRED]: '', // OAuth credential, no env var
   [CredentialType.DISCORD_CRED]: '', // OAuth credential, no env var
   [CredentialType.DOCUSIGN_CRED]: '', // OAuth credential, no env var
+  [CredentialType.METABASE_CRED]: '', // Multi-field credential (url + apiKey), no single env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -2679,6 +2702,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   discord: [CredentialType.DISCORD_CRED],
   sortly: [CredentialType.SORTLY_API_KEY],
   docusign: [CredentialType.DOCUSIGN_CRED],
+  metabase: [CredentialType.METABASE_CRED],
 };
 
 export interface CredentialSiblingEntry {

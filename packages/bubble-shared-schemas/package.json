@@ -29,9 +29,10 @@
     "test": "vitest run",
     "prepublishOnly": "pnpm run build"
   },
-  "dependencies": {
-    "zod": "=3.25.76",
-    "@hono/zod-openapi": "=0.18.3"
+  "dependencies": {},
+  "peerDependencies": {
+    "zod": ">=3.25.0",
+    "@hono/zod-openapi": ">=0.18.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.15",
