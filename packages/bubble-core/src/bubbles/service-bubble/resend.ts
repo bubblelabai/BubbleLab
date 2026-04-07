@@ -20,56 +20,81 @@ const AttachmentSchema = z.object({
     .describe('URL where the attachment file is hosted'),
 });
 
+// Shared schema for a single email payload (reused by send_email and send_batch_emails)
+const EmailFieldsSchema = z.object({
+  from: z
+    .string()
+    .default('Bubble Lab Team <welcome@hello.bubblelab.ai>')
+    .describe(
+      'Sender email address, should not be changed from <welcome@hello.bubblelab.ai> if resend account has not been setup with domain verification'
+    ),
+  to: z
+    .union([EmailAddressSchema, z.array(EmailAddressSchema)])
+    .describe(
+      'Recipient email address(es). For multiple addresses, send as an array of strings. Max 50.'
+    ),
+  cc: z
+    .union([EmailAddressSchema, z.array(EmailAddressSchema)])
+    .optional()
+    .describe(
+      'CC email address(es). For multiple addresses, send as an array of strings.'
+    ),
+  bcc: z
+    .union([EmailAddressSchema, z.array(EmailAddressSchema)])
+    .optional()
+    .describe(
+      'BCC email address(es). For multiple addresses, send as an array of strings.'
+    ),
+  subject: z
+    .string()
+    .min(1, 'Subject is required')
+    .describe('Email subject line'),
+  text: z
+    .string()
+    .optional()
+    .describe(
+      'Email content (supports markdown — automatically converted to HTML for rendering)'
+    ),
+  html: z
+    .string()
+    .optional()
+    .describe(
+      'HTML email content. If not provided and text is set, HTML is auto-generated from text.'
+    ),
+  reply_to: z
+    .union([EmailAddressSchema, z.array(EmailAddressSchema)])
+    .optional()
+    .describe(
+      'Reply-to email address(es). For multiple addresses, send as an array of strings.'
+    ),
+  tags: z
+    .array(
+      z.object({
+        name: z
+          .string()
+          .describe(
+            'Tag name (ASCII letters, numbers, underscores, dashes only, max 256 chars)'
+          ),
+        value: z
+          .string()
+          .describe(
+            'Tag value (ASCII letters, numbers, underscores, dashes only, max 256 chars)'
+          ),
+      })
+    )
+    .optional()
+    .describe('Array of email tags for tracking and analytics'),
+  headers: z
+    .record(z.string())
+    .optional()
+    .describe('Custom email headers (e.g., X-Custom-Header)'),
+});
+
 // Define the parameters schema for Resend operations
 const ResendParamsSchema = z.discriminatedUnion('operation', [
   // Send email operation
-  z.object({
+  EmailFieldsSchema.extend({
     operation: z.literal('send_email').describe('Send an email via Resend'),
-    from: z
-      .string()
-      .default('Bubble Lab Team <welcome@hello.bubblelab.ai>')
-      .describe(
-        'Sender email address, should not be changed from <welcome@hello.bubblelab.ai> if resend account has not been setup with domain verification'
-      ),
-    to: z
-      .union([EmailAddressSchema, z.array(EmailAddressSchema)])
-      .describe(
-        'Recipient email address(es). For multiple addresses, send as an array of strings. Max 50.'
-      ),
-    cc: z
-      .union([EmailAddressSchema, z.array(EmailAddressSchema)])
-      .optional()
-      .describe(
-        'CC email address(es). For multiple addresses, send as an array of strings.'
-      ),
-    bcc: z
-      .union([EmailAddressSchema, z.array(EmailAddressSchema)])
-      .optional()
-      .describe(
-        'BCC email address(es). For multiple addresses, send as an array of strings.'
-      ),
-    subject: z
-      .string()
-      .min(1, 'Subject is required')
-      .describe('Email subject line'),
-    text: z
-      .string()
-      .optional()
-      .describe(
-        'Email content (supports markdown — automatically converted to HTML for rendering)'
-      ),
-    html: z
-      .string()
-      .optional()
-      .describe(
-        'HTML email content. If not provided and text is set, HTML is auto-generated from text.'
-      ),
-    reply_to: z
-      .union([EmailAddressSchema, z.array(EmailAddressSchema)])
-      .optional()
-      .describe(
-        'Reply-to email address(es). For multiple addresses, send as an array of strings.'
-      ),
     scheduled_at: z
       .string()
       .optional()
@@ -80,27 +105,24 @@ const ResendParamsSchema = z.discriminatedUnion('operation', [
       .array(AttachmentSchema)
       .optional()
       .describe('Array of email attachments (max 40MB total per email)'),
-    tags: z
-      .array(
-        z.object({
-          name: z
-            .string()
-            .describe(
-              'Tag name (ASCII letters, numbers, underscores, dashes only, max 256 chars)'
-            ),
-          value: z
-            .string()
-            .describe(
-              'Tag value (ASCII letters, numbers, underscores, dashes only, max 256 chars)'
-            ),
-        })
-      )
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
       .optional()
-      .describe('Array of email tags for tracking and analytics'),
-    headers: z
-      .record(z.string())
-      .optional()
-      .describe('Custom email headers (e.g., X-Custom-Header)'),
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Send batch emails operation
+  z.object({
+    operation: z
+      .literal('send_batch_emails')
+      .describe('Send up to 100 batch emails in a single API call'),
+    emails: z
+      .array(EmailFieldsSchema)
+      .min(1, 'At least one email is required')
+      .max(100, 'Maximum 100 emails per batch')
+      .describe('Array of email objects to send in a single batch (max 100).'),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -134,6 +156,18 @@ const ResendResultSchema = z.discriminatedUnion('operation', [
     success: z.boolean().describe('Whether the email was sent successfully'),
     email_id: z.string().optional().describe('Resend email ID if successful'),
     error: z.string().describe('Error message if email sending failed'),
+  }),
+
+  z.object({
+    operation: z
+      .literal('send_batch_emails')
+      .describe('Send batch emails via Resend'),
+    success: z.boolean().describe('Whether the batch was sent successfully'),
+    email_ids: z
+      .array(z.string())
+      .optional()
+      .describe('Array of Resend email IDs for each sent email'),
+    error: z.string().describe('Error message if batch sending failed'),
   }),
 
   z.object({
@@ -346,6 +380,8 @@ export class ResendBubble<
         switch (operation) {
           case 'send_email':
             return await this.sendEmail(this.params);
+          case 'send_batch_emails':
+            return await this.sendBatchEmails(this.params);
           case 'get_email_status':
             return await this.getEmailStatus(this.params);
           default:
@@ -476,6 +512,115 @@ export class ResendBubble<
       operation: 'send_email',
       success: true,
       email_id: data?.id,
+      error: '',
+    };
+  }
+
+  private async sendBatchEmails(
+    params: Extract<ResendParams, { operation: 'send_batch_emails' }>
+  ): Promise<Extract<ResendResult, { operation: 'send_batch_emails' }>> {
+    if (!this.resend) {
+      throw new Error('Resend client not initialized');
+    }
+
+    const { emails } = params;
+
+    // Build payloads for each email
+    const payloads: CreateEmailOptions[] = [];
+    let totalRecipientCount = 0;
+
+    for (const email of emails) {
+      const {
+        from,
+        to,
+        cc,
+        bcc,
+        subject,
+        text,
+        html,
+        reply_to,
+        tags,
+        headers,
+      } = email;
+
+      if (!text && !html) {
+        throw new Error(
+          `Either text or html content must be provided for email to ${Array.isArray(to) ? to.join(', ') : to}`
+        );
+      }
+
+      const resolvedHtml = html || (text ? markdownToHtml(text) : undefined);
+
+      // Validate from domain
+      if (from) {
+        try {
+          await this.validateFromDomain(from);
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            !error.message.includes('restricted_api_key')
+          ) {
+            throw error;
+          }
+        }
+      }
+
+      const payload: CreateEmailOptions = {
+        from: from!,
+        to,
+        subject,
+        react: undefined,
+      };
+
+      if (cc) payload.cc = cc;
+      if (bcc) payload.bcc = bcc;
+      if (text) payload.text = text;
+      if (resolvedHtml) payload.html = resolvedHtml;
+      if (reply_to) payload.replyTo = reply_to;
+      if (tags) payload.tags = tags;
+      if (headers) payload.headers = headers;
+
+      payloads.push(payload);
+
+      totalRecipientCount +=
+        (Array.isArray(to) ? to.length : 1) +
+        (cc ? (Array.isArray(cc) ? cc.length : 1) : 0) +
+        (bcc ? (Array.isArray(bcc) ? bcc.length : 1) : 0);
+    }
+
+    const { data, error } = await this.resend.batch.send(payloads);
+
+    if (error) {
+      return {
+        operation: 'send_batch_emails',
+        success: false,
+        error:
+          error.message ||
+          `Failed to send batch emails: ${JSON.stringify(error)}`,
+      } as Extract<ResendResult, { operation: 'send_batch_emails' }>;
+    }
+
+    // Log service usage
+    if (totalRecipientCount > 0 && this.context?.logger) {
+      this.context.logger.logTokenUsage(
+        {
+          usage: totalRecipientCount,
+          service: CredentialType.RESEND_CRED,
+          unit: 'per_email',
+        },
+        `Resend batch sent: ${totalRecipientCount} email(s) across ${emails.length} message(s)`,
+        {
+          bubbleName: 'resend',
+          variableId: this.context?.variableId,
+          operationType: 'bubble_execution',
+        }
+      );
+    }
+
+    return {
+      operation: 'send_batch_emails',
+      success: true,
+      email_ids: data?.data?.map((d) => d.id) ?? [],
       error: '',
     };
   }
