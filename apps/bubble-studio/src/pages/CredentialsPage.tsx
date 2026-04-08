@@ -115,6 +115,8 @@ const getServiceNameForCredentialType = (
     [CredentialType.DISCORD_CRED]: 'Discord',
     [CredentialType.DOCUSIGN_CRED]: 'DocuSign',
     [CredentialType.METABASE_CRED]: 'Metabase',
+    [CredentialType.CLERK_CRED]: 'Clerk',
+    [CredentialType.CLERK_API_KEY]: 'Clerk',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

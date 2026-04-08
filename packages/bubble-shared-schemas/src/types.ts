@@ -129,6 +129,10 @@ export enum CredentialType {
 
   // Metabase Credentials
   METABASE_CRED = 'METABASE_CRED',
+
+  // Clerk Credentials
+  CLERK_CRED = 'CLERK_CRED',
+  CLERK_API_KEY = 'CLERK_API_KEY',
 }
 
 // Define all bubble names as a union type for type safety
@@ -217,4 +221,5 @@ export type BubbleName =
   | 'discord'
   | 'sortly'
   | 'docusign'
-  | 'metabase';
+  | 'metabase'
+  | 'clerk';

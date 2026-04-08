@@ -190,6 +190,7 @@ export class BubbleFactory {
       'sortly',
       'docusign',
       'metabase',
+      'clerk',
     ];
   }
 
@@ -458,6 +459,9 @@ export class BubbleFactory {
     const { MetabaseBubble } = await import(
       './bubbles/service-bubble/metabase/index.js'
     );
+    const { ClerkBubble } = await import(
+      './bubbles/service-bubble/clerk/index.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -633,6 +637,7 @@ export class BubbleFactory {
     this.register('sortly', SortlyBubble as BubbleClassWithMetadata);
     this.register('docusign', DocuSignBubble as BubbleClassWithMetadata);
     this.register('metabase', MetabaseBubble as BubbleClassWithMetadata);
+    this.register('clerk', ClerkBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {

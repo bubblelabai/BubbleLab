@@ -672,6 +672,22 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
         },
       ],
     },
+    [CredentialType.CLERK_CRED]: {
+      label: 'Clerk',
+      description:
+        'OAuth connection to Clerk for user management and authentication',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Clerk Connection',
+      credentialConfigurations: {},
+    },
+    [CredentialType.CLERK_API_KEY]: {
+      label: 'Clerk (Secret Key)',
+      description:
+        'Clerk Secret Key for Backend API access (user management, organizations, billing)',
+      placeholder: 'sk_test_... or sk_live_...',
+      namePlaceholder: 'My Clerk Secret Key',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -755,6 +771,8 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.DISCORD_CRED]: '', // OAuth credential, no env var
   [CredentialType.DOCUSIGN_CRED]: '', // OAuth credential, no env var
   [CredentialType.METABASE_CRED]: '', // Multi-field credential (url + apiKey), no single env var
+  [CredentialType.CLERK_CRED]: '', // OAuth credential, no env var
+  [CredentialType.CLERK_API_KEY]: '', // User-provided Secret Key, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -806,7 +824,8 @@ export type OAuthProvider =
   | 'salesforce'
   | 'asana'
   | 'discord'
-  | 'docusign';
+  | 'docusign'
+  | 'clerk';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -2336,6 +2355,61 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       prompt: 'login',
     },
   },
+  clerk: {
+    name: 'clerk',
+    displayName: 'Clerk',
+    credentialTypes: {
+      [CredentialType.CLERK_CRED]: {
+        displayName: 'Clerk',
+        defaultScopes: [
+          'openid',
+          'profile',
+          'email',
+          'public_metadata',
+          'private_metadata',
+          'offline_access',
+        ],
+        description:
+          'Connect to Clerk for user management, organizations, and billing',
+        scopeDescriptions: [
+          {
+            scope: 'openid',
+            description: 'OpenID Connect authentication',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'profile',
+            description: 'View user profile information',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'email',
+            description: 'View user email addresses',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'public_metadata',
+            description: 'Access user public metadata',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'private_metadata',
+            description: 'Access user private metadata',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'offline_access',
+            description:
+              'Maintain access when you are not actively using the app',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+    authorizationParams: {
+      prompt: 'consent',
+    },
+  },
 };
 
 /**
@@ -2703,6 +2777,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   sortly: [CredentialType.SORTLY_API_KEY],
   docusign: [CredentialType.DOCUSIGN_CRED],
   metabase: [CredentialType.METABASE_CRED],
+  clerk: [CredentialType.CLERK_CRED],
 };
 
 export interface CredentialSiblingEntry {
