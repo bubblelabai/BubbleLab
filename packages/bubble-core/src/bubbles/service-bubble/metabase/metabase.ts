@@ -109,7 +109,7 @@ export class MetabaseBubble<
           case 'get_card':
             return await this.getCard(p.card_id);
           case 'query_card':
-            return await this.queryCard(p.card_id, p.parameters);
+            return await this.queryCard(p.card_id, p.parameters, p.pivot);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -212,7 +212,8 @@ export class MetabaseBubble<
 
   private async queryCard(
     cardId: number,
-    parameters?: Record<string, unknown>
+    parameters?: Record<string, unknown>,
+    pivot?: boolean
   ): Promise<Extract<MetabaseResult, { operation: 'query_card' }>> {
     const creds = this.getCredentials();
     if (!creds) {
@@ -224,18 +225,28 @@ export class MetabaseBubble<
     }
 
     const body = parameters ? { parameters } : undefined;
-    const data = await this.makeMetabaseRequest(
+    const endpoint = pivot
+      ? `/api/card/pivot/${cardId}/query`
+      : `/api/card/${cardId}/query`;
+    const raw = (await this.makeMetabaseRequest(
       creds,
-      `/api/card/${cardId}/query`,
+      endpoint,
       'POST',
       body
-    );
+    )) as Record<string, any>;
 
+    // Flatten: extract rows/cols from Metabase's nested data.data structure
+    const inner = raw.data ?? {};
     return {
       operation: 'query_card',
       success: true,
       error: '',
-      data: data as any,
+      data: {
+        rows: inner.rows ?? [],
+        cols: inner.cols ?? [],
+        row_count: raw.row_count,
+        status: raw.status,
+      },
     };
   }
 
@@ -265,7 +276,22 @@ export class MetabaseBubble<
     if (!response.ok) {
       let errorBody = '';
       try {
-        errorBody = await response.text();
+        const raw = await response.text();
+        // Try JSON first — Metabase often returns { message: "..." }
+        try {
+          const json = JSON.parse(raw);
+          errorBody = json.message || json.error || JSON.stringify(json);
+        } catch {
+          // Strip HTML: remove script/style blocks entirely, then remaining tags
+          errorBody = raw.includes('<')
+            ? raw
+                .replace(/<script[\s\S]*?<\/script>/gi, '')
+                .replace(/<style[\s\S]*?<\/style>/gi, '')
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+            : raw;
+        }
       } catch {
         // ignore parse error
       }

@@ -10,8 +10,16 @@ export const MetabaseDashcardSchema = z
     card_id: z.number().nullable().describe('ID of the card in this dashcard'),
     card: z
       .object({
-        id: z.number().describe('Card ID'),
-        name: z.string().describe('Card name'),
+        id: z
+          .number()
+          .nullable()
+          .optional()
+          .describe('Card ID (null/absent for text/heading dashcards)'),
+        name: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('Card name (null/absent for text/heading dashcards)'),
         display: z.string().optional().describe('Card display type'),
         description: z
           .string()
@@ -19,8 +27,10 @@ export const MetabaseDashcardSchema = z
           .optional()
           .describe('Card description'),
       })
+      .passthrough()
+      .nullable()
       .optional()
-      .describe('Embedded card metadata'),
+      .describe('Embedded card metadata (null for virtual/text dashcards)'),
     row: z.number().describe('Row position on dashboard grid'),
     col: z.number().describe('Column position on dashboard grid'),
     size_x: z.number().describe('Width in grid units'),
@@ -109,38 +119,29 @@ export const MetabaseCardSchema = z
 
 export const MetabaseQueryResultSchema = z
   .object({
-    data: z
-      .object({
-        rows: z.array(z.array(z.unknown())).describe('Result data rows'),
-        cols: z
-          .array(
-            z
-              .object({
-                name: z.string().describe('Column name'),
-                display_name: z
-                  .string()
-                  .optional()
-                  .describe('Display name for column'),
-                base_type: z
-                  .string()
-                  .optional()
-                  .describe('Base data type of column'),
-              })
-              .passthrough()
-          )
-          .describe('Column metadata'),
-        rows_truncated: z
-          .number()
-          .optional()
-          .describe('Number of rows truncated'),
-      })
-      .passthrough()
-      .describe('Query result data'),
-    status: z.string().optional().describe('Query execution status'),
+    rows: z.array(z.array(z.unknown())).describe('Result data rows'),
+    cols: z
+      .array(
+        z
+          .object({
+            name: z.string().describe('Column name'),
+            display_name: z
+              .string()
+              .optional()
+              .describe('Display name for column'),
+            base_type: z
+              .string()
+              .optional()
+              .describe('Base data type of column'),
+          })
+          .passthrough()
+      )
+      .describe('Column metadata'),
     row_count: z.number().optional().describe('Total number of rows returned'),
+    status: z.string().optional().describe('Query execution status'),
   })
   .passthrough()
-  .describe('Metabase query result object');
+  .describe('Flattened Metabase query result — rows and cols at top level');
 
 // ============================================================================
 // OPERATION SCHEMAS - Input Parameters
@@ -175,6 +176,12 @@ const QueryCardSchema = z.object({
     .literal('query_card')
     .describe("Execute a card's query and return results"),
   card_id: z.number().describe('The card ID to query'),
+  pivot: z
+    .boolean()
+    .optional()
+    .describe(
+      'Use the pivot endpoint (/api/card/pivot/:id/query) for pivot-table results'
+    ),
   parameters: z
     .record(z.unknown())
     .optional()

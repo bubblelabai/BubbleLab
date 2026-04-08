@@ -47,7 +47,8 @@ export type CapabilityId =
   | 'salesforce-assistant'
   | 'asana-assistant'
   | 'discord-assistant'
-  | 'docusign-assistant';
+  | 'docusign-assistant'
+  | 'metabase-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
