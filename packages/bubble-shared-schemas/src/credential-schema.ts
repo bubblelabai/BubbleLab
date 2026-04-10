@@ -2046,14 +2046,14 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
     credentialTypes: {
       [CredentialType.SALESFORCE_CRED]: {
         displayName: 'Salesforce',
-        defaultScopes: ['api', 'refresh_token', 'openid'],
+        defaultScopes: ['full', 'refresh_token', 'openid'],
         description:
           'Access Salesforce for managing accounts, contacts, opportunities, and records via REST API',
         scopeDescriptions: [
           {
-            scope: 'api',
+            scope: 'full',
             description:
-              'Access Salesforce REST API for reading and writing data (accounts, contacts, opportunities, etc.)',
+              'Full access to all permitted Salesforce resources and features',
             defaultEnabled: true,
           },
           {
@@ -2069,9 +2069,9 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
             defaultEnabled: true,
           },
           {
-            scope: 'full',
+            scope: 'api',
             description:
-              'Full access to all permitted Salesforce resources and features',
+              'Access Salesforce REST API for reading and writing data (accounts, contacts, opportunities, etc.)',
             defaultEnabled: false,
           },
           {
@@ -2082,9 +2082,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
         ],
       },
     },
-    authorizationParams: {
-      prompt: 'login', // Force login screen so user can choose which Salesforce org to connect
-    },
+    authorizationParams: {},
   },
   asana: {
     name: 'asana',
