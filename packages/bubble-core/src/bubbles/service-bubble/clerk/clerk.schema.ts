@@ -282,10 +282,11 @@ export const ClerkParamsSchema = z.discriminatedUnion('operation', [
 
   // --- Sessions ---
   z.object({
-    operation: z
-      .literal('list_sessions')
-      .describe('List sessions, optionally filtered by user'),
-    user_id: z.string().optional().describe('Filter sessions by user ID'),
+    operation: z.literal('list_sessions').describe('List sessions for a user'),
+    user_id: z
+      .string()
+      .min(1)
+      .describe('User ID to list sessions for (required by Clerk API)'),
     status: z
       .enum([
         'active',

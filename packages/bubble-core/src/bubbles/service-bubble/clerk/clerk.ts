@@ -18,7 +18,7 @@ export class ClerkBubble<
   Extract<ClerkResult, { operation: T['operation'] }>
 > {
   static readonly service = 'clerk';
-  static readonly authType = 'oauth' as const;
+  static readonly authType = 'apikey' as const;
   static readonly bubbleName = 'clerk' as const;
   static readonly type = 'service' as const;
   static readonly schema = ClerkParamsSchema;
@@ -52,11 +52,7 @@ export class ClerkBubble<
     if (!credentials || typeof credentials !== 'object') {
       return undefined;
     }
-    // Prefer API key (Secret Key) for Backend API access, fall back to OAuth token
-    return (
-      credentials[CredentialType.CLERK_API_KEY] ||
-      credentials[CredentialType.CLERK_CRED]
-    );
+    return credentials[CredentialType.CLERK_CRED];
   }
 
   private async makeClerkRequest(

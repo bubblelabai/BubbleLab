@@ -48,7 +48,8 @@ export type CapabilityId =
   | 'asana-assistant'
   | 'discord-assistant'
   | 'docusign-assistant'
-  | 'metabase-assistant';
+  | 'metabase-assistant'
+  | 'clerk-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.

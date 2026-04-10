@@ -675,15 +675,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
     [CredentialType.CLERK_CRED]: {
       label: 'Clerk',
       description:
-        'OAuth connection to Clerk for user management and authentication',
-      placeholder: '', // Not used for OAuth
-      namePlaceholder: 'My Clerk Connection',
+        'Clerk Secret Key for user management, organizations, and billing',
+      placeholder: 'sk_test_... or sk_live_...',
+      namePlaceholder: 'My Clerk Secret Key',
       credentialConfigurations: {},
     },
     [CredentialType.CLERK_API_KEY]: {
-      label: 'Clerk (Secret Key)',
-      description:
-        'Clerk Secret Key for Backend API access (user management, organizations, billing)',
+      label: 'Clerk (Alt)',
+      description: 'Alternate Clerk credential type',
       placeholder: 'sk_test_... or sk_live_...',
       namePlaceholder: 'My Clerk Secret Key',
       credentialConfigurations: {},
@@ -824,8 +823,7 @@ export type OAuthProvider =
   | 'salesforce'
   | 'asana'
   | 'discord'
-  | 'docusign'
-  | 'clerk';
+  | 'docusign';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -2353,61 +2351,6 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
     },
     authorizationParams: {
       prompt: 'login',
-    },
-  },
-  clerk: {
-    name: 'clerk',
-    displayName: 'Clerk',
-    credentialTypes: {
-      [CredentialType.CLERK_CRED]: {
-        displayName: 'Clerk',
-        defaultScopes: [
-          'openid',
-          'profile',
-          'email',
-          'public_metadata',
-          'private_metadata',
-          'offline_access',
-        ],
-        description:
-          'Connect to Clerk for user management, organizations, and billing',
-        scopeDescriptions: [
-          {
-            scope: 'openid',
-            description: 'OpenID Connect authentication',
-            defaultEnabled: true,
-          },
-          {
-            scope: 'profile',
-            description: 'View user profile information',
-            defaultEnabled: true,
-          },
-          {
-            scope: 'email',
-            description: 'View user email addresses',
-            defaultEnabled: true,
-          },
-          {
-            scope: 'public_metadata',
-            description: 'Access user public metadata',
-            defaultEnabled: true,
-          },
-          {
-            scope: 'private_metadata',
-            description: 'Access user private metadata',
-            defaultEnabled: true,
-          },
-          {
-            scope: 'offline_access',
-            description:
-              'Maintain access when you are not actively using the app',
-            defaultEnabled: true,
-          },
-        ],
-      },
-    },
-    authorizationParams: {
-      prompt: 'consent',
     },
   },
 };
