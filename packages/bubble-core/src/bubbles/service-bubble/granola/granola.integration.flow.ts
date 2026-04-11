@@ -54,7 +54,7 @@ export class GranolaIntegrationTest extends BubbleFlow<'webhook/http'> {
     const firstNoteId = listResult.success
       ? listResult.notes?.[0]?.id
       : undefined;
-    let noteId = firstNoteId || '';
+    const noteId = firstNoteId || '';
 
     if (firstNoteId) {
       const getResult = await new GranolaBubble({
