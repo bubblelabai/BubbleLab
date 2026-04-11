@@ -133,6 +133,9 @@ export enum CredentialType {
   // Clerk Credentials
   CLERK_CRED = 'CLERK_CRED',
   CLERK_API_KEY = 'CLERK_API_KEY',
+
+  // Granola Credentials
+  GRANOLA_API_KEY = 'GRANOLA_API_KEY',
 }
 
 // Define all bubble names as a union type for type safety
@@ -222,4 +225,5 @@ export type BubbleName =
   | 'sortly'
   | 'docusign'
   | 'metabase'
-  | 'clerk';
+  | 'clerk'
+  | 'granola';

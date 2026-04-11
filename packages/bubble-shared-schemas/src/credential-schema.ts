@@ -687,6 +687,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Clerk Secret Key',
       credentialConfigurations: {},
     },
+    [CredentialType.GRANOLA_API_KEY]: {
+      label: 'Granola',
+      description:
+        'API key for Granola meeting notes (requires Business or Enterprise plan)',
+      placeholder: 'Enter your Granola API key...',
+      namePlaceholder: 'My Granola API Key',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -772,6 +780,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.METABASE_CRED]: '', // Multi-field credential (url + apiKey), no single env var
   [CredentialType.CLERK_CRED]: '', // OAuth credential, no env var
   [CredentialType.CLERK_API_KEY]: '', // User-provided Secret Key, no env var
+  [CredentialType.GRANOLA_API_KEY]: 'GRANOLA_API_KEY',
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -2719,6 +2728,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   docusign: [CredentialType.DOCUSIGN_CRED],
   metabase: [CredentialType.METABASE_CRED],
   clerk: [CredentialType.CLERK_CRED],
+  granola: [CredentialType.GRANOLA_API_KEY],
 };
 
 export interface CredentialSiblingEntry {

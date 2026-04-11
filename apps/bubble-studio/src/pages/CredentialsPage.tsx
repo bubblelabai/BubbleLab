@@ -117,6 +117,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.METABASE_CRED]: 'Metabase',
     [CredentialType.CLERK_CRED]: 'Clerk',
     [CredentialType.CLERK_API_KEY]: 'Clerk',
+    [CredentialType.GRANOLA_API_KEY]: 'Granola',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

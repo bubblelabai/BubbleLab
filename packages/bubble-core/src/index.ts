@@ -118,6 +118,16 @@ export {
   type ClerkParamsInput,
   type ClerkResult,
 } from './bubbles/service-bubble/clerk/index.js';
+export {
+  GranolaBubble,
+  GranolaParamsSchema,
+  GranolaResultSchema,
+  type GranolaParams,
+  type GranolaParamsInput,
+  type GranolaResult,
+  type GranolaNoteSummary,
+  type GranolaNote,
+} from './bubbles/service-bubble/granola/index.js';
 export { ConfluenceBubble } from './bubbles/service-bubble/confluence/index.js';
 export type { ConfluenceParamsInput } from './bubbles/service-bubble/confluence/index.js';
 export { AshbyBubble } from './bubbles/service-bubble/ashby/index.js';
