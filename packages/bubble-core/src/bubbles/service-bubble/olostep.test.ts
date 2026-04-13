@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { OlostepBubble, type OlostepParamsInput } from './olostep.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { BubbleFactory } from '../../bubble-factory.js';
@@ -17,6 +17,14 @@ const factory = new BubbleFactory();
 
 beforeAll(async () => {
   await factory.registerDefaults();
+});
+
+afterEach(() => {
+  mockFetch.mockReset();
+});
+
+afterAll(() => {
+  vi.unstubAllGlobals();
 });
 
 /**

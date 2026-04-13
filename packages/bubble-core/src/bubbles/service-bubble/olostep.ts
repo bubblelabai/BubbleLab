@@ -316,13 +316,28 @@ export class OlostepBubble extends ServiceBubble<OlostepParams, OlostepResult> {
     return this.params.credentials?.[CredentialType.OLOSTEP_API_KEY];
   }
 
+  private async fetchWithTimeout(
+    input: string,
+    init: RequestInit,
+    timeoutMs = 30000
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      return await fetch(input, { ...init, signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   public async testCredential(): Promise<boolean> {
     const apiKey = this.chooseCredential();
     if (!apiKey) return false;
 
     try {
       // Simple health check with minimal scrape
-      const response = await fetch(`${OLOSTEP_API_URL}/scrapes`, {
+      const response = await this.fetchWithTimeout(`${OLOSTEP_API_URL}/scrapes`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -529,7 +544,7 @@ export class OlostepBubble extends ServiceBubble<OlostepParams, OlostepResult> {
     payload: Record<string, unknown>,
     apiKey: string
   ): Promise<any> {
-    const response = await fetch(`${OLOSTEP_API_URL}${endpoint}`, {
+    const response = await this.fetchWithTimeout(`${OLOSTEP_API_URL}${endpoint}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -548,9 +563,11 @@ export class OlostepBubble extends ServiceBubble<OlostepParams, OlostepResult> {
     }
 
     if (!response.ok) {
-      throw new Error(
-        json?.error?.message || json?.message || `HTTP ${response.status}`
-      );
+      const errorMessage =
+        typeof json?.error === 'string'
+          ? json.error
+          : json?.error?.message || json?.message;
+      throw new Error(errorMessage || `HTTP ${response.status}`);
     }
 
     return json;
