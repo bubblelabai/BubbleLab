@@ -398,7 +398,7 @@ export class OlostepBubble extends ServiceBubble<OlostepParams, OlostepResult> {
       formats: formats || ['markdown'],
     };
     if (country) payload.country = country;
-    if (wait_before_scraping)
+    if (wait_before_scraping !== undefined)
       payload.wait_before_scraping = wait_before_scraping;
     if (parser) payload.parser = { id: parser };
 
@@ -431,7 +431,7 @@ export class OlostepBubble extends ServiceBubble<OlostepParams, OlostepResult> {
       formats: formats || ['markdown'],
     };
     if (country) payload.country = country;
-    if (wait_before_scraping)
+    if (wait_before_scraping !== undefined)
       payload.wait_before_scraping = wait_before_scraping;
     if (parser) payload.parser = { id: parser };
 
