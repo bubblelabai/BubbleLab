@@ -572,9 +572,8 @@ export class OlostepBubble extends ServiceBubble<OlostepParams, OlostepResult> {
       case 'answer':
         return { operation: 'answer', ...base };
       default: {
-        // Exhaustive check: TypeScript will error if a case is missing
         const _exhaustiveCheck: never = operation;
-        return { operation: 'scrape', ...base };
+        throw new Error(`Unhandled Olostep operation: ${_exhaustiveCheck}`);
       }
     }
   }
