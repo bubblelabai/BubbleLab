@@ -425,7 +425,6 @@ export function handleStreamingEvent(
     case 'coffee_complete':
     case 'heartbeat':
     case 'stream_complete':
-      // Ignore these events - they're control signals, not display events
       break;
   }
 }
