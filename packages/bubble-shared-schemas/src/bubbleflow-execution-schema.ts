@@ -180,9 +180,17 @@ export const ExecutionSummarySchema = z
 
 export type ExecutionSummary = z.infer<typeof ExecutionSummarySchema>;
 
+// Max length for user-assigned execution labels. Shared between the PATCH
+// request schema, the DB-agnostic response schema, and the frontend input
+// maxLength attribute so the three sides can't drift apart.
+export const MAX_EXECUTION_NAME_LENGTH = 120;
+
 // BubbleFlow execution history item schema
 export const bubbleFlowExecutionSchema = z.object({
   id: z.number().openapi({ description: 'Execution ID' }),
+  name: z.string().nullable().optional().openapi({
+    description: 'User-assigned label for this execution (checkpoint name)',
+  }),
   status: z
     .enum(['running', 'success', 'error'])
     .openapi({ description: 'Execution status' }),
