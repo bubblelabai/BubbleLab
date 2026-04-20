@@ -413,8 +413,12 @@ export type PeopleSearchResult = PeopleSearchToolResult;
 /**
  * People Search Tool
  *
- * Agent-friendly tool for searching and discovering professionals.
- * Uses the Crustdata PersonDB in-database search API for fast, comprehensive results.
+ * Agent-friendly tool for searching and discovering professionals. Defaults to
+ * FullEnrich's /people/search; falls back to Crustdata PersonDB only when the
+ * caller opts in (provider='crustdata') or relies on a filter FullEnrich
+ * doesn't support (locationRadius, functionCategories, schoolName, pastJobTitle,
+ * minYearsExperience/maxYearsExperience, recentlyChangedJobs, minConnections,
+ * excludeCompanies, excludeProfiles, languages).
  *
  * Features:
  * - Search by company name/URL, job title, location, or skills
@@ -443,17 +447,29 @@ export class PeopleSearchTool extends ToolBubble<
     'Comprehensive people search by company, title, location, skills, with optional email enrichment';
   static readonly longDescription = `
     Comprehensive people search tool for finding and discovering professionals.
-    Uses the Crustdata PersonDB in-database search for fast, comprehensive results.
+
+    **PROVIDERS:**
+    - \`fullenrich\` (DEFAULT, preferred): FullEnrich /people/search. Returns LinkedIn profiles,
+      titles, locations, employment history, and work emails when available.
+    - \`crustdata\`: Crustdata PersonDB. Wider filter set (geo radius, function category,
+      school name, recent-job-change, connection count, exclusions), but requires
+      CRUSTDATA_API_KEY and falls back here only when you genuinely need one of the
+      crustdata-only filters.
+
+    Leave \`provider\` unset (or pass \`'fullenrich'\`) unless you need a filter FullEnrich
+    doesn't support — the tool will silently drop unsupported filters on FullEnrich, so
+    check the per-filter notes below before choosing.
 
     **SEARCH CRITERIA (at least one required):**
     - Company: companyName, companyLinkedinUrl, pastCompanyName
-    - Job Title: jobTitle (single), jobTitles (multiple with OR logic), pastJobTitle
-    - Location: location (fuzzy), locationRadius (geo search), country, city
-    - Skills & Experience: skills, languages, minYearsExperience, maxYearsExperience
-    - Seniority & Function: seniorityLevels, functionCategories
+    - Job Title: jobTitle (single), jobTitles (multiple with OR logic), pastJobTitle *(crustdata only)*
+    - Location: location (fuzzy), locationRadius *(crustdata only)*, country, city
+    - Skills & Experience: skills, languages *(crustdata only)*, minYearsExperience / maxYearsExperience *(crustdata only)*
+    - Seniority & Function: seniorityLevels, functionCategories *(crustdata only)*
     - Company Attributes: companyIndustries, minCompanyHeadcount, maxCompanyHeadcount
-    - Education: schoolName
-    - Status: recentlyChangedJobs, minConnections, minYearsAtCompany
+    - Education: schoolName *(crustdata only)*
+    - Status: recentlyChangedJobs *(crustdata only)*, minConnections *(crustdata only)*, minYearsAtCompany *(crustdata only)*
+    - Exclusions: excludeCompanies *(crustdata only)*, excludeProfiles *(crustdata only)*
 
     **SENIORITY LEVELS (valid values):**
     ${(PersonSeniorityLevelEnum._def.values as readonly string[]).map((v) => `- ${v}`).join('\n    ')}
