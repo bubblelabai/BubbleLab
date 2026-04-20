@@ -54,7 +54,7 @@ function sanitizeLinkedInUrl(url: string | null | undefined): string | null {
  */
 function mapSeniorityToFullEnrich(values: string[]): {
   mapped: string[];
-  unsupported: string[];
+  unknown: string[];
 } {
   const table: Record<string, string[]> = {
     'owner / partner': ['Owner', 'Partner'],
@@ -85,7 +85,7 @@ function mapSeniorityToFullEnrich(values: string[]): {
     'Senior',
   ]);
   const mapped = new Set<string>();
-  const unsupported: string[] = [];
+  const unknown: string[] = [];
   for (const raw of values) {
     const key = raw.trim().toLowerCase();
     const hit = table[key];
@@ -96,10 +96,10 @@ function mapSeniorityToFullEnrich(values: string[]): {
     if (feEnum.has(raw)) {
       mapped.add(raw);
     } else {
-      unsupported.push(raw);
+      unknown.push(raw);
     }
   }
-  return { mapped: Array.from(mapped), unsupported };
+  return { mapped: Array.from(mapped), unknown };
 }
 
 /**
@@ -111,7 +111,7 @@ function mapSeniorityToFullEnrich(values: string[]): {
  */
 function mapFunctionCategoryToFullEnrich(values: string[]): {
   mapped: string[];
-  unsupported: string[];
+  unknown: string[];
 } {
   // Top-level FE functions — any value here passes through.
   const feFunctions = new Set([
@@ -175,11 +175,101 @@ function mapFunctionCategoryToFullEnrich(values: string[]): {
     sales: 'Sales',
     'customer success and support': 'Customer Service',
   };
+  // Subfunctions FE indexes under top-level functions — agents sometimes want
+  // this precision (e.g. "Recruiting/Talent Acquisition" instead of plain
+  // "Human Resources"). Accept any as-is. Sourced from FE's published
+  // "Accepted Filter Values → Functions & Subfunctions".
+  const feSubfunctions = new Set([
+    'Recruiting/Talent Acquisition',
+    'HR Business Partner',
+    'HR Operations',
+    'HR Leadership',
+    'Learning & Development',
+    'Talent Management',
+    'People Analytics',
+    'Compensation & Benefits',
+    'Employee Relations',
+    'Organizational Development',
+    'Customer Success',
+    'Customer Support',
+    'Customer Experience',
+    'Customer Operations',
+    'Client Services',
+    'General Customer Service',
+    'Software Engineering',
+    'Backend Engineering',
+    'Frontend Engineering',
+    'Fullstack Engineering',
+    'Data Engineering/Analytics',
+    'DevOps',
+    'Platform Engineering',
+    'Site Reliability Engineering',
+    'QA/Quality',
+    'Cybersecurity',
+    'Security Engineering',
+    'Cloud Engineering',
+    'Cloud Operations',
+    'Database Engineering',
+    'Database Administration',
+    'Mobile Engineering',
+    'AI/Machine Learning',
+    'Solutions Architecture',
+    'Technical Writing',
+    'Product Management',
+    'Product Marketing',
+    'Product Owner',
+    'Product Strategy',
+    'Product Operations',
+    'Product Analytics',
+    'UX Research',
+    'Technical Product Management',
+    'Account Management',
+    'Business Development',
+    'Channel Sales',
+    'Enterprise Sales',
+    'Field Sales',
+    'General Sales',
+    'Inside Sales',
+    'Partnership Sales',
+    'Revenue Operations',
+    'SDR/BDR',
+    'Sales Enablement',
+    'Sales Engineering',
+    'Sales Operations',
+    'Sales Leadership',
+    'Brand Marketing',
+    'Content Marketing',
+    'Demand Generation',
+    'Digital Marketing',
+    'Email Marketing',
+    'Event Marketing',
+    'Growth Marketing',
+    'Market Research',
+    'Marketing Operations',
+    'Public Relations',
+    'SEO/SEM',
+    'Social Media Marketing',
+    'Accounting',
+    'Audit',
+    'Banking/Finance',
+    'Controllers',
+    'Corporate Finance',
+    'Credit Analysis',
+    'Finance Leadership',
+    'Financial Planning & Analysis',
+    'Financial Reporting',
+    'Investment',
+    'Investor Relations',
+    'Mergers & Acquisitions',
+    'Risk Management',
+    'Tax',
+    'Treasury',
+  ]);
   const mapped = new Set<string>();
-  const unsupported: string[] = [];
+  const unknown: string[] = [];
   for (const raw of values) {
     const trimmed = raw.trim();
-    if (feFunctions.has(trimmed)) {
+    if (feFunctions.has(trimmed) || feSubfunctions.has(trimmed)) {
       mapped.add(trimmed);
       continue;
     }
@@ -188,13 +278,160 @@ function mapFunctionCategoryToFullEnrich(values: string[]): {
       mapped.add(hit);
       continue;
     }
-    // Pass through — could be a valid FE subfunction like "Recruiting/Talent
-    // Acquisition" that the caller typed directly. FE ignores unknowns, so
-    // the cost is low; warn so empty results are explainable.
-    mapped.add(trimmed);
-    unsupported.push(trimmed);
+    unknown.push(trimmed);
   }
-  return { mapped: Array.from(mapped), unsupported };
+  return { mapped: Array.from(mapped), unknown };
+}
+
+/**
+ * FullEnrich uses LinkedIn's industry taxonomy (~400 canonical values like
+ * "Software Development", "IT Services and IT Consulting", "Financial
+ * Services"). Shorthand like "SaaS" or "AI" silently zeros out the search on
+ * FE, so we (a) alias the common shorthand to canonical FE values and (b)
+ * allow any value that matches a canonical industry exactly.
+ *
+ * Keep `FE_INDUSTRY_ALIASES` focused on values agents plausibly type. The
+ * full taxonomy is too long to enumerate here — if a value matches no alias
+ * and isn't already canonical, we return it as `unknown` so the caller can
+ * fail the request with a pointer to the FE docs.
+ */
+const FE_INDUSTRY_ALIASES: Record<string, string[]> = {
+  saas: ['Software Development'],
+  software: ['Software Development'],
+  'software development': ['Software Development'],
+  ai: ['Technology, Information and Internet'],
+  'artificial intelligence': ['Technology, Information and Internet'],
+  'machine learning': ['Technology, Information and Internet'],
+  tech: ['Technology, Information and Internet'],
+  technology: ['Technology, Information and Internet'],
+  internet: ['Technology, Information and Internet'],
+  fintech: ['Financial Services'],
+  finance: ['Financial Services'],
+  banking: ['Banking'],
+  insurance: ['Insurance'],
+  healthcare: ['Hospitals and Health Care'],
+  health: ['Hospitals and Health Care'],
+  biotech: ['Biotechnology Research'],
+  pharma: ['Pharmaceutical Manufacturing'],
+  ecommerce: ['Retail'],
+  'e-commerce': ['Retail'],
+  retail: ['Retail'],
+  consulting: ['Business Consulting and Services'],
+  'management consulting': ['Business Consulting and Services'],
+  'it services': ['IT Services and IT Consulting'],
+  it: ['IT Services and IT Consulting'],
+  manufacturing: ['Manufacturing'],
+  automotive: ['Motor Vehicle Manufacturing', 'Automotive'],
+  media: [
+    'Online Audio and Video Media',
+    'Broadcast Media Production and Distribution',
+  ],
+  entertainment: ['Entertainment Providers'],
+  education: ['Education'],
+  government: ['Government Administration'],
+  nonprofit: ['Non-profit Organizations'],
+  'non-profit': ['Non-profit Organizations'],
+  agency: ['Marketing Services', 'Advertising Services'],
+  marketing: ['Marketing Services'],
+  advertising: ['Advertising Services'],
+  law: ['Law Practice', 'Legal Services'],
+  legal: ['Legal Services'],
+  realestate: ['Real Estate'],
+  'real estate': ['Real Estate'],
+  construction: ['Construction'],
+  energy: ['Oil and Gas', 'Renewable Energy Power Generation', 'Utilities'],
+  telecom: ['Telecommunications'],
+  telecommunications: ['Telecommunications'],
+  logistics: ['Transportation, Logistics, Supply Chain and Storage'],
+  'supply chain': ['Transportation, Logistics, Supply Chain and Storage'],
+  airline: ['Airlines and Aviation'],
+  aviation: ['Airlines and Aviation'],
+  hospitality: ['Hospitality'],
+  staffing: ['Staffing and Recruiting'],
+  recruiting: ['Staffing and Recruiting'],
+  vc: ['Venture Capital and Private Equity Principals'],
+  'venture capital': ['Venture Capital and Private Equity Principals'],
+  pe: ['Venture Capital and Private Equity Principals'],
+  'private equity': ['Venture Capital and Private Equity Principals'],
+  b2b: ['Business Consulting and Services', 'Software Development'],
+  'b2b software': ['Software Development'],
+};
+
+/**
+ * Canonical FE industry values (subset). Used for exact-match passthrough —
+ * we don't enumerate all ~400; a value not in aliases and not in this list is
+ * rejected with a pointer at the FE docs. This covers the canonical values
+ * most common for tech/sales prospecting.
+ */
+const FE_INDUSTRY_CANONICAL = new Set([
+  'Software Development',
+  'Technology, Information and Internet',
+  'Technology, Information and Media',
+  'Financial Services',
+  'Banking',
+  'Insurance',
+  'Hospitals and Health Care',
+  'Health, Wellness & Fitness',
+  'Biotechnology Research',
+  'Pharmaceutical Manufacturing',
+  'Retail',
+  'Business Consulting and Services',
+  'IT Services and IT Consulting',
+  'Manufacturing',
+  'Motor Vehicle Manufacturing',
+  'Automotive',
+  'Online Audio and Video Media',
+  'Broadcast Media Production and Distribution',
+  'Entertainment Providers',
+  'Education',
+  'Higher Education',
+  'Government Administration',
+  'Non-profit Organizations',
+  'Marketing Services',
+  'Advertising Services',
+  'Law Practice',
+  'Legal Services',
+  'Real Estate',
+  'Construction',
+  'Oil and Gas',
+  'Renewable Energy Power Generation',
+  'Utilities',
+  'Telecommunications',
+  'Transportation, Logistics, Supply Chain and Storage',
+  'Airlines and Aviation',
+  'Hospitality',
+  'Staffing and Recruiting',
+  'Venture Capital and Private Equity Principals',
+  'Computer Games',
+  'Defense and Space Manufacturing',
+  'E-Learning Providers',
+  'Food and Beverage Services',
+  'Research Services',
+  'Investment Management',
+  'Investment Banking',
+  'Capital Markets',
+]);
+
+function mapIndustryToFullEnrich(values: string[]): {
+  mapped: string[];
+  unknown: string[];
+} {
+  const mapped = new Set<string>();
+  const unknown: string[] = [];
+  for (const raw of values) {
+    const trimmed = raw.trim();
+    if (FE_INDUSTRY_CANONICAL.has(trimmed)) {
+      mapped.add(trimmed);
+      continue;
+    }
+    const aliased = FE_INDUSTRY_ALIASES[trimmed.toLowerCase()];
+    if (aliased) {
+      for (const v of aliased) mapped.add(v);
+      continue;
+    }
+    unknown.push(trimmed);
+  }
+  return { mapped: Array.from(mapped), unknown };
 }
 
 // Simplified person result schema with full profile information
@@ -362,7 +599,7 @@ const PeopleSearchToolParamsSchema = z.object({
     .enum(['crustdata', 'fullenrich'])
     .default('fullenrich')
     .describe(
-      "Search provider. Default: 'fullenrich'. Leave unset unless you need a filter FullEnrich cannot honor. Filters the FullEnrich provider DOES NOT SUPPORT (set provider='crustdata' if you need any of these): locationRadius, minYearsExperience, maxYearsExperience, minConnections, excludeCompanies, excludeProfiles, companyLinkedinUrl (for exact URL match). Everything else — including languages, functionCategories, schoolName, pastJobTitle, minYearsAtCompany, recentlyChangedJobs — is supported on BOTH providers. Unsupported filters are returned in the result's `warnings` array so callers can see why a search was narrower than expected."
+      "Search provider. Default: 'fullenrich'. Leave unset unless you need a filter FullEnrich cannot honor. On the FullEnrich provider every string filter is sent with exact_match=true so results are strictly scoped (e.g. companyName='Stripe' will NOT also return 'Stripes' or ex-Stripe folks). Filters the FullEnrich provider DOES NOT SUPPORT (the tool returns a hard error if any of these are set while provider='fullenrich'): locationRadius, minYearsExperience, maxYearsExperience, minConnections, excludeCompanies, excludeProfiles, companyLinkedinUrl. Enumerated filters (seniorityLevels, functionCategories, companyIndustries) are validated against FullEnrich's taxonomy and return a hard error with the accepted values if an unknown value is passed — no silent soft-match. Everything else — including languages, schoolName, pastJobTitle, minYearsAtCompany, recentlyChangedJobs — is supported on BOTH providers."
     ),
 
   // ===== PRIMARY SEARCH CRITERIA (at least one required) =====
@@ -630,10 +867,26 @@ export class PeopleSearchTool extends ToolBubble<
     doesn't support — the tool will silently drop unsupported filters on FullEnrich, so
     check the per-filter notes below before choosing.
 
+    **HOW TO GET HIGH-QUALITY LEADS:**
+    1. Prefer an explicit \`jobTitles\` list (e.g. \`["Customer Success Manager",
+       "CSM", "Senior Customer Success Manager"]\`) for precise role targeting.
+       FullEnrich's \`seniorityLevels\` and \`functionCategories\` are ML-derived
+       tags on each person and are imperfect — a person titled "VP of Strategic
+       Finance" may still surface in a Software/VP search. jobTitles matched with
+       exact_match=true are much more reliable.
+    2. Combine filters. \`jobTitles\` + \`country\` + \`minCompanyHeadcount\` +
+       \`companyIndustries\` is the canonical high-precision recipe.
+    3. Use \`companyName\` for single-company searches — with exact_match=true it
+       won't leak into sister companies (e.g. "Stripe" won't also match "Stripes").
+    4. On FullEnrich the enumerated filters (seniorityLevels, functionCategories,
+       companyIndustries) are validated against FE's taxonomy. An unknown value
+       produces a hard error listing the acceptable values — read the error and
+       fix your input.
+
     **SEARCH CRITERIA (at least one required):**
     Everything below is supported on BOTH providers unless tagged
-    *(crustdata only)*. Unsupported filters for the selected provider are
-    surfaced in the result's \`warnings\` array, not silently dropped.
+    *(crustdata only)*. Invalid filters for the selected provider produce a
+    hard error (not silent soft-matching).
     - Company: companyName, companyLinkedinUrl *(crustdata only)*, pastCompanyName
     - Job Title: jobTitle (single), jobTitles (multiple with OR logic), pastJobTitle
     - Location: location (fuzzy), country, city, locationRadius *(crustdata only)*
@@ -1166,32 +1419,23 @@ export class PeopleSearchTool extends ToolBubble<
       cursor,
     } = this.params;
 
-    // Warnings for filters FullEnrich cannot honor — surfaced in the result so
-    // callers can see why a search came back narrower than their params implied.
-    const warnings: string[] = [];
-    if (locationRadius) {
-      warnings.push(
-        'locationRadius is not supported by FullEnrich — falling back to fuzzy location match on the center point only. Use provider="crustdata" for true geo-radius search.'
-      );
-    }
-    if (companyLinkedinUrl) {
-      warnings.push(
-        'companyLinkedinUrl is not supported by FullEnrich; use companyName or provider="crustdata" for LinkedIn URL matching.'
-      );
-    }
-    if (minConnections !== undefined) {
-      warnings.push(
-        'minConnections is not supported by FullEnrich; use provider="crustdata".'
-      );
-    }
-    if (excludeCompanies?.length || excludeProfiles?.length) {
-      warnings.push(
-        'excludeCompanies / excludeProfiles are not supported by FullEnrich; use provider="crustdata".'
-      );
-    }
-    if (minYearsExperience !== undefined || maxYearsExperience !== undefined) {
-      warnings.push(
-        'minYearsExperience / maxYearsExperience are not supported by FullEnrich (closest analogue is current_position_years_in which measures time in current role, not total experience). Use provider="crustdata" for total-experience filtering.'
+    // Hard-fail on filters FullEnrich cannot honor. Surfacing a clear error
+    // is better than silently producing wrong results — agents will see the
+    // error in their build-run-validate loop and fix the code upstream.
+    const crustdataOnly: string[] = [];
+    if (locationRadius) crustdataOnly.push('locationRadius');
+    if (companyLinkedinUrl)
+      crustdataOnly.push('companyLinkedinUrl (exact URL match)');
+    if (minConnections !== undefined) crustdataOnly.push('minConnections');
+    if (excludeCompanies?.length) crustdataOnly.push('excludeCompanies');
+    if (excludeProfiles?.length) crustdataOnly.push('excludeProfiles');
+    if (minYearsExperience !== undefined)
+      crustdataOnly.push('minYearsExperience');
+    if (maxYearsExperience !== undefined)
+      crustdataOnly.push('maxYearsExperience');
+    if (crustdataOnly.length > 0) {
+      return this.createErrorResult(
+        `The following filters are only supported by the Crustdata provider, but the current request routes to FullEnrich: ${crustdataOnly.join(', ')}. Either (a) remove these filters, or (b) set provider="crustdata".`
       );
     }
 
@@ -1200,15 +1444,12 @@ export class PeopleSearchTool extends ToolBubble<
     if (jobTitle) allJobTitles.push(jobTitle);
     if (jobTitles?.length) allJobTitles.push(...jobTitles);
 
-    // Build location list. If locationRadius is set we fall back to its center
-    // point — better than dropping the location entirely — but warn.
+    // Build location list (raw strings — FE accepts any granularity: continent,
+    // country, state, sub-region, or city).
     const allLocations: string[] = [];
     if (location) allLocations.push(location);
     if (city) allLocations.push(city);
     if (country) allLocations.push(country);
-    if (locationRadius?.location && !location && !city && !country) {
-      allLocations.push(locationRadius.location);
-    }
 
     // Validate at least one FE-supported criteria is set
     const hasCriteria =
@@ -1234,8 +1475,40 @@ export class PeopleSearchTool extends ToolBubble<
       );
     }
 
+    // Strict validate enumerated filters before we call FE. Any unknown value
+    // produces a hard error with exact guidance on what FE accepts — this
+    // replaces the old soft-warn-and-soft-match behaviour that let agents
+    // silently receive wrong-category results.
+    const seniorityResult = seniorityLevels?.length
+      ? mapSeniorityToFullEnrich(seniorityLevels)
+      : { mapped: [] as string[], unknown: [] as string[] };
+    if (seniorityResult.unknown.length > 0) {
+      return this.createErrorResult(
+        `Unknown seniorityLevels values for FullEnrich: ${seniorityResult.unknown.join(', ')}. FullEnrich accepts: Owner, Founder, C-level, Partner, VP, Head, Director, Manager, Senior. Set provider="crustdata" for the extra Crustdata-only values (Entry Level, In Training, Experienced Manager, Entry Level Manager, Strategic).`
+      );
+    }
+
+    const functionResult = functionCategories?.length
+      ? mapFunctionCategoryToFullEnrich(functionCategories)
+      : { mapped: [] as string[], unknown: [] as string[] };
+    if (functionResult.unknown.length > 0) {
+      return this.createErrorResult(
+        `Unknown functionCategories values for FullEnrich: ${functionResult.unknown.join(', ')}. Use one of FullEnrich's top-level functions (Administrative, Consulting & Advisory, Customer Service, Design, Education, Executive & Leadership, Finance, Human Resources, Legal, Marketing, Media & Communications, Medical & Health, Non-Profit & Government, Operations, Product, Project & Program Management, Public Safety & Security, Research & Science, Retail & Consumer, Sales, Software, Traditional Engineering, Transportation & Logistics) or a documented subfunction (e.g. "Recruiting/Talent Acquisition", "Customer Success", "Software Engineering"). Full list: https://docs.fullenrich.com/ → Accepted Filter Values.`
+      );
+    }
+
+    const industryResult = companyIndustries?.length
+      ? mapIndustryToFullEnrich(companyIndustries)
+      : { mapped: [] as string[], unknown: [] as string[] };
+    if (industryResult.unknown.length > 0) {
+      return this.createErrorResult(
+        `Unknown companyIndustries values for FullEnrich: ${industryResult.unknown.join(', ')}. FullEnrich uses LinkedIn's industry taxonomy — common shorthand like "SaaS" is auto-mapped, but other values must match the canonical taxonomy (e.g. "Software Development", "Financial Services", "IT Services and IT Consulting", "Hospitals and Health Care"). Full list: https://docs.fullenrich.com/ → Accepted Filter Values → Company Industry.`
+      );
+    }
+
     // FullEnrich caps at limit=100 per request
     const feLimit = Math.min(limit, 100);
+    const warnings: string[] = [];
 
     try {
       const headcountRange: { min?: number; max?: number } = {};
@@ -1244,66 +1517,51 @@ export class PeopleSearchTool extends ToolBubble<
       if (maxCompanyHeadcount !== undefined)
         headcountRange.max = maxCompanyHeadcount;
 
-      const seniorityResult = seniorityLevels?.length
-        ? mapSeniorityToFullEnrich(seniorityLevels)
-        : { mapped: [] as string[], unsupported: [] as string[] };
-      if (seniorityResult.unsupported.length > 0) {
-        warnings.push(
-          `seniorityLevels values not in FullEnrich's enum — ignored by the provider: ${seniorityResult.unsupported.join(', ')}. FullEnrich accepts: Owner, Founder, C-level, Partner, VP, Head, Director, Manager, Senior. Use provider="crustdata" for the other Crustdata-only seniority values.`
-        );
-      }
-
-      const functionResult = functionCategories?.length
-        ? mapFunctionCategoryToFullEnrich(functionCategories)
-        : { mapped: [] as string[], unsupported: [] as string[] };
-      if (functionResult.unsupported.length > 0) {
-        warnings.push(
-          `functionCategories values not in FullEnrich's top-level function enum — passed through as-is and may be ignored by the provider: ${functionResult.unsupported.join(', ')}. See FE docs for subfunction names if tighter matching is required.`
-        );
-      }
+      // exact_match: true disables FE's default fuzzy matching ("Stripe" would
+      // otherwise also match "Stripes" and ex-Stripe folks). We default this
+      // on for every string filter since the tool's users overwhelmingly want
+      // strict matches for prospecting lists.
+      const asExactFilter = (v: string) => ({ value: v, exact_match: true });
 
       const people_search = await new FullEnrichBubble(
         {
           operation: 'people_search',
           limit: feLimit,
           ...(allJobTitles.length > 0 && {
-            current_position_titles: allJobTitles.map((v) => ({ value: v })),
+            current_position_titles: allJobTitles.map(asExactFilter),
           }),
           ...(companyName && {
-            current_company_names: [{ value: companyName }],
+            current_company_names: [asExactFilter(companyName)],
           }),
           ...(pastCompanyName && {
-            past_company_names: [{ value: pastCompanyName }],
+            past_company_names: [asExactFilter(pastCompanyName)],
           }),
           ...(pastJobTitle && {
-            past_position_titles: [{ value: pastJobTitle }],
+            past_position_titles: [asExactFilter(pastJobTitle)],
           }),
           ...(schoolName && {
-            person_universities: [{ value: schoolName }],
+            person_universities: [asExactFilter(schoolName)],
           }),
           ...(allLocations.length > 0 && {
-            person_locations: allLocations.map((v) => ({ value: v })),
+            person_locations: allLocations.map(asExactFilter),
           }),
           ...(skills?.length && {
-            person_skills: skills.map((v) => ({ value: v })),
+            person_skills: skills.map(asExactFilter),
           }),
           ...(languages?.length && {
-            person_languages: languages.map((v) => ({ value: v })),
+            person_languages: languages.map(asExactFilter),
           }),
           ...(seniorityResult.mapped.length > 0 && {
-            current_position_seniority_level: seniorityResult.mapped.map(
-              (v) => ({ value: v })
-            ),
+            current_position_seniority_level:
+              seniorityResult.mapped.map(asExactFilter),
           }),
           ...(functionResult.mapped.length > 0 && {
-            current_position_job_functions: functionResult.mapped.map((v) => ({
-              value: v,
-            })),
+            current_position_job_functions:
+              functionResult.mapped.map(asExactFilter),
           }),
-          ...(companyIndustries?.length && {
-            current_company_industries: companyIndustries.map((v) => ({
-              value: v,
-            })),
+          ...(industryResult.mapped.length > 0 && {
+            current_company_industries:
+              industryResult.mapped.map(asExactFilter),
           }),
           ...((minCompanyHeadcount !== undefined ||
             maxCompanyHeadcount !== undefined) && {
