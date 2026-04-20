@@ -41,6 +41,162 @@ function sanitizeLinkedInUrl(url: string | null | undefined): string | null {
   return sanitized;
 }
 
+/**
+ * Translate the tool's Crustdata-flavored seniority vocabulary to the values
+ * FullEnrich's /people/search actually accepts. FullEnrich's seniority enum is:
+ *   Owner, Founder, C-level, Partner, VP, Head, Director, Manager, Senior.
+ *
+ * Unknown inputs are passed through unchanged — FullEnrich accepts the request
+ * but silently ignores unrecognized seniority values, so there is nothing to
+ * gain from dropping them client-side. Callers targeting seniority levels FE
+ * doesn't index (e.g. "Entry Level", "In Training") will get `warnings`
+ * pointing that out.
+ */
+function mapSeniorityToFullEnrich(values: string[]): {
+  mapped: string[];
+  unsupported: string[];
+} {
+  const table: Record<string, string[]> = {
+    'owner / partner': ['Owner', 'Partner'],
+    owner: ['Owner'],
+    partner: ['Partner'],
+    cxo: ['C-level'],
+    'c-level': ['C-level'],
+    'vice president': ['VP'],
+    vp: ['VP'],
+    head: ['Head'],
+    director: ['Director'],
+    'experienced manager': ['Manager'],
+    'entry level manager': ['Manager'],
+    manager: ['Manager'],
+    strategic: ['Senior'],
+    senior: ['Senior'],
+    founder: ['Founder'],
+  };
+  const feEnum = new Set([
+    'Owner',
+    'Founder',
+    'C-level',
+    'Partner',
+    'VP',
+    'Head',
+    'Director',
+    'Manager',
+    'Senior',
+  ]);
+  const mapped = new Set<string>();
+  const unsupported: string[] = [];
+  for (const raw of values) {
+    const key = raw.trim().toLowerCase();
+    const hit = table[key];
+    if (hit) {
+      for (const v of hit) mapped.add(v);
+      continue;
+    }
+    if (feEnum.has(raw)) {
+      mapped.add(raw);
+    } else {
+      unsupported.push(raw);
+    }
+  }
+  return { mapped: Array.from(mapped), unsupported };
+}
+
+/**
+ * Translate Crustdata-flavored function categories to FullEnrich's top-level
+ * function enum (see FE docs: Functions & Subfunctions). Unknown inputs are
+ * tracked so callers can see in `warnings` which values FE ignored. FE's
+ * subfunctions (e.g. "Recruiting/Talent Acquisition") are also accepted — if
+ * the caller passes one directly we forward it unchanged.
+ */
+function mapFunctionCategoryToFullEnrich(values: string[]): {
+  mapped: string[];
+  unsupported: string[];
+} {
+  // Top-level FE functions — any value here passes through.
+  const feFunctions = new Set([
+    'Administrative',
+    'Agriculture & Environment',
+    'Construction & Trades',
+    'Consulting & Advisory',
+    'Customer Service',
+    'Design',
+    'Education',
+    'Energy & Utilities',
+    'Entertainment & Gaming',
+    'Executive & Leadership',
+    'Finance',
+    'Hospitality & Tourism',
+    'Human Resources',
+    'Legal',
+    'Marketing',
+    'Media & Communications',
+    'Medical & Health',
+    'Non-Profit & Government',
+    'Not Employed',
+    'Operations',
+    'Personal & Home Services',
+    'Product',
+    'Project & Program Management',
+    'Public Safety & Security',
+    'Research & Science',
+    'Retail & Consumer',
+    'Sales',
+    'Software',
+    'Traditional Engineering',
+    'Transportation & Logistics',
+  ]);
+  // Crustdata → FE translation (lowercased keys).
+  const table: Record<string, string> = {
+    accounting: 'Finance',
+    administrative: 'Administrative',
+    'arts and design': 'Design',
+    'business development': 'Sales',
+    'community and social services': 'Non-Profit & Government',
+    consulting: 'Consulting & Advisory',
+    education: 'Education',
+    engineering: 'Software',
+    entrepreneurship: 'Executive & Leadership',
+    finance: 'Finance',
+    'healthcare services': 'Medical & Health',
+    'human resources': 'Human Resources',
+    'information technology': 'Software',
+    legal: 'Legal',
+    marketing: 'Marketing',
+    'media and communication': 'Media & Communications',
+    'military and protective services': 'Public Safety & Security',
+    operations: 'Operations',
+    'product management': 'Product',
+    'program and project management': 'Project & Program Management',
+    purchasing: 'Operations',
+    'quality assurance': 'Software',
+    'real estate': 'Finance',
+    research: 'Research & Science',
+    sales: 'Sales',
+    'customer success and support': 'Customer Service',
+  };
+  const mapped = new Set<string>();
+  const unsupported: string[] = [];
+  for (const raw of values) {
+    const trimmed = raw.trim();
+    if (feFunctions.has(trimmed)) {
+      mapped.add(trimmed);
+      continue;
+    }
+    const hit = table[trimmed.toLowerCase()];
+    if (hit) {
+      mapped.add(hit);
+      continue;
+    }
+    // Pass through — could be a valid FE subfunction like "Recruiting/Talent
+    // Acquisition" that the caller typed directly. FE ignores unknowns, so
+    // the cost is low; warn so empty results are explainable.
+    mapped.add(trimmed);
+    unsupported.push(trimmed);
+  }
+  return { mapped: Array.from(mapped), unsupported };
+}
+
 // Simplified person result schema with full profile information
 const PersonResultSchema = z.object({
   // Basic info
@@ -56,7 +212,9 @@ const PersonResultSchema = z.object({
   websites: z
     .array(z.string())
     .nullable()
-    .describe('Personal/professional websites'),
+    .describe(
+      'Personal/professional websites. Crustdata-only — always null on FullEnrich results.'
+    ),
 
   // Enriched email data (from FullEnrich if enabled)
   enrichedWorkEmail: z
@@ -98,11 +256,15 @@ const PersonResultSchema = z.object({
   yearsOfExperience: z
     .number()
     .nullable()
-    .describe('Total years of professional experience'),
+    .describe(
+      'Total years of professional experience. Crustdata-only — always null on FullEnrich results.'
+    ),
   recentlyChangedJobs: z
     .boolean()
     .nullable()
-    .describe('Whether this person recently changed jobs'),
+    .describe(
+      'Whether this person recently changed jobs. Crustdata-only — always null on FullEnrich results.'
+    ),
 
   // Location
   location: z.string().nullable().describe('Location/region'),
@@ -116,7 +278,9 @@ const PersonResultSchema = z.object({
   numConnections: z
     .number()
     .nullable()
-    .describe('Number of LinkedIn connections'),
+    .describe(
+      'Number of LinkedIn connections. Crustdata-only — always null on FullEnrich results.'
+    ),
 
   // Work history
   currentEmployers: z
@@ -198,7 +362,7 @@ const PeopleSearchToolParamsSchema = z.object({
     .enum(['crustdata', 'fullenrich'])
     .default('fullenrich')
     .describe(
-      "Search provider. Default: 'fullenrich'. Supported filter sets differ between providers — unsupported filters are silently ignored. FullEnrich does not support: locationRadius, minYearsExperience/maxYearsExperience, functionCategories, schoolName, pastJobTitle, minYearsAtCompany, recentlyChangedJobs, minConnections, excludeCompanies, excludeProfiles, languages. Crustdata supports all filters. Email enrichment (enrichEmails) only applies to Crustdata provider."
+      "Search provider. Default: 'fullenrich'. Leave unset unless you need a filter FullEnrich cannot honor. Filters the FullEnrich provider DOES NOT SUPPORT (set provider='crustdata' if you need any of these): locationRadius, minYearsExperience, maxYearsExperience, minConnections, excludeCompanies, excludeProfiles, companyLinkedinUrl (for exact URL match). Everything else — including languages, functionCategories, schoolName, pastJobTitle, minYearsAtCompany, recentlyChangedJobs — is supported on BOTH providers. Unsupported filters are returned in the result's `warnings` array so callers can see why a search was narrower than expected."
     ),
 
   // ===== PRIMARY SEARCH CRITERIA (at least one required) =====
@@ -372,7 +536,7 @@ const PeopleSearchToolParamsSchema = z.object({
     .optional()
     .default(false)
     .describe(
-      'Enrich emails for found people using FullEnrich. Requires FULLENRICH_API_KEY credential. Costs 1 credit per work email, 3 credits per personal email.'
+      "Enrich emails for found people via FullEnrich bulk enrichment as a post step. Applies to BOTH providers. Requires FULLENRICH_API_KEY credential. Costs 1 credit per work email, 3 credits per personal email. IMPORTANT: this is a SLOW operation — FullEnrich's bulk pipeline typically takes 30–120 seconds per batch (polls every 5s up to a 120s cap). If the cap trips, affected people are returned without emails and the result's `warnings` array explains which batches timed out. Consider surfacing a progress UI on user-facing flows."
     ),
   includePersonalEmails: z
     .boolean()
@@ -398,6 +562,12 @@ const PeopleSearchToolResultSchema = z.object({
     .optional()
     .describe(
       'Pagination cursor for fetching the next page. Pass this as the cursor parameter in the next request. Undefined when no more results are available.'
+    ),
+  warnings: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Non-fatal signals from the tool — e.g. filters that were requested but the chosen provider does not support (and were therefore ignored). Useful for surfacing why a search returned fewer results than expected.'
     ),
   success: z.boolean().describe('Whether the operation was successful'),
   error: z.string().describe('Error message if operation failed'),
@@ -461,15 +631,19 @@ export class PeopleSearchTool extends ToolBubble<
     check the per-filter notes below before choosing.
 
     **SEARCH CRITERIA (at least one required):**
-    - Company: companyName, companyLinkedinUrl, pastCompanyName
-    - Job Title: jobTitle (single), jobTitles (multiple with OR logic), pastJobTitle *(crustdata only)*
-    - Location: location (fuzzy), locationRadius *(crustdata only)*, country, city
-    - Skills & Experience: skills, languages *(crustdata only)*, minYearsExperience / maxYearsExperience *(crustdata only)*
-    - Seniority & Function: seniorityLevels, functionCategories *(crustdata only)*
+    Everything below is supported on BOTH providers unless tagged
+    *(crustdata only)*. Unsupported filters for the selected provider are
+    surfaced in the result's \`warnings\` array, not silently dropped.
+    - Company: companyName, companyLinkedinUrl *(crustdata only)*, pastCompanyName
+    - Job Title: jobTitle (single), jobTitles (multiple with OR logic), pastJobTitle
+    - Location: location (fuzzy), country, city, locationRadius *(crustdata only)*
+    - Skills & Experience: skills, languages, minYearsExperience / maxYearsExperience *(crustdata only)*
+    - Seniority & Function: seniorityLevels, functionCategories
     - Company Attributes: companyIndustries, minCompanyHeadcount, maxCompanyHeadcount
-    - Education: schoolName *(crustdata only)*
-    - Status: recentlyChangedJobs *(crustdata only)*, minConnections *(crustdata only)*, minYearsAtCompany *(crustdata only)*
+    - Education: schoolName
+    - Status: recentlyChangedJobs, minYearsAtCompany, minConnections *(crustdata only)*
     - Exclusions: excludeCompanies *(crustdata only)*, excludeProfiles *(crustdata only)*
+    - Email enrichment: enrichEmails, includePersonalEmails (both providers)
 
     **SENIORITY LEVELS (valid values):**
     ${(PersonSeniorityLevelEnum._def.values as readonly string[]).map((v) => `- ${v}`).join('\n    ')}
@@ -910,6 +1084,7 @@ export class PeopleSearchTool extends ToolBubble<
 
       // Transform results
       let people = this.transformProfiles(personSearchData.profiles || []);
+      const enrichmentWarnings: string[] = [];
 
       // Email enrichment if requested and FULLENRICH_API_KEY is available
       const { enrichEmails, includePersonalEmails } = this.params;
@@ -918,17 +1093,20 @@ export class PeopleSearchTool extends ToolBubble<
         credentials[CredentialType.FULLENRICH_API_KEY] &&
         people.length > 0
       ) {
-        people = await this.enrichPeopleEmails(
+        const enrichResult = await this.enrichPeopleEmails(
           people,
           credentials,
           includePersonalEmails ?? false
         );
+        people = enrichResult.people;
+        enrichmentWarnings.push(...enrichResult.warnings);
       }
 
       return {
         people,
         totalCount: personSearchData.total_count || people.length,
         nextCursor: personSearchData.next_cursor,
+        ...(enrichmentWarnings.length > 0 && { warnings: enrichmentWarnings }),
         success: true,
         error: '',
       };
@@ -941,9 +1119,12 @@ export class PeopleSearchTool extends ToolBubble<
 
   /**
    * Search via FullEnrich v2 /people/search. Maps tool params to FullEnrich
-   * filters (unsupported filters silently dropped), normalizes results into
-   * PersonResult[]. Email enrichment post-step is not applied — FullEnrich
-   * already returns work emails when available.
+   * filters, collecting warnings for any filter the provider cannot honor so
+   * callers can see why results may look narrower than expected.
+   *
+   * When `enrichEmails=true`, runs the FullEnrich bulk-enrichment pipeline as a
+   * post step (same path as the Crustdata branch) because /people/search does
+   * not return emails by itself.
    */
   private async searchFullEnrich(): Promise<PeopleSearchToolResult> {
     const credentials = this.params?.credentials;
@@ -955,47 +1136,101 @@ export class PeopleSearchTool extends ToolBubble<
 
     const {
       companyName,
+      companyLinkedinUrl,
       jobTitle,
       jobTitles,
       location,
+      locationRadius,
       skills,
+      languages,
+      minYearsExperience,
+      maxYearsExperience,
       seniorityLevels,
+      functionCategories,
       companyIndustries,
       minCompanyHeadcount,
       maxCompanyHeadcount,
+      minYearsAtCompany,
       pastCompanyName,
+      pastJobTitle,
+      schoolName,
       country,
       city,
+      recentlyChangedJobs,
+      minConnections,
+      excludeCompanies,
+      excludeProfiles,
+      enrichEmails,
+      includePersonalEmails,
       limit = 100,
       cursor,
     } = this.params;
+
+    // Warnings for filters FullEnrich cannot honor — surfaced in the result so
+    // callers can see why a search came back narrower than their params implied.
+    const warnings: string[] = [];
+    if (locationRadius) {
+      warnings.push(
+        'locationRadius is not supported by FullEnrich — falling back to fuzzy location match on the center point only. Use provider="crustdata" for true geo-radius search.'
+      );
+    }
+    if (companyLinkedinUrl) {
+      warnings.push(
+        'companyLinkedinUrl is not supported by FullEnrich; use companyName or provider="crustdata" for LinkedIn URL matching.'
+      );
+    }
+    if (minConnections !== undefined) {
+      warnings.push(
+        'minConnections is not supported by FullEnrich; use provider="crustdata".'
+      );
+    }
+    if (excludeCompanies?.length || excludeProfiles?.length) {
+      warnings.push(
+        'excludeCompanies / excludeProfiles are not supported by FullEnrich; use provider="crustdata".'
+      );
+    }
+    if (minYearsExperience !== undefined || maxYearsExperience !== undefined) {
+      warnings.push(
+        'minYearsExperience / maxYearsExperience are not supported by FullEnrich (closest analogue is current_position_years_in which measures time in current role, not total experience). Use provider="crustdata" for total-experience filtering.'
+      );
+    }
 
     // Build title list (merge jobTitle + jobTitles)
     const allJobTitles: string[] = [];
     if (jobTitle) allJobTitles.push(jobTitle);
     if (jobTitles?.length) allJobTitles.push(...jobTitles);
 
-    // Build location list (concatenate location + city + country)
+    // Build location list. If locationRadius is set we fall back to its center
+    // point — better than dropping the location entirely — but warn.
     const allLocations: string[] = [];
     if (location) allLocations.push(location);
     if (city) allLocations.push(city);
     if (country) allLocations.push(country);
+    if (locationRadius?.location && !location && !city && !country) {
+      allLocations.push(locationRadius.location);
+    }
 
     // Validate at least one FE-supported criteria is set
     const hasCriteria =
       allJobTitles.length > 0 ||
       allLocations.length > 0 ||
-      companyName ||
-      pastCompanyName ||
+      !!companyName ||
+      !!pastCompanyName ||
+      !!pastJobTitle ||
+      !!schoolName ||
       (skills && skills.length > 0) ||
+      (languages && languages.length > 0) ||
       (seniorityLevels && seniorityLevels.length > 0) ||
+      (functionCategories && functionCategories.length > 0) ||
       (companyIndustries && companyIndustries.length > 0) ||
       minCompanyHeadcount !== undefined ||
-      maxCompanyHeadcount !== undefined;
+      maxCompanyHeadcount !== undefined ||
+      minYearsAtCompany !== undefined ||
+      recentlyChangedJobs === true;
 
     if (!hasCriteria) {
       return this.createErrorResult(
-        'FullEnrich people search requires at least one supported filter (companyName, jobTitle/jobTitles, location/city/country, skills, seniorityLevels, companyIndustries, min/maxCompanyHeadcount, pastCompanyName).'
+        'FullEnrich people search requires at least one supported filter (companyName, jobTitle/jobTitles, location/city/country, skills, languages, seniorityLevels, functionCategories, companyIndustries, min/maxCompanyHeadcount, minYearsAtCompany, pastCompanyName, pastJobTitle, schoolName, recentlyChangedJobs).'
       );
     }
 
@@ -1008,6 +1243,24 @@ export class PeopleSearchTool extends ToolBubble<
         headcountRange.min = minCompanyHeadcount;
       if (maxCompanyHeadcount !== undefined)
         headcountRange.max = maxCompanyHeadcount;
+
+      const seniorityResult = seniorityLevels?.length
+        ? mapSeniorityToFullEnrich(seniorityLevels)
+        : { mapped: [] as string[], unsupported: [] as string[] };
+      if (seniorityResult.unsupported.length > 0) {
+        warnings.push(
+          `seniorityLevels values not in FullEnrich's enum — ignored by the provider: ${seniorityResult.unsupported.join(', ')}. FullEnrich accepts: Owner, Founder, C-level, Partner, VP, Head, Director, Manager, Senior. Use provider="crustdata" for the other Crustdata-only seniority values.`
+        );
+      }
+
+      const functionResult = functionCategories?.length
+        ? mapFunctionCategoryToFullEnrich(functionCategories)
+        : { mapped: [] as string[], unsupported: [] as string[] };
+      if (functionResult.unsupported.length > 0) {
+        warnings.push(
+          `functionCategories values not in FullEnrich's top-level function enum — passed through as-is and may be ignored by the provider: ${functionResult.unsupported.join(', ')}. See FE docs for subfunction names if tighter matching is required.`
+        );
+      }
 
       const people_search = await new FullEnrichBubble(
         {
@@ -1022,14 +1275,28 @@ export class PeopleSearchTool extends ToolBubble<
           ...(pastCompanyName && {
             past_company_names: [{ value: pastCompanyName }],
           }),
+          ...(pastJobTitle && {
+            past_position_titles: [{ value: pastJobTitle }],
+          }),
+          ...(schoolName && {
+            person_universities: [{ value: schoolName }],
+          }),
           ...(allLocations.length > 0 && {
             person_locations: allLocations.map((v) => ({ value: v })),
           }),
           ...(skills?.length && {
             person_skills: skills.map((v) => ({ value: v })),
           }),
-          ...(seniorityLevels?.length && {
-            current_position_seniority_level: seniorityLevels.map((v) => ({
+          ...(languages?.length && {
+            person_languages: languages.map((v) => ({ value: v })),
+          }),
+          ...(seniorityResult.mapped.length > 0 && {
+            current_position_seniority_level: seniorityResult.mapped.map(
+              (v) => ({ value: v })
+            ),
+          }),
+          ...(functionResult.mapped.length > 0 && {
+            current_position_job_functions: functionResult.mapped.map((v) => ({
               value: v,
             })),
           }),
@@ -1041,6 +1308,13 @@ export class PeopleSearchTool extends ToolBubble<
           ...((minCompanyHeadcount !== undefined ||
             maxCompanyHeadcount !== undefined) && {
             current_company_headcounts: [headcountRange],
+          }),
+          ...(minYearsAtCompany !== undefined && {
+            current_company_years_at: [{ min: minYearsAtCompany }],
+          }),
+          ...(recentlyChangedJobs === true && {
+            // "Recently changed jobs" → last 90 days since last job change.
+            current_company_days_since_last_job_change: [{ max: 90 }],
           }),
           ...(cursor && { search_after: cursor }),
           credentials,
@@ -1064,14 +1338,28 @@ export class PeopleSearchTool extends ToolBubble<
         };
       };
 
-      const people: PersonResult[] = (data.people ?? []).map((p) =>
+      let people: PersonResult[] = (data.people ?? []).map((p) =>
         this.transformFullEnrichPerson(p)
       );
+
+      // Post-enrichment step: /people/search returns profile data but not
+      // emails, so when the caller asks for enrichEmails we reuse the existing
+      // bulk-enrichment pipeline that the Crustdata branch uses.
+      if (enrichEmails && people.length > 0) {
+        const enrichResult = await this.enrichPeopleEmails(
+          people,
+          credentials,
+          includePersonalEmails ?? false
+        );
+        people = enrichResult.people;
+        warnings.push(...enrichResult.warnings);
+      }
 
       return {
         people,
         totalCount: data.metadata?.total ?? people.length,
         nextCursor: data.metadata?.search_after,
+        ...(warnings.length > 0 && { warnings }),
         success: true,
         error: '',
       };
@@ -1208,19 +1496,50 @@ export class PeopleSearchTool extends ToolBubble<
         ) as string[])
       : null;
 
+    // /people/search occasionally returns a contact block with email data on
+    // results the person already surfaced elsewhere in FullEnrich's pipeline.
+    // Populate both the canonical `emails` array and the `enriched*` mirrors so
+    // callers that read either shape see the data.
+    const contact = (p.contact ?? {}) as Record<string, unknown>;
+    const mostProbableEmail =
+      (contact.most_probable_email as string | undefined) ?? null;
+    const mostProbablePersonalEmail =
+      (contact.most_probable_personal_email as string | undefined) ?? null;
+    const contactEmails = Array.isArray(contact.emails)
+      ? (contact.emails as Array<Record<string, unknown>>)
+          .map((e) => ({
+            email: (e.email as string | undefined) ?? '',
+            status: e.status as string | undefined,
+          }))
+          .filter((e) => e.email.length > 0)
+      : null;
+    const contactPersonalEmails = Array.isArray(contact.personal_emails)
+      ? (contact.personal_emails as Array<Record<string, unknown>>)
+          .map((e) => ({
+            email: (e.email as string | undefined) ?? '',
+            status: e.status as string | undefined,
+          }))
+          .filter((e) => e.email.length > 0)
+      : null;
+    const mergedEmails = new Set<string>();
+    if (mostProbableEmail) mergedEmails.add(mostProbableEmail);
+    if (mostProbablePersonalEmail) mergedEmails.add(mostProbablePersonalEmail);
+    contactEmails?.forEach((e) => mergedEmails.add(e.email));
+    contactPersonalEmails?.forEach((e) => mergedEmails.add(e.email));
+
     return {
       name: fullName || null,
       title: (current.title as string | undefined) ?? null,
       headline: (p.headline as string | undefined) ?? null,
       linkedinUrl: extractSocialUrl(social, 'linkedin'),
       profilePictureUrl: (p.profile_picture_url as string | undefined) ?? null,
-      emails: [],
+      emails: mergedEmails.size > 0 ? Array.from(mergedEmails) : null,
       twitterHandle: extractSocialUrl(social, 'twitter'),
       websites: null,
-      enrichedWorkEmail: null,
-      enrichedPersonalEmail: null,
-      enrichedWorkEmails: null,
-      enrichedPersonalEmails: null,
+      enrichedWorkEmail: mostProbableEmail,
+      enrichedPersonalEmail: mostProbablePersonalEmail,
+      enrichedWorkEmails: contactEmails,
+      enrichedPersonalEmails: contactPersonalEmails,
       seniorityLevel: (current.seniority as string | undefined) ?? null,
       yearsOfExperience: (p.years_of_experience as number | undefined) ?? null,
       recentlyChangedJobs: null,
@@ -1348,14 +1667,20 @@ export class PeopleSearchTool extends ToolBubble<
   }
 
   /**
-   * Enrich people with email data using FullEnrich
-   * Batches requests and polls until completion
+   * Enrich people with email data using FullEnrich.
+   *
+   * Batches up to 100 contacts per request and polls every 5s up to 120s per
+   * batch. Bulk enrichment is slow by design — expect 30–120s of wall time for
+   * a full batch. Returns both the enriched people and a list of warning
+   * strings so callers can surface "emails failed to arrive" to the user
+   * instead of silently returning un-enriched people.
    */
   private async enrichPeopleEmails(
     people: PersonResult[],
     credentials: Partial<Record<CredentialType, string>>,
     includePersonalEmails: boolean
-  ): Promise<PersonResult[]> {
+  ): Promise<{ people: PersonResult[]; warnings: string[] }> {
+    const warnings: string[] = [];
     // Build contacts for enrichment (only those with LinkedIn URLs or name+company)
     const contactsToEnrich: Array<{
       index: number;
@@ -1394,7 +1719,7 @@ export class PeopleSearchTool extends ToolBubble<
     }
 
     if (contactsToEnrich.length === 0) {
-      return people; // No contacts to enrich
+      return { people, warnings }; // No contacts to enrich
     }
 
     // Determine enrich fields
@@ -1438,15 +1763,22 @@ export class PeopleSearchTool extends ToolBubble<
         ).action();
 
         if (!find_email.success || !find_email.data?.enrichment_id) {
-          continue; // Skip this batch on error
+          warnings.push(
+            `Email enrichment batch ${batchStart / batchSize + 1} failed to start: ${find_email.error || 'unknown error'}. People in this batch are returned without enriched emails.`
+          );
+          continue;
         }
 
         const enrichmentId = find_email.data.enrichment_id;
 
-        // Poll until done (max 120 seconds)
+        // Poll until done (max 120 seconds). 5s interval keeps request count
+        // reasonable (~24 polls max) vs. the old 3s cadence — enrichment takes
+        // 30–120s typically, so the extra 2s granularity doesn't matter.
         const maxWaitMs = 120000;
-        const pollIntervalMs = 3000;
+        const pollIntervalMs = 5000;
         const startTime = Date.now();
+        let finished = false;
+        let finalStatus: string | undefined;
 
         while (Date.now() - startTime < maxWaitMs) {
           await this.sleep(pollIntervalMs);
@@ -1467,12 +1799,14 @@ export class PeopleSearchTool extends ToolBubble<
           }
 
           const status = poll_email.data?.status;
+          finalStatus = status;
 
           if (
             status === 'FINISHED' ||
             status === 'CANCELED' ||
             status === 'CREDITS_INSUFFICIENT'
           ) {
+            finished = true;
             // Extract results
             const results = poll_email.data?.results as
               | Array<{
@@ -1543,13 +1877,29 @@ export class PeopleSearchTool extends ToolBubble<
             break; // Done with this batch
           }
         }
-      } catch {
-        // Continue with next batch on error
+
+        if (!finished) {
+          warnings.push(
+            `Email enrichment batch ${batchStart / batchSize + 1} did not complete within ${maxWaitMs / 1000}s (last status: ${finalStatus ?? 'unknown'}). People in this batch are returned without enriched emails.`
+          );
+        } else if (finalStatus === 'CANCELED') {
+          warnings.push(
+            `Email enrichment batch ${batchStart / batchSize + 1} was canceled. People in this batch are returned without enriched emails.`
+          );
+        } else if (finalStatus === 'CREDITS_INSUFFICIENT') {
+          warnings.push(
+            `Email enrichment batch ${batchStart / batchSize + 1} stopped due to insufficient FullEnrich credits. Partial results only.`
+          );
+        }
+      } catch (err) {
+        warnings.push(
+          `Email enrichment batch ${batchStart / batchSize + 1} threw: ${err instanceof Error ? err.message : String(err)}. People in this batch are returned without enriched emails.`
+        );
         continue;
       }
     }
 
-    return enrichedPeople;
+    return { people: enrichedPeople, warnings };
   }
 
   /**
