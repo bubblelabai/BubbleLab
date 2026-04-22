@@ -36,6 +36,8 @@ export const AvailableModels = z.enum([
   'openrouter/openai/gpt-oss-120b',
   'openrouter/openai/o3-deep-research',
   'openrouter/openai/o4-mini-deep-research',
+  // Fireworks AI models
+  'fireworks/accounts/fireworks/models/kimi-k2p6',
 ]);
 
 export type AvailableModel = z.infer<typeof AvailableModels>;
@@ -65,5 +67,5 @@ export const RECOMMENDED_MODELS = {
   FAST: 'google/gemini-2.5-flash-lite',
   FAST_ALT: 'anthropic/claude-haiku-4-5',
   LITE: 'google/gemini-2.5-flash-lite',
-  CHAT: 'anthropic/claude-sonnet-4-6',
+  CHAT: 'fireworks/accounts/fireworks/models/kimi-k2p6',
 } as Record<string, AvailableModel>;

@@ -33,6 +33,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.SLACK_API]: {},
   [CredentialType.RESEND_CRED]: {},
   [CredentialType.OPENROUTER_CRED]: {},
+  [CredentialType.FIREWORKS_CRED]: {},
   [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: {},
   [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: {},
   [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: {},

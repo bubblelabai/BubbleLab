@@ -69,6 +69,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.SLACK_API]: 'Slack',
     [CredentialType.RESEND_CRED]: 'Resend',
     [CredentialType.OPENROUTER_CRED]: 'OpenRouter',
+    [CredentialType.FIREWORKS_CRED]: 'Fireworks AI',
     [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: 'Cloudflare',
     [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: 'Cloudflare',
     [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: 'Cloudflare',

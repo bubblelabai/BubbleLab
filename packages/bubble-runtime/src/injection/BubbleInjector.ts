@@ -596,6 +596,7 @@ export class BubbleInjector {
             CredentialType.GOOGLE_GEMINI_CRED,
             CredentialType.ANTHROPIC_CRED,
             CredentialType.OPENROUTER_CRED,
+            CredentialType.FIREWORKS_CRED,
           ];
           for (const credType of aiProviderCredentials) {
             if (

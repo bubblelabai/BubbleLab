@@ -68,7 +68,7 @@ export async function applyCapabilityPreprocessing(
       if (override.maxIterations) params.maxIterations = override.maxIterations;
     }
   } else if (caps.length > 1) {
-    // Multi-capability master: use Sonnet for reliable tool-calling / routing.
+    // Multi-capability master: use RECOMMENDED_MODELS.CHAT for reliable tool-calling / routing.
     params.model.model = RECOMMENDED_MODELS.CHAT as typeof params.model.model;
     params.model.reasoningEffort = 'medium';
   }

@@ -174,6 +174,15 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
         ignoreSSL: false,
       },
     },
+    [CredentialType.FIREWORKS_CRED]: {
+      label: 'Fireworks AI',
+      description: 'API key for Fireworks AI inference services',
+      placeholder: 'fw_...',
+      namePlaceholder: 'My Fireworks API Key',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
     [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: {
       label: 'Cloudflare R2 Access Key',
       description: 'Access key for Cloudflare R2 storage',
@@ -754,6 +763,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.TELEGRAM_BOT_TOKEN]: 'TELEGRAM_BOT_TOKEN',
   [CredentialType.RESEND_CRED]: 'RESEND_API_KEY',
   [CredentialType.OPENROUTER_CRED]: 'OPENROUTER_API_KEY',
+  [CredentialType.FIREWORKS_CRED]: 'FIREWORKS_API_KEY',
   [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: 'CLOUDFLARE_R2_ACCESS_KEY',
   [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: 'CLOUDFLARE_R2_SECRET_KEY',
   [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: 'CLOUDFLARE_R2_ACCOUNT_ID',
@@ -815,6 +825,7 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
   CredentialType.ANTHROPIC_CRED,
   CredentialType.RESEND_CRED,
   CredentialType.OPENROUTER_CRED,
+  CredentialType.FIREWORKS_CRED,
   // Cloudflare R2 Storage credentials
   CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
   CredentialType.CLOUDFLARE_R2_SECRET_KEY,
@@ -2783,6 +2794,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
     CredentialType.ANTHROPIC_CRED,
     CredentialType.FIRECRAWL_API_KEY,
     CredentialType.OPENROUTER_CRED,
+    CredentialType.FIREWORKS_CRED,
   ],
   postgresql: [CredentialType.DATABASE_CRED],
   slack: [CredentialType.SLACK_CRED, CredentialType.SLACK_API],
