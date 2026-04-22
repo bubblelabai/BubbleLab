@@ -56,6 +56,8 @@ export const RECOMMENDED_MODELS = {
   GOOGLE_FAST: 'google/gemini-2.5-flash-lite',
   ANTHROPIC_FAST: 'anthropic/claude-haiku-4-5',
   OPENAI_FAST: 'openai/gpt-5-mini',
+  // Provider-specific recommended pick
+  KIMI: 'fireworks/accounts/fireworks/models/kimi-k2p6',
   // Special-purpose
   IMAGE: 'google/gemini-3-pro-image-preview',
   // Legacy aliases (unchanged behavior)
@@ -67,5 +69,10 @@ export const RECOMMENDED_MODELS = {
   FAST: 'google/gemini-2.5-flash-lite',
   FAST_ALT: 'anthropic/claude-haiku-4-5',
   LITE: 'google/gemini-2.5-flash-lite',
-  CHAT: 'fireworks/accounts/fireworks/models/kimi-k2p6',
-} as Record<string, AvailableModel>;
+  // Per-purpose presets — pick the right model based on tradeoff (latency
+  // vs. quality). CHAT is the multi-cap master in capability-pipeline.
+  CHAT: {
+    FAST: 'fireworks/accounts/fireworks/models/kimi-k2p6',
+    THOROUGH: 'anthropic/claude-sonnet-4-6',
+  },
+} as const;
