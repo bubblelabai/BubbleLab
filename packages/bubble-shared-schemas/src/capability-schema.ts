@@ -51,7 +51,8 @@ export type CapabilityId =
   | 'metabase-assistant'
   | 'clerk-assistant'
   | 'granola-assistant'
-  | 'memberful-assistant';
+  | 'memberful-assistant'
+  | 'luma-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
