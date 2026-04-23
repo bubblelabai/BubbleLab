@@ -65,7 +65,8 @@
       "zod": "3.25.76",
       "@hono/zod-openapi": "0.18.3",
       "@asteasolutions/zod-to-openapi": "7.3.4",
-      "typescript": "^5.8.3"
+      "typescript": "^5.8.3",
+      "hono": "4.11.9"
     },
     "patchedDependencies": {
       "@sendsafely/sendsafely@3.0.1": "patches/@sendsafely__sendsafely@3.0.1.patch"

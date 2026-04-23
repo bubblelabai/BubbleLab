@@ -1,6 +1,6 @@
 {
   "name": "@bubblelab/shared-schemas",
-  "version": "0.1.305",
+  "version": "0.1.306",
   "type": "module",
   "license": "Apache-2.0",
   "main": "./dist/index.js",
@@ -29,7 +29,7 @@
     "test": "vitest run",
     "prepublishOnly": "pnpm run build"
   },
-  "dependencies": {
+  "peerDependencies": {
     "zod": "=3.25.76",
     "@hono/zod-openapi": "=0.18.3"
   },

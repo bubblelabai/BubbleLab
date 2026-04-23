@@ -10,6 +10,7 @@ overrides:
   '@hono/zod-openapi': 0.18.3
   '@asteasolutions/zod-to-openapi': 7.3.4
   typescript: ^5.8.3
+  hono: 4.11.9
 
 patchedDependencies:
   '@sendsafely/sendsafely@3.0.1':
@@ -235,10 +236,10 @@ importers:
         version: 2.17.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@hono/swagger-ui':
         specifier: ^0.5.2
-        version: 0.5.2(hono@4.9.10)
+        version: 0.5.2(hono@4.11.9)
       '@hono/zod-openapi':
         specifier: 0.18.3
-        version: 0.18.3(hono@4.9.10)(zod@3.25.76)
+        version: 0.18.3(hono@4.11.9)(zod@3.25.76)
       '@libsql/client':
         specifier: ^0.15.10
         version: 0.15.15
@@ -246,8 +247,8 @@ importers:
         specifier: ^0.44.3
         version: 0.44.6(@libsql/client@0.15.15)(@types/pg@8.15.5)(bun-types@1.2.23(@types/react@19.2.2))(pg@8.16.3)
       hono:
-        specifier: ^4.9.8
-        version: 4.9.10
+        specifier: 4.11.9
+        version: 4.11.9
       nanoid:
         specifier: ^5.1.5
         version: 5.1.6
@@ -476,13 +477,6 @@ importers:
         version: 8.43.0
 
   packages/bubble-shared-schemas:
-    dependencies:
-      '@hono/zod-openapi':
-        specifier: 0.18.3
-        version: 0.18.3(hono@4.9.10)(zod@3.25.76)
-      zod:
-        specifier: 3.25.76
-        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^24.0.15
@@ -2053,10 +2047,10 @@ packages:
       }
     engines: { node: '>=6.9.0' }
 
-  '@babel/runtime@7.28.6':
+  '@babel/runtime@7.29.2':
     resolution:
       {
-        integrity: sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA==,
+        integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==,
       }
     engines: { node: '>=6.9.0' }
 
@@ -2119,6 +2113,7 @@ packages:
         integrity: sha512-jBreKiUS4DKm+JUIt59B1699aRr3wQmQ1O+DlWCEY3iEz+F6ETir1SJcRNG5mHVoA9EGn+m93USJSUWZBRG8yQ==,
       }
     engines: { node: '>=18.17.0' }
+    deprecated: 'This package is no longer supported. Please use @clerk/react instead. See the upgrade guide for more info: https://clerk.com/docs/guides/development/upgrading/upgrade-guides/core-3'
     peerDependencies:
       react: ^18.0.0 || ^19.0.0 || ^19.0.0-0
       react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-0
@@ -2151,6 +2146,7 @@ packages:
         integrity: sha512-+bUiHjqVXEHJIOOhshIy3uYDF/c4/yNc2BPfgPTXxxsbz/2wG0XUx0PL+mxUPiruPZOD+D63AtmORuFW3yBa2w==,
       }
     engines: { node: '>=18.17.0' }
+    deprecated: 'This package is no longer supported. Please import types from @clerk/shared/types instead. See the upgrade guide for more info: https://clerk.com/docs/guides/development/upgrading/upgrade-guides/core-3'
 
   '@colors/colors@1.5.0':
     resolution:
@@ -3904,7 +3900,7 @@ packages:
         integrity: sha512-7wxLKdb8h7JTdZ+K8DJNE3KXQMIpJejkBTQjrYlUWF28Z1PGOKw6kUykARe5NTfueIN37jbyG/sBYsbzXzG53A==,
       }
     peerDependencies:
-      hono: '*'
+      hono: 4.11.9
 
   '@hono/zod-openapi@0.18.3':
     resolution:
@@ -3913,7 +3909,7 @@ packages:
       }
     engines: { node: '>=16.0.0' }
     peerDependencies:
-      hono: '>=4.3.6'
+      hono: 4.11.9
       zod: 3.25.76
 
   '@hono/zod-validator@0.4.3':
@@ -3922,7 +3918,7 @@ packages:
         integrity: sha512-xIgMYXDyJ4Hj6ekm9T9Y27s080Nl9NXHcJkOvkXPhubOLj8hZkOL8pDnnXfvCf5xEE8Q4oMFenQUZZREUY2gqQ==,
       }
     peerDependencies:
-      hono: '>=3.9.0'
+      hono: 4.11.9
       zod: 3.25.76
 
   '@humanfs/core@0.19.1':
@@ -7970,6 +7966,7 @@ packages:
         integrity: sha512-RkaJzeJKDbaDWTIPiJwubyljaEPwpVWkm9Rt5h9Nd6h7tEXTJ3VB4qxdZBioV7JO5yLUaOKwz7vDOzlncUsegw==,
       }
     engines: { node: '>=10.0.0' }
+    deprecated: Security vulnerability fixed in 5.2.0, please upgrade
 
   batch@0.6.1:
     resolution:
@@ -11110,10 +11107,10 @@ packages:
         integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==,
       }
 
-  hono@4.9.10:
+  hono@4.11.9:
     resolution:
       {
-        integrity: sha512-AlI15ijFyKTXR7eHo7QK7OR4RoKIedZvBuRjO8iy4zrxvlY5oFCdiRG/V/lFJHCNXJ0k72ATgnyzx8Yqa5arug==,
+        integrity: sha512-Eaw2YTGM6WOxA6CXbckaEvslr2Ne4NFsKrvc0v97JD5awbmeBLO5w9Ho9L9kmKonrwF9RJlW6BxT1PVv/agBHQ==,
       }
     engines: { node: '>=16.9.0' }
 
@@ -19824,7 +19821,7 @@ snapshots:
     dependencies:
       core-js-pure: 3.45.1
 
-  '@babel/runtime@7.28.6': {}
+  '@babel/runtime@7.29.2': {}
 
   '@babel/template@7.27.2':
     dependencies:
@@ -20232,7 +20229,7 @@ snapshots:
       '@babel/preset-env': 7.28.3(@babel/core@7.28.4)
       '@babel/preset-react': 7.27.1(@babel/core@7.28.4)
       '@babel/preset-typescript': 7.27.1(@babel/core@7.28.4)
-      '@babel/runtime': 7.28.6
+      '@babel/runtime': 7.29.2
       '@babel/runtime-corejs3': 7.28.4
       '@babel/traverse': 7.28.4
       '@docusaurus/logger': 3.8.1
@@ -21372,20 +21369,20 @@ snapshots:
     dependencies:
       react: 19.1.0
 
-  '@hono/swagger-ui@0.5.2(hono@4.9.10)':
+  '@hono/swagger-ui@0.5.2(hono@4.11.9)':
     dependencies:
-      hono: 4.9.10
+      hono: 4.11.9
 
-  '@hono/zod-openapi@0.18.3(hono@4.9.10)(zod@3.25.76)':
+  '@hono/zod-openapi@0.18.3(hono@4.11.9)(zod@3.25.76)':
     dependencies:
       '@asteasolutions/zod-to-openapi': 7.3.4(zod@3.25.76)
-      '@hono/zod-validator': 0.4.3(hono@4.9.10)(zod@3.25.76)
-      hono: 4.9.10
+      '@hono/zod-validator': 0.4.3(hono@4.11.9)(zod@3.25.76)
+      hono: 4.11.9
       zod: 3.25.76
 
-  '@hono/zod-validator@0.4.3(hono@4.9.10)(zod@3.25.76)':
+  '@hono/zod-validator@0.4.3(hono@4.11.9)(zod@3.25.76)':
     dependencies:
-      hono: 4.9.10
+      hono: 4.11.9
       zod: 3.25.76
 
   '@humanfs/core@0.19.1': {}
@@ -22351,7 +22348,7 @@ snapshots:
 
   '@slorber/react-helmet-async@1.3.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
-      '@babel/runtime': 7.28.6
+      '@babel/runtime': 7.29.2
       invariant: 2.2.4
       prop-types: 15.8.1
       react: 19.1.0
@@ -26522,7 +26519,7 @@ snapshots:
 
   history@4.10.1:
     dependencies:
-      '@babel/runtime': 7.28.6
+      '@babel/runtime': 7.29.2
       loose-envify: 1.4.0
       resolve-pathname: 3.0.0
       tiny-invariant: 1.3.3
@@ -26533,7 +26530,7 @@ snapshots:
     dependencies:
       react-is: 16.13.1
 
-  hono@4.9.10: {}
+  hono@4.11.9: {}
 
   hpack.js@2.1.6:
     dependencies:
@@ -27601,7 +27598,7 @@ snapshots:
 
   json-schema-to-ts@3.1.1:
     dependencies:
-      '@babel/runtime': 7.28.6
+      '@babel/runtime': 7.29.2
       ts-algebra: 2.0.0
 
   json-schema-traverse@0.4.1: {}
@@ -29688,7 +29685,7 @@ snapshots:
 
   react-loadable-ssr-addon-v5-slorber@1.0.1(@docusaurus/react-loadable@6.0.0(react@19.1.0))(webpack@5.102.1):
     dependencies:
-      '@babel/runtime': 7.28.6
+      '@babel/runtime': 7.29.2
       react-loadable: '@docusaurus/react-loadable@6.0.0(react@19.1.0)'
       webpack: 5.102.1
 
@@ -29723,13 +29720,13 @@ snapshots:
 
   react-router-config@5.1.1(react-router@5.3.4(react@19.1.0))(react@19.1.0):
     dependencies:
-      '@babel/runtime': 7.28.6
+      '@babel/runtime': 7.29.2
       react: 19.1.0
       react-router: 5.3.4(react@19.1.0)
 
   react-router-dom@5.3.4(react@19.1.0):
     dependencies:
-      '@babel/runtime': 7.28.6
+      '@babel/runtime': 7.29.2
       history: 4.10.1
       loose-envify: 1.4.0
       prop-types: 15.8.1
@@ -29740,7 +29737,7 @@ snapshots:
 
   react-router@5.3.4(react@19.1.0):
     dependencies:
-      '@babel/runtime': 7.28.6
+      '@babel/runtime': 7.29.2
       history: 4.10.1
       hoist-non-react-statics: 3.3.2
       loose-envify: 1.4.0
