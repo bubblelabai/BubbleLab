@@ -136,6 +136,9 @@ export enum CredentialType {
 
   // Granola Credentials
   GRANOLA_API_KEY = 'GRANOLA_API_KEY',
+
+  // Memberful Credentials
+  MEMBERFUL_CRED = 'MEMBERFUL_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -226,4 +229,5 @@ export type BubbleName =
   | 'docusign'
   | 'metabase'
   | 'clerk'
-  | 'granola';
+  | 'granola'
+  | 'memberful';

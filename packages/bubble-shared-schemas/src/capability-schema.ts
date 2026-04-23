@@ -50,7 +50,8 @@ export type CapabilityId =
   | 'docusign-assistant'
   | 'metabase-assistant'
   | 'clerk-assistant'
-  | 'granola-assistant';
+  | 'granola-assistant'
+  | 'memberful-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.

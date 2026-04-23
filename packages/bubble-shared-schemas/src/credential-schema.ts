@@ -548,6 +548,28 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Zendesk Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.MEMBERFUL_CRED]: {
+      label: 'Memberful',
+      description:
+        'Credentials for Memberful — site-wide access to members, subscriptions, plans, and orders via the GraphQL API (subdomain + API key)',
+      placeholder: '',
+      namePlaceholder: 'My Memberful Connection',
+      credentialConfigurations: {},
+      fields: [
+        {
+          key: 'subdomain',
+          label: 'Memberful Subdomain',
+          placeholder: 'mysite (from mysite.memberful.com)',
+          type: 'text',
+        },
+        {
+          key: 'apiKey',
+          label: 'API Key',
+          placeholder: 'Your Memberful API key',
+          type: 'password',
+        },
+      ],
+    },
     [CredentialType.SALESFORCE_CRED]: {
       label: 'Salesforce',
       description:
@@ -781,6 +803,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.CLERK_CRED]: '', // OAuth credential, no env var
   [CredentialType.CLERK_API_KEY]: '', // User-provided Secret Key, no env var
   [CredentialType.GRANOLA_API_KEY]: 'GRANOLA_API_KEY',
+  [CredentialType.MEMBERFUL_CRED]: '', // Multi-field credential (subdomain + apiKey), no single env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -2732,6 +2755,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   metabase: [CredentialType.METABASE_CRED],
   clerk: [CredentialType.CLERK_CRED],
   granola: [CredentialType.GRANOLA_API_KEY],
+  memberful: [CredentialType.MEMBERFUL_CRED],
 };
 
 export interface CredentialSiblingEntry {

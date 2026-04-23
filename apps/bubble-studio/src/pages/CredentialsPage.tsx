@@ -118,6 +118,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.CLERK_CRED]: 'Clerk',
     [CredentialType.CLERK_API_KEY]: 'Clerk',
     [CredentialType.GRANOLA_API_KEY]: 'Granola',
+    [CredentialType.MEMBERFUL_CRED]: 'Memberful',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

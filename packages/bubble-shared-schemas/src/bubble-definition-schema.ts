@@ -88,6 +88,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.CLERK_CRED]: {},
   [CredentialType.CLERK_API_KEY]: {},
   [CredentialType.GRANOLA_API_KEY]: {},
+  [CredentialType.MEMBERFUL_CRED]: {},
   [CredentialType.CREDENTIAL_WILDCARD]: {}, // Wildcard marker, not a real credential
 };
 
