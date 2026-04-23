@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { ServiceBubble } from '../../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../../types/bubble.js';
-import { CredentialType, type ExecutionMeta } from '@bubblelab/shared-schemas';
+import {
+  CredentialType,
+  decodeCredentialPayload,
+  type ExecutionMeta,
+} from '@bubblelab/shared-schemas';
 import {
   markdownToBlocks,
   containsMarkdown,
@@ -169,6 +173,13 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       .optional()
       .default(true)
       .describe('Enable automatic media unfurling'),
+    as_user: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'Post as the installing user (using xoxp) instead of as the bot. Default false (bot posts as the Pearl app). When true, the message appears from the installing user in Slack — requires a Slack install that granted user-scope chat:write, and when `channel` is a user id the DM is opened via the user token so the message lands in the real user-to-user DM thread. `username`/`icon_url`/`icon_emoji` are ignored when as_user=true (they only affect bot-token posts).'
+      ),
   }),
 
   // List channels operation
@@ -665,6 +676,112 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       .describe(
         'The file ID to download. If provided without file_url, will first fetch file info to get the URL.'
       ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // search_messages — USER TOKEN REQUIRED (xoxp). Slack rejects search.messages from bot tokens.
+  z.object({
+    operation: z
+      .literal('search_messages')
+      .describe(
+        'Search messages across the workspace using Slack search syntax (in:#channel, from:@user, before:YYYY-MM-DD, has:link, "exact phrase"). Requires a user token (xoxp-) — the install must have granted `search:read`.'
+      ),
+    query: z
+      .string()
+      .min(1, 'query is required')
+      .describe('Search query, supports Slack search modifiers.'),
+    count: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe('Max results per page (default 20, max 50).'),
+    sort: z
+      .enum(['score', 'timestamp'])
+      .optional()
+      .describe('Sort by relevance (score) or time. Default: score.'),
+    page: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe('1-indexed page number. Default: 1.'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // list_dms — USER TOKEN REQUIRED. Bot tokens only see DMs the bot is in.
+  z.object({
+    operation: z
+      .literal('list_dms')
+      .describe(
+        "List the installing user's direct-message channels (1:1 IM + group MPIM). Requires user token (xoxp-) with im:read / mpim:read."
+      ),
+    types: z
+      .enum(['im', 'mpim', 'im,mpim'])
+      .optional()
+      .describe(
+        "Filter: 'im' (1:1), 'mpim' (group DM), or 'im,mpim' (both). Default: both."
+      ),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(1000)
+      .optional()
+      .describe('Max channels to return (default 100, max 1000).'),
+    cursor: z
+      .string()
+      .optional()
+      .describe('Pagination cursor from response_metadata.next_cursor.'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // read_dm_history — USER TOKEN REQUIRED. Bot tokens only read DMs the bot participates in.
+  z.object({
+    operation: z
+      .literal('read_dm_history')
+      .describe(
+        'Read messages in a DM channel (IM or MPIM). Use a channel id from `list_dms`. Requires user token (xoxp-) with im:history / mpim:history.'
+      ),
+    channel: z
+      .string()
+      .min(1, 'channel is required')
+      .describe('DM channel id (starts with D…).'),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe('Max messages to return (default 50, max 200).'),
+    oldest: z
+      .string()
+      .optional()
+      .describe('Only messages newer than this Slack ts (inclusive).'),
+    latest: z
+      .string()
+      .optional()
+      .describe('Only messages older than this Slack ts (inclusive).'),
+    cursor: z
+      .string()
+      .optional()
+      .describe('Pagination cursor from response_metadata.next_cursor.'),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -1336,6 +1453,82 @@ const SlackResultSchema = z.discriminatedUnion('operation', [
     error: z.string().describe('Error message if operation failed'),
     success: z.boolean().describe('Whether the operation was successful'),
   }),
+
+  // search_messages result
+  z.object({
+    operation: z.literal('search_messages'),
+    ok: z.boolean(),
+    matches: z
+      .array(
+        z.object({
+          ts: z.string(),
+          channel_id: z.string().optional(),
+          channel_name: z.string().optional(),
+          user_id: z.string().optional(),
+          username: z.string().optional(),
+          text: z.string(),
+          permalink: z.string().optional(),
+        })
+      )
+      .optional(),
+    pagination: z
+      .object({
+        page: z.number().optional(),
+        total_count: z.number().optional(),
+        page_count: z.number().optional(),
+      })
+      .optional(),
+    error: z.string(),
+    success: z.boolean(),
+    code: z.string().optional(),
+  }),
+
+  // list_dms result
+  z.object({
+    operation: z.literal('list_dms'),
+    ok: z.boolean(),
+    channels: z
+      .array(
+        z.object({
+          id: z.string(),
+          is_im: z.boolean().optional(),
+          is_mpim: z.boolean().optional(),
+          user: z.string().optional(),
+          num_members: z.number().optional(),
+          is_archived: z.boolean().optional(),
+          created: z.number().optional(),
+        })
+      )
+      .optional(),
+    next_cursor: z.string().optional(),
+    error: z.string(),
+    success: z.boolean(),
+    code: z.string().optional(),
+  }),
+
+  // read_dm_history result
+  z.object({
+    operation: z.literal('read_dm_history'),
+    ok: z.boolean(),
+    messages: z
+      .array(
+        z.object({
+          ts: z.string(),
+          user: z.string().optional(),
+          text: z.string(),
+          thread_ts: z.string().optional(),
+          reply_count: z.number().optional(),
+          type: z.string().optional(),
+          subtype: z.string().optional(),
+        })
+      )
+      .optional(),
+    has_more: z.boolean().optional(),
+    next_cursor: z.string().optional(),
+    error: z.string(),
+    success: z.boolean(),
+    code: z.string().optional(),
+  }),
 ]);
 
 type SlackResult = z.output<typeof SlackResultSchema>;
@@ -1443,6 +1636,12 @@ Comprehensive Slack integration for messaging and workspace management.
             return await this.getFileInfo(this.params);
           case 'download_file':
             return await this.downloadFile(this.params);
+          case 'search_messages':
+            return await this.searchMessages(this.params);
+          case 'list_dms':
+            return await this.listDms(this.params);
+          case 'read_dm_history':
+            return await this.readDmHistory(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -1469,16 +1668,20 @@ Comprehensive Slack integration for messaging and workspace management.
    * If the input looks like a channel ID (starts with C, G, or D), returns it as-is.
    * Otherwise, searches for a channel with the given name.
    */
-  private async resolveChannelId(channelInput: string): Promise<string> {
+  private async resolveChannelId(
+    channelInput: string,
+    opts?: { useUserToken?: boolean }
+  ): Promise<string> {
     // Check if input is already a channel ID (starts with C, G, D, etc.)
     if (/^[CGD][A-Z0-9]+$/i.test(channelInput)) {
       return channelInput;
     }
 
-    // Check if input is a user ID (starts with U or W for enterprise users)
-    // If so, open a DM conversation with them to get the DM channel ID
+    // Check if input is a user ID (starts with U or W for enterprise users).
+    // Open a DM with that user — route via the user token when as_user=true so we
+    // get the user<->target DM (xoxp) instead of the bot<->target DM (xoxb).
     if (/^[UW][A-Z0-9]+$/i.test(channelInput)) {
-      const dmChannel = await this.openDmConversation(channelInput);
+      const dmChannel = await this.openDmConversation(channelInput, opts);
       return dmChannel;
     }
 
@@ -1600,19 +1803,39 @@ Comprehensive Slack integration for messaging and workspace management.
     const {
       channel,
       text,
-      username,
-      icon_emoji,
-      icon_url,
       attachments,
       blocks,
       reply_broadcast,
       unfurl_links,
       unfurl_media,
+      as_user,
     } = params;
+    // Bot-identity customization knobs are ignored when posting as the user —
+    // the installing user already has their own display name and avatar, and
+    // Slack rejects username/icon_url/icon_emoji on user-token chat.postMessage.
+    const username = as_user ? undefined : params.username;
+    const icon_emoji = as_user ? undefined : params.icon_emoji;
+    const icon_url = as_user ? undefined : params.icon_url;
     let { thread_ts } = params;
 
-    // Resolve channel name to ID if needed
-    const resolvedChannel = await this.resolveChannelId(channel);
+    // Post-as-user requires xoxp. Fail fast with a clear reconnect prompt when
+    // the install only has a bot token.
+    if (as_user && !this.getSlackTokens().user) {
+      return {
+        operation: 'send_message',
+        ok: false,
+        error:
+          'as_user=true but this Slack connection has no user token (xoxp). Reconnect Slack so the install grants chat:write user-scope — then retry.',
+        success: false,
+      };
+    }
+
+    // Resolve channel name to ID if needed. When posting as the user, route the
+    // DM-open through xoxp so U… resolves to the user<->target DM thread (the
+    // real one) instead of the bot<->target DM.
+    const resolvedChannel = await this.resolveChannelId(channel, {
+      useUserToken: as_user,
+    });
 
     // Detect markdown in text and convert to blocks if no blocks are already provided
     let finalBlocks = blocks;
@@ -1696,6 +1919,7 @@ Comprehensive Slack integration for messaging and workspace management.
             reply_broadcast,
             unfurl_links,
             unfurl_media,
+            useUserToken: as_user,
           },
           [], // footer already included in finalBlocks
           tableChunks as unknown as (typeof finalBlocks)[]
@@ -1721,6 +1945,7 @@ Comprehensive Slack integration for messaging and workspace management.
           reply_broadcast,
           unfurl_links,
           unfurl_media,
+          useUserToken: as_user,
         },
         [] // footer already included in finalBlocks
       );
@@ -1743,7 +1968,12 @@ Comprehensive Slack integration for messaging and workspace management.
       body.reply_broadcast = reply_broadcast;
     }
 
-    let response = await this.makeSlackApiCall('chat.postMessage', body);
+    let response = await this.makeSlackApiCall(
+      'chat.postMessage',
+      body,
+      'POST',
+      { useUserToken: as_user }
+    );
 
     // If Slack rejects the message because it can't download an image,
     // strip only the broken image blocks (by index from the error) and retry
@@ -1774,7 +2004,12 @@ Comprehensive Slack integration for messaging and workspace management.
 
         if (filtered.length > 0 && filtered.length < blocks.length) {
           body.blocks = filtered;
-          response = await this.makeSlackApiCall('chat.postMessage', body);
+          response = await this.makeSlackApiCall(
+            'chat.postMessage',
+            body,
+            'POST',
+            { useUserToken: as_user }
+          );
         }
       }
     }
@@ -1816,6 +2051,7 @@ Comprehensive Slack integration for messaging and workspace management.
       reply_broadcast?: boolean;
       unfurl_links?: boolean;
       unfurl_media?: boolean;
+      useUserToken?: boolean;
     },
     footerBlocks: Record<string, unknown>[] = [],
     preSplitChunks?: (typeof blocks)[]
@@ -1883,7 +2119,12 @@ Comprehensive Slack integration for messaging and workspace management.
         body.attachments = options.attachments;
       }
 
-      const response = await this.makeSlackApiCall('chat.postMessage', body);
+      const response = await this.makeSlackApiCall(
+        'chat.postMessage',
+        body,
+        'POST',
+        { useUserToken: options.useUserToken }
+      );
 
       if (!response.ok) {
         errors.push(
@@ -2710,13 +2951,219 @@ Comprehensive Slack integration for messaging and workspace management.
   }
 
   /**
-   * Opens a DM conversation with a user and returns the DM channel ID.
-   * Required scope: im:write (for bot tokens) or im:write (for user tokens)
+   * search.messages — USER TOKEN REQUIRED. Slack rejects this endpoint from bot tokens.
    */
-  private async openDmConversation(userId: string): Promise<string> {
-    const response = await this.makeSlackApiCall('conversations.open', {
-      users: userId,
-    });
+  private async searchMessages(
+    params: Extract<SlackParamsParsed, { operation: 'search_messages' }>
+  ): Promise<Extract<SlackResult, { operation: 'search_messages' }>> {
+    const count = Math.min(params.count ?? 20, 50);
+    const sort = params.sort ?? 'score';
+    const page = params.page ?? 1;
+
+    const response = await this.makeSlackApiCall(
+      'search.messages',
+      {
+        query: params.query,
+        count,
+        sort,
+        sort_dir: 'desc',
+        page,
+      },
+      'GET',
+      { useUserToken: true }
+    );
+
+    if (!response.ok) {
+      const err = (response as SlackApiError).error || 'Unknown Slack error';
+      const missingScope =
+        err === 'missing_scope' || err === 'not_allowed_token_type';
+      return {
+        operation: 'search_messages',
+        ok: false,
+        error: missingScope
+          ? 'search.messages requires a Slack user token (xoxp-) with search:read scope. Reconnect Slack to grant it.'
+          : err,
+        code: missingScope ? 'MISSING_SCOPE' : 'UNKNOWN',
+        success: false,
+      };
+    }
+
+    const messagesData = (response.messages ?? {}) as Record<string, unknown>;
+    const rawMatches =
+      (messagesData.matches as Array<Record<string, unknown>>) ?? [];
+    const pagination = messagesData.pagination as
+      | { page?: number; total_count?: number; page_count?: number }
+      | undefined;
+
+    return {
+      operation: 'search_messages',
+      ok: true,
+      matches: rawMatches.map((m) => {
+        const channel = m.channel as { id?: string; name?: string } | undefined;
+        return {
+          ts: (m.ts as string) ?? '',
+          channel_id: channel?.id,
+          channel_name: channel?.name,
+          user_id: (m.user as string) ?? undefined,
+          username: (m.username as string) ?? undefined,
+          text: (m.text as string) ?? '',
+          permalink: (m.permalink as string) ?? undefined,
+        };
+      }),
+      pagination,
+      error: '',
+      success: true,
+    };
+  }
+
+  /**
+   * conversations.list filtered to DM types — USER TOKEN REQUIRED.
+   * Bot tokens only see DMs the bot is a participant in.
+   */
+  private async listDms(
+    params: Extract<SlackParamsParsed, { operation: 'list_dms' }>
+  ): Promise<Extract<SlackResult, { operation: 'list_dms' }>> {
+    const types = params.types ?? 'im,mpim';
+    const limit = Math.min(params.limit ?? 100, 1000);
+
+    const apiParams: Record<string, unknown> = { types, limit };
+    if (params.cursor) apiParams.cursor = params.cursor;
+
+    const response = await this.makeSlackApiCall(
+      'conversations.list',
+      apiParams,
+      'GET',
+      { useUserToken: true }
+    );
+
+    if (!response.ok) {
+      const err = (response as SlackApiError).error || 'Unknown Slack error';
+      const missingScope =
+        err === 'missing_scope' || err === 'not_allowed_token_type';
+      return {
+        operation: 'list_dms',
+        ok: false,
+        error: missingScope
+          ? 'list_dms requires user-scope im:read / mpim:read. Reconnect Slack to grant it.'
+          : err,
+        code: missingScope ? 'MISSING_SCOPE' : 'UNKNOWN',
+        success: false,
+      };
+    }
+
+    const rawChannels =
+      (response.channels as Array<Record<string, unknown>>) ?? [];
+    const responseMetadata = response.response_metadata as
+      | { next_cursor?: string }
+      | undefined;
+
+    return {
+      operation: 'list_dms',
+      ok: true,
+      channels: rawChannels.map((c) => ({
+        id: (c.id as string) ?? '',
+        is_im: Boolean(c.is_im),
+        is_mpim: Boolean(c.is_mpim),
+        user: (c.user as string) ?? undefined,
+        num_members: (c.num_members as number) ?? undefined,
+        is_archived: Boolean(c.is_archived),
+        created: (c.created as number) ?? undefined,
+      })),
+      next_cursor: responseMetadata?.next_cursor || undefined,
+      error: '',
+      success: true,
+    };
+  }
+
+  /**
+   * conversations.history on a DM channel — USER TOKEN REQUIRED.
+   * Bot tokens only see DM history for DMs the bot is part of.
+   */
+  private async readDmHistory(
+    params: Extract<SlackParamsParsed, { operation: 'read_dm_history' }>
+  ): Promise<Extract<SlackResult, { operation: 'read_dm_history' }>> {
+    const limit = Math.min(params.limit ?? 50, 200);
+
+    const apiParams: Record<string, unknown> = {
+      channel: params.channel,
+      limit,
+    };
+    if (params.oldest) apiParams.oldest = params.oldest;
+    if (params.latest) apiParams.latest = params.latest;
+    if (params.cursor) apiParams.cursor = params.cursor;
+
+    const response = await this.makeSlackApiCall(
+      'conversations.history',
+      apiParams,
+      'GET',
+      { useUserToken: true }
+    );
+
+    if (!response.ok) {
+      const err = (response as SlackApiError).error || 'Unknown Slack error';
+      const missingScope =
+        err === 'missing_scope' || err === 'not_allowed_token_type';
+      const notMember = err === 'channel_not_found' || err === 'not_in_channel';
+      return {
+        operation: 'read_dm_history',
+        ok: false,
+        error: missingScope
+          ? 'read_dm_history requires user-scope im:history / mpim:history. Reconnect Slack to grant it.'
+          : notMember
+            ? "The installing user isn't a member of this DM channel, or the channel doesn't exist."
+            : err,
+        code: missingScope
+          ? 'MISSING_SCOPE'
+          : notMember
+            ? 'NOT_A_MEMBER'
+            : 'UNKNOWN',
+        success: false,
+      };
+    }
+
+    const rawMessages =
+      (response.messages as Array<Record<string, unknown>>) ?? [];
+    const responseMetadata = response.response_metadata as
+      | { next_cursor?: string }
+      | undefined;
+
+    return {
+      operation: 'read_dm_history',
+      ok: true,
+      messages: rawMessages.map((m) => ({
+        ts: (m.ts as string) ?? '',
+        user: (m.user as string) ?? undefined,
+        text: (m.text as string) ?? '',
+        thread_ts: (m.thread_ts as string) ?? undefined,
+        reply_count: (m.reply_count as number) ?? 0,
+        type: (m.type as string) ?? 'message',
+        subtype: (m.subtype as string) ?? undefined,
+      })),
+      has_more: Boolean(response.has_more),
+      next_cursor: responseMetadata?.next_cursor || undefined,
+      error: '',
+      success: true,
+    };
+  }
+
+  /**
+   * Opens a DM conversation with a user and returns the DM channel ID.
+   * Required scope: im:write (bot or user).
+   *
+   * When called with `useUserToken=true`, routes through xoxp so the DM is the
+   * user-to-user DM (the actual private thread between the installing user and
+   * `userId`), not the bot-to-user DM.
+   */
+  private async openDmConversation(
+    userId: string,
+    opts?: { useUserToken?: boolean }
+  ): Promise<string> {
+    const response = await this.makeSlackApiCall(
+      'conversations.open',
+      { users: userId },
+      'POST',
+      opts
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -2737,36 +3184,87 @@ Comprehensive Slack integration for messaging and workspace management.
     return channel.id;
   }
 
-  protected chooseCredential(): string | undefined {
+  /**
+   * Decode the Slack credential into its bot + user tokens.
+   *
+   * The credential-helper (Pro) packs both xoxb and xoxp into a base64 payload when the
+   * install granted a user token; legacy rows / manual SLACK_API paste come through as
+   * raw token strings. This helper hides both shapes from callers.
+   *
+   * Per-operation token selection:
+   *   - bot (xoxb) for ops that should act as the Pearl app (chat.postMessage, reactions, etc.)
+   *   - user (xoxp) for ops that Slack only accepts from a user token (search.messages,
+   *     admin.*, DM history belonging to the installer)
+   */
+  protected getSlackTokens(): {
+    bot?: string;
+    user?: string;
+    appId?: string;
+  } {
     const { credentials } = this.params as {
       credentials?: Record<string, string>;
     };
 
-    // If no credentials were injected, return undefined
     if (!credentials || typeof credentials !== 'object') {
       throw new Error('No slack credentials provided');
     }
 
-    // Prefer OAuth credential, fall back to API key
-    return (
+    const raw =
       credentials[CredentialType.SLACK_CRED] ??
-      credentials[CredentialType.SLACK_API]
-    );
+      credentials[CredentialType.SLACK_API];
+    if (!raw) return {};
+
+    // New shape: encoded payload with both tokens (from Pro credential-helper.ts).
+    try {
+      const parsed = decodeCredentialPayload<{
+        accessToken?: string;
+        userAccessToken?: string;
+        appId?: string;
+      }>(raw);
+      if (parsed.accessToken || parsed.userAccessToken) {
+        return {
+          bot: parsed.accessToken,
+          user: parsed.userAccessToken,
+          appId: parsed.appId,
+        };
+      }
+    } catch {
+      /* not a payload — fall through to raw-string handling */
+    }
+
+    // Legacy / SLACK_API paste: the whole string is a single token. Classify by prefix
+    // so users who paste a xoxp under SLACK_API can still use user-scope ops.
+    // `xoxe.xoxp-…` is the rotation-enabled variant; `xoxp-…` the classic long-lived form.
+    const isUserToken = /^(xoxe\.)?xoxp-/.test(raw);
+    return isUserToken ? { user: raw } : { bot: raw };
+  }
+
+  protected chooseCredential(): string | undefined {
+    // Backward-compat shim — existing SlackBubble operations post as the bot, so they
+    // read the bot side of the dual-token payload. Ops that explicitly need the user
+    // token should call `getSlackTokens().user` directly.
+    return this.getSlackTokens().bot;
   }
 
   private async makeSlackApiCall(
     endpoint: string,
     params: Record<string, unknown>,
-    method: 'GET' | 'POST' = 'POST'
+    method: 'GET' | 'POST' = 'POST',
+    opts?: { useUserToken?: boolean }
   ): Promise<SlackApiResponse | SlackApiError> {
     const url = `${SLACK_API_BASE}/${endpoint}`;
 
-    // Use chooseCredential to get the appropriate credential
-    const authToken = this.chooseCredential();
+    // Operations like search.messages, conversations.list on DMs, admin.*,
+    // and reading DM history require the user token (xoxp). All other ops
+    // stay on the bot token so actions appear from the Pearl app identity.
+    const tokens = this.getSlackTokens();
+    const authToken = opts?.useUserToken ? tokens.user : tokens.bot;
 
     if (!authToken) {
       throw new Error(
-        'Slack authentication token is required but was not provided'
+        opts?.useUserToken
+          ? "This Slack connection doesn't include a user token (xoxp). Reconnect Slack to grant user scopes."
+          : 'Slack authentication token is required but was not provided'
       );
     }
 

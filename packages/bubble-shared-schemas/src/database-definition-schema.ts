@@ -121,9 +121,15 @@ export type StripeOAuthMetadata = z.infer<typeof stripeOAuthMetadataSchema>;
 export const slackOAuthMetadataSchema = z.object({
   teamId: z.string(),
   teamName: z.string(),
-  botUserId: z.string(),
+  botUserId: z.string().optional(),
   /** Human-readable display name for the credential (workspace name) */
   displayName: z.string().optional(),
+  /**
+   * Installing user's Slack user id — populated when the install also granted a user token
+   * (xoxp). The xoxp itself lives in the `oauthUserAccessToken` column on userCredentials,
+   * not here. Informational only.
+   */
+  userId: z.string().optional(),
 });
 
 export type SlackOAuthMetadata = z.infer<typeof slackOAuthMetadataSchema>;
