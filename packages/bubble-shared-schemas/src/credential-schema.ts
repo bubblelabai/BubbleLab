@@ -174,6 +174,33 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
         ignoreSSL: false,
       },
     },
+    [CredentialType.CUSTOM_LLM_CRED]: {
+      label: 'Custom LLM Provider',
+      description: 'Custom OpenAI-Compatible Provider',
+      placeholder: '',
+      namePlaceholder: 'My Custom LLM Provider',
+      credentialConfigurations: {},
+      fields: [
+        {
+          key: 'baseUrl',
+          label: 'Base URL',
+          placeholder: 'https://api.groq.com/openai/v1',
+          type: 'text',
+        },
+        {
+          key: 'apiKey',
+          label: 'API Key',
+          placeholder: 'Your API key',
+          type: 'password',
+        },
+        {
+          key: 'modelName',
+          label: 'Model Name',
+          placeholder: 'llama3-70b-8192',
+          type: 'text',
+        },
+      ],
+    },
     [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: {
       label: 'Cloudflare R2 Access Key',
       description: 'Access key for Cloudflare R2 storage',
@@ -754,6 +781,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.TELEGRAM_BOT_TOKEN]: 'TELEGRAM_BOT_TOKEN',
   [CredentialType.RESEND_CRED]: 'RESEND_API_KEY',
   [CredentialType.OPENROUTER_CRED]: 'OPENROUTER_API_KEY',
+  [CredentialType.CUSTOM_LLM_CRED]: '', // Multi-field credential
   [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: 'CLOUDFLARE_R2_ACCESS_KEY',
   [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: 'CLOUDFLARE_R2_SECRET_KEY',
   [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: 'CLOUDFLARE_R2_ACCOUNT_ID',
@@ -815,6 +843,7 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
   CredentialType.ANTHROPIC_CRED,
   CredentialType.RESEND_CRED,
   CredentialType.OPENROUTER_CRED,
+  CredentialType.CUSTOM_LLM_CRED,
   // Cloudflare R2 Storage credentials
   CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
   CredentialType.CLOUDFLARE_R2_SECRET_KEY,

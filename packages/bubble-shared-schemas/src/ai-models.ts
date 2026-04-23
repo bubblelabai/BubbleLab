@@ -36,6 +36,8 @@ export const AvailableModels = z.enum([
   'openrouter/openai/gpt-oss-120b',
   'openrouter/openai/o3-deep-research',
   'openrouter/openai/o4-mini-deep-research',
+  // Custom provider
+  'custom/custom',
 ]);
 
 export type AvailableModel = z.infer<typeof AvailableModels>;

@@ -12,6 +12,8 @@ export enum CredentialType {
   GOOGLE_GEMINI_CRED = 'GOOGLE_GEMINI_CRED',
   ANTHROPIC_CRED = 'ANTHROPIC_CRED',
   OPENROUTER_CRED = 'OPENROUTER_CRED',
+  // Custom LLM Provider
+  CUSTOM_LLM_CRED = 'CUSTOM_LLM_CRED',
   // Search Credentials
   FIRECRAWL_API_KEY = 'FIRECRAWL_API_KEY',
   // Database Credentials

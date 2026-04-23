@@ -5,6 +5,7 @@ import {
   CredentialType,
   BUBBLE_CREDENTIAL_OPTIONS,
   RECOMMENDED_MODELS,
+  decodeCredentialPayload,
 } from '@bubblelab/shared-schemas';
 import { StateGraph, MessagesAnnotation } from '@langchain/langgraph';
 import { ChatOpenAI } from '@langchain/openai';
@@ -1135,6 +1136,8 @@ export class AIAgentBubble extends ServiceBubble<
         return CredentialType.ANTHROPIC_CRED;
       case 'openrouter':
         return CredentialType.OPENROUTER_CRED;
+      case 'custom':
+        return CredentialType.CUSTOM_LLM_CRED;
       default:
         throw new Error(`Unsupported model provider: ${provider}`);
     }
@@ -1162,6 +1165,8 @@ export class AIAgentBubble extends ServiceBubble<
         return credentials[CredentialType.ANTHROPIC_CRED];
       case 'openrouter':
         return credentials[CredentialType.OPENROUTER_CRED];
+      case 'custom':
+        return credentials[CredentialType.CUSTOM_LLM_CRED];
       default:
         throw new Error(`Unsupported model provider: ${provider}`);
     }
@@ -1368,6 +1373,9 @@ export class AIAgentBubble extends ServiceBubble<
       case 'openrouter':
         apiKey = credentials[CredentialType.OPENROUTER_CRED];
         break;
+      case 'custom':
+        apiKey = credentials[CredentialType.CUSTOM_LLM_CRED];
+        break;
       default:
         throw new Error(`Unsupported model provider: ${provider}`);
     }
@@ -1398,6 +1406,24 @@ export class AIAgentBubble extends ServiceBubble<
           streaming: enableStreaming,
           maxRetries: retries,
         });
+      case 'custom': {
+        const payload = decodeCredentialPayload<{
+          baseUrl: string;
+          apiKey: string;
+          modelName: string;
+        }>(apiKey);
+        return new ChatOpenAI({
+          model: payload.modelName,
+          temperature,
+          maxTokens,
+          apiKey: payload.apiKey,
+          configuration: {
+            baseURL: payload.baseUrl,
+          },
+          streaming: enableStreaming,
+          maxRetries: retries,
+        });
+      }
       case 'google': {
         const thinkingConfig = reasoningEffort
           ? {
