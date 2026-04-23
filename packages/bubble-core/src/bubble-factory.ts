@@ -193,6 +193,7 @@ export class BubbleFactory {
       'clerk',
       'granola',
       'memberful',
+      'luma',
     ];
   }
 
@@ -470,6 +471,7 @@ export class BubbleFactory {
     const { MemberfulBubble } = await import(
       './bubbles/service-bubble/memberful/index.js'
     );
+    const { LumaBubble } = await import('./bubbles/service-bubble/luma.js');
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -648,6 +650,7 @@ export class BubbleFactory {
     this.register('clerk', ClerkBubble as BubbleClassWithMetadata);
     this.register('granola', GranolaBubble as BubbleClassWithMetadata);
     this.register('memberful', MemberfulBubble as BubbleClassWithMetadata);
+    this.register('luma', LumaBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {

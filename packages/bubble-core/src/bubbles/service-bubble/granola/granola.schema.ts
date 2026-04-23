@@ -2,11 +2,14 @@ import { z } from 'zod';
 import { CredentialType } from '@bubblelab/shared-schemas';
 
 // ============================================================================
-// DATA SCHEMAS - Granola API Response Types
+// DATA SCHEMAS — Normalized (camelCase) shapes returned by this bubble.
+// NOTE: Granola's underlying REST API returns snake_case. This bubble
+// normalizes to camelCase and flattens responses so callers don't have to
+// remember the remote casing conventions.
 // ============================================================================
 
 /**
- * User/owner object from Granola API
+ * User/owner (normalized)
  */
 export const GranolaUserSchema = z
   .object({
@@ -16,115 +19,112 @@ export const GranolaUserSchema = z
   .describe('Granola user information');
 
 /**
- * Calendar invitee from Granola API
- */
-export const GranolaCalendarInviteeSchema = z
-  .object({
-    email: z.string().describe('Invitee email address'),
-  })
-  .describe('Calendar event invitee');
-
-/**
- * Calendar event associated with a note
+ * Calendar event associated with a note (normalized)
  */
 export const GranolaCalendarEventSchema = z
   .object({
-    event_title: z.string().nullable().describe('Calendar event title'),
-    invitees: z
-      .array(GranolaCalendarInviteeSchema)
-      .describe('List of event invitees'),
+    title: z.string().nullable().describe('Calendar event title'),
+    invitees: z.array(z.string()).describe('List of invitee email addresses'),
     organiser: z.string().nullable().describe('Event organiser email'),
-    calendar_event_id: z
+    calendarEventId: z
       .string()
       .nullable()
       .describe('External calendar event ID'),
-    scheduled_start_time: z
+    startTime: z
       .string()
       .nullable()
       .describe('Scheduled start time (ISO 8601)'),
-    scheduled_end_time: z
-      .string()
-      .nullable()
-      .describe('Scheduled end time (ISO 8601)'),
+    endTime: z.string().nullable().describe('Scheduled end time (ISO 8601)'),
   })
   .describe('Calendar event details');
 
 /**
- * Folder membership from Granola API
+ * Folder membership (normalized)
  */
 export const GranolaFolderSchema = z
   .object({
     id: z.string().describe('Folder ID'),
-    object: z.literal('folder').describe('Object type'),
     name: z.string().describe('Folder name'),
   })
   .describe('Granola folder');
 
 /**
- * Transcript speaker from Granola API
+ * Transcript entry (normalized)
  */
-export const GranolaSpeakerSchema = z
+export const GranolaTranscriptEntrySchema = z
   .object({
     source: z
       .enum(['microphone', 'speaker'])
       .describe('Audio source (microphone or speaker)'),
-    diarization_label: z
+    speakerLabel: z
       .string()
-      .optional()
+      .nullable()
       .describe('Speaker label (iOS only when diarization available)'),
-  })
-  .describe('Transcript speaker information');
-
-/**
- * Transcript entry from Granola API
- */
-export const GranolaTranscriptEntrySchema = z
-  .object({
-    speaker: GranolaSpeakerSchema.describe('Speaker information'),
     text: z.string().describe('Transcript text content'),
-    start_time: z.string().describe('Start time (ISO 8601)'),
-    end_time: z.string().describe('End time (ISO 8601)'),
+    startTime: z.string().describe('Start time (ISO 8601)'),
+    endTime: z.string().describe('End time (ISO 8601)'),
   })
   .describe('Single transcript entry');
 
 /**
- * Note summary (returned by list_notes)
+ * Note summary — returned inside list_notes (normalized).
  */
 export const GranolaNoteSummarySchema = z
   .object({
     id: z.string().describe('Note ID (format: not_XXXXXXXXXXXXXX)'),
-    object: z.literal('note').describe('Object type'),
     title: z.string().nullable().describe('Meeting title'),
     owner: GranolaUserSchema.describe('Note owner'),
-    created_at: z.string().describe('Creation timestamp (ISO 8601)'),
-    updated_at: z.string().describe('Last updated timestamp (ISO 8601)'),
+    createdAt: z.string().describe('Creation timestamp (ISO 8601)'),
+    updatedAt: z.string().describe('Last updated timestamp (ISO 8601)'),
   })
   .describe('Granola note summary');
 
 /**
- * Full note (returned by get_note)
+ * Full note fields — returned FLAT on get_note (no wrapper object).
+ * All fields are optional so callers using `sections` filtering don't
+ * see undefined vs. missing differences at the type level.
  */
-export const GranolaNoteSchema = GranolaNoteSummarySchema.extend({
-  calendar_event: GranolaCalendarEventSchema.nullable().describe(
-    'Associated calendar event'
-  ),
-  attendees: z.array(GranolaUserSchema).describe('Meeting attendees'),
-  folder_membership: z
-    .array(GranolaFolderSchema)
-    .describe('Folders this note belongs to'),
-  summary_text: z.string().describe('Plain text summary of the meeting'),
-  summary_markdown: z
+export const GranolaNoteFieldsSchema = z.object({
+  id: z.string().describe('Note ID'),
+  title: z.string().nullable().describe('Meeting title'),
+  owner: GranolaUserSchema.optional().describe('Note owner'),
+  createdAt: z.string().describe('Creation timestamp (ISO 8601)'),
+  updatedAt: z.string().describe('Last updated timestamp (ISO 8601)'),
+  notesUrl: z
     .string()
     .nullable()
-    .describe('Markdown-formatted summary'),
+    .describe(
+      'Direct web link to this meeting in Granola (extracted from summary footer).'
+    ),
+  summaryText: z
+    .string()
+    .optional()
+    .describe('Plain text summary (included when sections has "summary")'),
+  summaryMarkdown: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('Markdown summary (included when sections has "summary")'),
+  attendees: z
+    .array(GranolaUserSchema)
+    .optional()
+    .describe('Attendees (included when sections has "attendees")'),
+  calendarEvent: GranolaCalendarEventSchema.nullable()
+    .optional()
+    .describe('Calendar event (included when sections has "calendar")'),
+  folders: z
+    .array(GranolaFolderSchema)
+    .optional()
+    .describe('Folders (included when sections has "folders")'),
   transcript: z
     .array(GranolaTranscriptEntrySchema)
     .nullable()
-    .describe('Transcript entries (null unless include=transcript)'),
-}).describe('Full Granola note with details');
+    .optional()
+    .describe('Transcript (included only when sections has "transcript")'),
+});
 
 // ============================================================================
-// PARAMETER SCHEMAS - Operation-specific input types
+// PARAMETER SCHEMAS
 // ============================================================================
 
 const credentialsField = z
@@ -132,27 +132,34 @@ const credentialsField = z
   .optional()
   .describe('Credential map for authentication');
 
+const SectionSchema = z.enum([
+  'summary',
+  'attendees',
+  'calendar',
+  'folders',
+  'transcript',
+]);
+
 /**
  * List notes operation parameters
  */
 const ListNotesSchema = z.object({
   operation: z
     .literal('list_notes')
-    .transform(() => 'list_notes' as const)
     .describe('List accessible meeting notes with pagination'),
-  created_before: z
+  createdBefore: z
     .string()
     .optional()
     .describe(
       'Filter notes created before this date (ISO 8601 date or datetime)'
     ),
-  created_after: z
+  createdAfter: z
     .string()
     .optional()
     .describe(
       'Filter notes created after this date (ISO 8601 date or datetime)'
     ),
-  updated_after: z
+  updatedAfter: z
     .string()
     .optional()
     .describe(
@@ -162,7 +169,7 @@ const ListNotesSchema = z.object({
     .string()
     .optional()
     .describe('Pagination cursor from previous response'),
-  page_size: z
+  pageSize: z
     .number()
     .int()
     .min(1)
@@ -175,20 +182,24 @@ const ListNotesSchema = z.object({
 
 /**
  * Get note operation parameters
+ *
+ * `sections` controls payload size. Transcript is NEVER included unless
+ * explicitly requested — it can be very large. Default (undefined) returns
+ * summary + attendees + calendar + folders (everything except transcript).
  */
 const GetNoteSchema = z.object({
   operation: z
     .literal('get_note')
-    .transform(() => 'get_note' as const)
     .describe('Retrieve a single note with full details'),
-  note_id: z
+  noteId: z
     .string()
     .describe('The note ID to retrieve (format: not_XXXXXXXXXXXXXX)'),
-  include_transcript: z
-    .boolean()
+  sections: z
+    .array(SectionSchema)
     .optional()
-    .default(false)
-    .describe('Whether to include the transcript in the response'),
+    .describe(
+      'Which sections to return. Default: ["summary","attendees","calendar","folders"] (transcript excluded — request it only when needed).'
+    ),
   credentials: credentialsField,
 });
 
@@ -210,12 +221,14 @@ export const GranolaResultSchema = z.discriminatedUnion('operation', [
     cursor: z.string().nullable().optional(),
     error: z.string().describe('Error message if operation failed'),
   }),
-  z.object({
-    operation: z.literal('get_note'),
-    success: z.boolean(),
-    note: GranolaNoteSchema.optional(),
-    error: z.string().describe('Error message if operation failed'),
-  }),
+  // NOTE: get_note returns FIELDS FLAT on the result — no `.note` wrapper.
+  z
+    .object({
+      operation: z.literal('get_note'),
+      success: z.boolean(),
+      error: z.string().describe('Error message if operation failed'),
+    })
+    .merge(GranolaNoteFieldsSchema.partial()),
 ]);
 
 // ============================================================================
@@ -235,8 +248,9 @@ export type GranolaGetNoteParams = Extract<
   { operation: 'get_note' }
 >;
 
+export type GranolaSection = z.output<typeof SectionSchema>;
 export type GranolaNoteSummary = z.output<typeof GranolaNoteSummarySchema>;
-export type GranolaNote = z.output<typeof GranolaNoteSchema>;
+export type GranolaNoteFields = z.output<typeof GranolaNoteFieldsSchema>;
 export type GranolaUser = z.output<typeof GranolaUserSchema>;
 export type GranolaCalendarEvent = z.output<typeof GranolaCalendarEventSchema>;
 export type GranolaFolder = z.output<typeof GranolaFolderSchema>;

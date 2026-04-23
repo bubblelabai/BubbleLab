@@ -39,6 +39,16 @@ export { SlackBubble } from './bubbles/service-bubble/slack/index.js';
 export { TelegramBubble } from './bubbles/service-bubble/telegram.js';
 export { ResendBubble } from './bubbles/service-bubble/resend.js';
 export { HttpBubble } from './bubbles/service-bubble/http.js';
+export {
+  LumaBubble,
+  LumaParamsSchema,
+  LumaResultSchema,
+  LumaEventSchema,
+  type LumaParams,
+  type LumaParamsInput,
+  type LumaResult,
+  type LumaEvent,
+} from './bubbles/service-bubble/luma.js';
 export { SlackFormatterAgentBubble } from './bubbles/workflow-bubble/slack-formatter-agent.js';
 export { StorageBubble } from './bubbles/service-bubble/storage.js';
 export { GoogleDriveBubble } from './bubbles/service-bubble/google-drive.js';
@@ -126,7 +136,8 @@ export {
   type GranolaParamsInput,
   type GranolaResult,
   type GranolaNoteSummary,
-  type GranolaNote,
+  type GranolaNoteFields,
+  type GranolaSection,
 } from './bubbles/service-bubble/granola/index.js';
 export {
   MemberfulBubble,

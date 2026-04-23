@@ -69,28 +69,39 @@ export function buildParametersObject(
       : currentUniqueIdLiteral;
 
   // Handle single variable parameter case (e.g., new GoogleDriveBubble(params))
+  //
+  // Only unwrap when the variable represents the ENTIRE first argument (source
+  // 'first-arg'). When source is 'object-property' the variable was the VALUE
+  // of a single-key object literal — `new X({ url: someVar })` — and we must
+  // preserve the wrapping object, otherwise Zod's top-level object schema sees
+  // a bare string/value and rejects with "Expected object, received X".
   if (parameters.length === 1 && parameters[0].type === 'variable') {
-    const paramValue = formatParameterValue(
-      parameters[0].value,
-      parameters[0].type
-    );
+    const p = parameters[0];
+    const representsEntireFirstArg =
+      p.source === 'first-arg' || (p.source === undefined && p.name === 'arg0');
 
-    if (includeLoggerConfig) {
-      const variableIdExpr =
-        typeof variableId === 'number'
-          ? `(__bubbleFlowSelf?.__computeInvocationVariableId?.(${variableId}) ?? ${variableId})`
-          : 'undefined';
-      const depGraphPart =
-        dependencyGraphExpr !== undefined
-          ? `, dependencyGraph: ${dependencyGraphExpr}`
-          : '';
-      const currentIdPart = `, currentUniqueId: ${currentUniqueIdExpr}`;
-      const invocationKeyPart =
-        ', invocationCallSiteKey: __bubbleFlowSelf?.__getInvocationCallSiteKey?.()';
-      return `${paramValue}, {logger: __bubbleFlowSelf.logger, variableId: ${variableIdExpr}${depGraphPart}${currentIdPart}${invocationKeyPart}, executionMeta: __bubbleFlowSelf?.__executionMeta__}`;
+    if (representsEntireFirstArg) {
+      const paramValue = formatParameterValue(p.value, p.type);
+
+      if (includeLoggerConfig) {
+        const variableIdExpr =
+          typeof variableId === 'number'
+            ? `(__bubbleFlowSelf?.__computeInvocationVariableId?.(${variableId}) ?? ${variableId})`
+            : 'undefined';
+        const depGraphPart =
+          dependencyGraphExpr !== undefined
+            ? `, dependencyGraph: ${dependencyGraphExpr}`
+            : '';
+        const currentIdPart = `, currentUniqueId: ${currentUniqueIdExpr}`;
+        const invocationKeyPart =
+          ', invocationCallSiteKey: __bubbleFlowSelf?.__getInvocationCallSiteKey?.()';
+        return `${paramValue}, {logger: __bubbleFlowSelf.logger, variableId: ${variableIdExpr}${depGraphPart}${currentIdPart}${invocationKeyPart}, executionMeta: __bubbleFlowSelf?.__executionMeta__}`;
+      }
+
+      return paramValue;
     }
-
-    return paramValue;
+    // Otherwise (object-property source): fall through to the generic builder
+    // below, which correctly re-emits the { name: value } wrapper.
   }
 
   const nonCredentialParams = parameters.filter(

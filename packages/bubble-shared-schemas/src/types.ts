@@ -230,4 +230,5 @@ export type BubbleName =
   | 'metabase'
   | 'clerk'
   | 'granola'
-  | 'memberful';
+  | 'memberful'
+  | 'luma';

@@ -76,6 +76,7 @@ export const fixtures = {
   'custom-tool-spread-param': '',
   'agent-with-capability': '',
   'ai-snack-club-backfill': '',
+  'single-key-object-with-variable': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

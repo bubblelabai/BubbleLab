@@ -24,7 +24,7 @@ export class GranolaIntegrationTest extends BubbleFlow<'webhook/http'> {
     // 1. List notes
     const listResult = await new GranolaBubble({
       operation: 'list_notes',
-      page_size: 5,
+      pageSize: 5,
     }).action();
 
     results.push({
@@ -38,8 +38,8 @@ export class GranolaIntegrationTest extends BubbleFlow<'webhook/http'> {
     // 2. List notes with date filter
     const filteredResult = await new GranolaBubble({
       operation: 'list_notes',
-      page_size: 3,
-      created_after: '2024-01-01',
+      pageSize: 3,
+      createdAfter: '2024-01-01T00:00:00.000Z',
     }).action();
 
     results.push({
@@ -50,7 +50,7 @@ export class GranolaIntegrationTest extends BubbleFlow<'webhook/http'> {
         : filteredResult.error,
     });
 
-    // 3. Get a specific note (use the first note from list if available)
+    // 3. Get a specific note (summary only — no transcript by default)
     const firstNoteId = listResult.success
       ? listResult.notes?.[0]?.id
       : undefined;
@@ -59,31 +59,45 @@ export class GranolaIntegrationTest extends BubbleFlow<'webhook/http'> {
     if (firstNoteId) {
       const getResult = await new GranolaBubble({
         operation: 'get_note',
-        note_id: firstNoteId,
-        include_transcript: false,
+        noteId: firstNoteId,
       }).action();
 
       results.push({
         operation: 'get_note',
         success: getResult.success,
         details: getResult.success
-          ? `Retrieved note: "${getResult.note?.title}" with ${getResult.note?.attendees?.length ?? 0} attendees`
+          ? `Retrieved note: "${getResult.title}" with ${getResult.attendees?.length ?? 0} attendees, notesUrl=${getResult.notesUrl ?? 'null'}`
           : getResult.error,
       });
 
-      // 4. Get same note with transcript
+      // 4. Get same note with transcript section requested
       const transcriptResult = await new GranolaBubble({
         operation: 'get_note',
-        note_id: firstNoteId,
-        include_transcript: true,
+        noteId: firstNoteId,
+        sections: ['summary', 'transcript'],
       }).action();
 
       results.push({
         operation: 'get_note (with transcript)',
         success: transcriptResult.success,
         details: transcriptResult.success
-          ? `Transcript entries: ${transcriptResult.note?.transcript?.length ?? 'null (no transcript)'}`
+          ? `Transcript entries: ${transcriptResult.transcript?.length ?? 'null (no transcript available)'}`
           : transcriptResult.error,
+      });
+
+      // 5. Sections filter — only attendees
+      const attendeesOnly = await new GranolaBubble({
+        operation: 'get_note',
+        noteId: firstNoteId,
+        sections: ['attendees'],
+      }).action();
+
+      results.push({
+        operation: 'get_note (sections=attendees)',
+        success: attendeesOnly.success,
+        details: attendeesOnly.success
+          ? `attendees=${attendeesOnly.attendees?.length ?? 0}, summaryMarkdown=${attendeesOnly.summaryMarkdown === undefined ? 'excluded ✓' : 'INCLUDED (bug!)'}, transcript=${attendeesOnly.transcript === undefined ? 'excluded ✓' : 'INCLUDED (bug!)'}`
+          : attendeesOnly.error,
       });
     } else {
       results.push({
@@ -93,11 +107,11 @@ export class GranolaIntegrationTest extends BubbleFlow<'webhook/http'> {
       });
     }
 
-    // 5. Test pagination with cursor
+    // 6. Test pagination with cursor
     if (listResult.success && listResult.hasMore && listResult.cursor) {
       const paginatedResult = await new GranolaBubble({
         operation: 'list_notes',
-        page_size: 5,
+        pageSize: 5,
         cursor: listResult.cursor,
       }).action();
 
@@ -110,15 +124,15 @@ export class GranolaIntegrationTest extends BubbleFlow<'webhook/http'> {
       });
     }
 
-    // 6. Test error handling - invalid note ID
+    // 7. Test error handling - invalid note ID
     const invalidResult = await new GranolaBubble({
       operation: 'get_note',
-      note_id: 'not_INVALID000000',
+      noteId: 'not_INVALID000000',
     }).action();
 
     results.push({
       operation: 'get_note (invalid ID)',
-      success: !invalidResult.success, // We expect this to fail
+      success: !invalidResult.success,
       details: !invalidResult.success
         ? `Correctly returned error: ${invalidResult.error}`
         : 'Unexpectedly succeeded with invalid ID',

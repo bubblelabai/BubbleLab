@@ -109,6 +109,44 @@ describe('parameter-formatter', () => {
     expect(result).toContain("method: 'GET'");
   });
 
+  // Regression test for the parameter-injection bug where
+  // `new LumaBubble({ url: someVar })` was incorrectly unwrapped to
+  // `new LumaBubble(someVar)`, producing "Expected object, received string"
+  // at runtime because Zod's top-level object schema saw a bare string.
+  it('should preserve single-key object wrapper when value is a variable reference', async () => {
+    const bubbleFactory = new BubbleFactory();
+    await bubbleFactory.registerDefaults();
+    const src = getFixture('single-key-object-with-variable');
+    const bubbleScript = new BubbleScript(src, bubbleFactory);
+    const bubbles = bubbleScript.getParsedBubbles();
+    const lumaBubble = Object.values(bubbles).find(
+      (bubble) => bubble.bubbleName === 'luma'
+    );
+    if (!lumaBubble) {
+      throw new Error('Luma bubble not found');
+    }
+
+    // Parser should capture the variable value with source 'object-property'
+    expect(lumaBubble.parameters.length).toBeGreaterThan(0);
+    const urlParam = lumaBubble.parameters.find((p) => p.name === 'url');
+    expect(urlParam).toBeDefined();
+    expect(urlParam!.type).toBe('variable');
+    expect(urlParam!.value).toBe('luma_url');
+    expect(urlParam!.source).toBe('object-property');
+
+    const result = buildParametersObject(
+      lumaBubble.parameters,
+      undefined,
+      false
+    );
+
+    // The output must be an object literal wrapping the variable —
+    // NOT a bare identifier. Before the fix this returned just `luma_url`.
+    expect(result).toContain('url: luma_url');
+    expect(result.trim().startsWith('{')).toBe(true);
+    expect(result.trim()).not.toBe('luma_url');
+  });
+
   describe('replaceBubbleInstantiation', () => {
     it('should replace bubble instantiation ending with semicolon });', () => {
       const lines = [

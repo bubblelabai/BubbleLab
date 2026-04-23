@@ -2756,6 +2756,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   clerk: [CredentialType.CLERK_CRED],
   granola: [CredentialType.GRANOLA_API_KEY],
   memberful: [CredentialType.MEMBERFUL_CRED],
+  luma: [],
 };
 
 export interface CredentialSiblingEntry {
