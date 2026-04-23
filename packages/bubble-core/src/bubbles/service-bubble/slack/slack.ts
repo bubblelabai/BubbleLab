@@ -417,6 +417,13 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       .array(BlockElementSchema)
       .optional()
       .describe('New Block Kit structured message blocks'),
+    as_user: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'Edit the message as the installing user (using xoxp) instead of as the bot. Bot tokens can only update messages posted by the bot; user tokens can only update messages posted by that user. Requires user-scope chat:write.'
+      ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -442,6 +449,13 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .min(1, 'Message timestamp is required')
       .describe('Timestamp of the message to delete'),
+    as_user: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'Delete as the installing user (using xoxp) instead of as the bot. Bot tokens can only delete messages posted by the bot; user tokens can delete any message the user has permission to delete. Requires user-scope chat:write.'
+      ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -471,6 +485,13 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .min(1, 'Message timestamp is required')
       .describe('Timestamp of the message to react to'),
+    as_user: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'React as the installing user (using xoxp) instead of as the bot. Requires user-scope reactions:write.'
+      ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -500,6 +521,13 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .min(1, 'Message timestamp is required')
       .describe('Timestamp of the message to remove reaction from'),
+    as_user: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'Remove the reaction as the installing user (using xoxp) instead of as the bot. A reaction can only be removed by whoever added it. Requires user-scope reactions:write.'
+      ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -567,6 +595,13 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .optional()
       .describe('Timestamp of parent message to upload file in thread'),
+    as_user: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'Upload the file as the installing user (using xoxp) instead of as the bot. Requires user-scope files:write.'
+      ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -630,6 +665,13 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       .optional()
       .default(true)
       .describe('Enable automatic media unfurling'),
+    as_user: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'Schedule the message as the installing user (using xoxp) instead of as the bot. When true, `username`/`icon_url`/`icon_emoji` are ignored (bot-only). Requires user-scope chat:write.'
+      ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -2416,7 +2458,7 @@ Comprehensive Slack integration for messaging and workspace management.
   private async updateMessage(
     params: Extract<SlackParams, { operation: 'update_message' }>
   ): Promise<Extract<SlackResult, { operation: 'update_message' }>> {
-    const { channel, ts, text, attachments, blocks } = params;
+    const { channel, ts, text, attachments, blocks, as_user } = params;
 
     // Resolve channel name to ID if needed
     const resolvedChannel = await this.resolveChannelId(channel);
@@ -2430,7 +2472,9 @@ Comprehensive Slack integration for messaging and workspace management.
     if (attachments) body.attachments = attachments;
     if (blocks) body.blocks = blocks;
 
-    const response = await this.makeSlackApiCall('chat.update', body);
+    const response = await this.makeSlackApiCall('chat.update', body, 'POST', {
+      useUserToken: as_user,
+    });
 
     return {
       operation: 'update_message',
@@ -2450,7 +2494,7 @@ Comprehensive Slack integration for messaging and workspace management.
   private async deleteMessage(
     params: Extract<SlackParams, { operation: 'delete_message' }>
   ): Promise<Extract<SlackResult, { operation: 'delete_message' }>> {
-    const { channel, ts } = params;
+    const { channel, ts, as_user } = params;
 
     // Resolve channel name to ID if needed
     const resolvedChannel = await this.resolveChannelId(channel);
@@ -2460,7 +2504,9 @@ Comprehensive Slack integration for messaging and workspace management.
       ts,
     };
 
-    const response = await this.makeSlackApiCall('chat.delete', body);
+    const response = await this.makeSlackApiCall('chat.delete', body, 'POST', {
+      useUserToken: as_user,
+    });
 
     return {
       operation: 'delete_message',
@@ -2475,7 +2521,7 @@ Comprehensive Slack integration for messaging and workspace management.
   private async addReaction(
     params: Extract<SlackParams, { operation: 'add_reaction' }>
   ): Promise<Extract<SlackResult, { operation: 'add_reaction' }>> {
-    const { name, channel, timestamp } = params;
+    const { name, channel, timestamp, as_user } = params;
 
     // Resolve channel name to ID if needed
     const resolvedChannel = await this.resolveChannelId(channel);
@@ -2486,7 +2532,12 @@ Comprehensive Slack integration for messaging and workspace management.
       timestamp,
     };
 
-    const response = await this.makeSlackApiCall('reactions.add', body);
+    const response = await this.makeSlackApiCall(
+      'reactions.add',
+      body,
+      'POST',
+      { useUserToken: as_user }
+    );
 
     return {
       operation: 'add_reaction',
@@ -2499,7 +2550,7 @@ Comprehensive Slack integration for messaging and workspace management.
   private async removeReaction(
     params: Extract<SlackParams, { operation: 'remove_reaction' }>
   ): Promise<Extract<SlackResult, { operation: 'remove_reaction' }>> {
-    const { name, channel, timestamp } = params;
+    const { name, channel, timestamp, as_user } = params;
 
     // Resolve channel name to ID if needed
     const resolvedChannel = await this.resolveChannelId(channel);
@@ -2510,7 +2561,12 @@ Comprehensive Slack integration for messaging and workspace management.
       timestamp,
     };
 
-    const response = await this.makeSlackApiCall('reactions.remove', body);
+    const response = await this.makeSlackApiCall(
+      'reactions.remove',
+      body,
+      'POST',
+      { useUserToken: as_user }
+    );
 
     return {
       operation: 'remove_reaction',
@@ -2531,10 +2587,13 @@ Comprehensive Slack integration for messaging and workspace management.
       title,
       initial_comment,
       thread_ts,
+      as_user,
     } = params;
 
     // Resolve channel name to ID if needed
-    const resolvedChannel = await this.resolveChannelId(channel);
+    const resolvedChannel = await this.resolveChannelId(channel, {
+      useUserToken: as_user,
+    });
 
     // Read the file
     const fs = await import('fs/promises');
@@ -2558,7 +2617,9 @@ Comprehensive Slack integration for messaging and workspace management.
         {
           filename: actualFilename,
           length: fileSize.toString(),
-        }
+        },
+        'POST',
+        { useUserToken: as_user }
       );
 
       if (!uploadUrlResponse.ok) {
@@ -2601,7 +2662,9 @@ Comprehensive Slack integration for messaging and workspace management.
 
       const completeResponse = await this.makeSlackApiCall(
         'files.completeUploadExternal',
-        completeParams
+        completeParams,
+        'POST',
+        { useUserToken: as_user }
       );
 
       if (!completeResponse.ok) {
@@ -2726,17 +2789,21 @@ Comprehensive Slack integration for messaging and workspace management.
       channel,
       text,
       post_at,
-      username,
-      icon_emoji,
-      icon_url,
       thread_ts,
       blocks,
       unfurl_links,
       unfurl_media,
+      as_user,
     } = params;
+    // Bot-identity knobs are ignored when scheduling as the user — mirrors send_message.
+    const username = as_user ? undefined : params.username;
+    const icon_emoji = as_user ? undefined : params.icon_emoji;
+    const icon_url = as_user ? undefined : params.icon_url;
 
     // Resolve channel name to ID if needed
-    const resolvedChannel = await this.resolveChannelId(channel);
+    const resolvedChannel = await this.resolveChannelId(channel, {
+      useUserToken: as_user,
+    });
 
     // Detect markdown in text and convert to blocks if no blocks are already provided
     let finalBlocks = blocks;
@@ -2758,7 +2825,12 @@ Comprehensive Slack integration for messaging and workspace management.
     if (unfurl_links !== undefined) body.unfurl_links = unfurl_links;
     if (unfurl_media !== undefined) body.unfurl_media = unfurl_media;
 
-    const response = await this.makeSlackApiCall('chat.scheduleMessage', body);
+    const response = await this.makeSlackApiCall(
+      'chat.scheduleMessage',
+      body,
+      'POST',
+      { useUserToken: as_user }
+    );
 
     return {
       operation: 'schedule_message',
@@ -3242,8 +3314,10 @@ Comprehensive Slack integration for messaging and workspace management.
   protected chooseCredential(): string | undefined {
     // Backward-compat shim — existing SlackBubble operations post as the bot, so they
     // read the bot side of the dual-token payload. Ops that explicitly need the user
-    // token should call `getSlackTokens().user` directly.
-    return this.getSlackTokens().bot;
+    // token should call `getSlackTokens().user` directly. Falls back to the user token
+    // when no bot token exists so legacy xoxp-only SLACK_API setups keep working.
+    const { bot, user } = this.getSlackTokens();
+    return bot ?? user;
   }
 
   private async makeSlackApiCall(
@@ -3257,8 +3331,13 @@ Comprehensive Slack integration for messaging and workspace management.
     // Operations like search.messages, conversations.list on DMs, admin.*,
     // and reading DM history require the user token (xoxp). All other ops
     // stay on the bot token so actions appear from the Pearl app identity.
+    // Legacy fallback: if only one token exists (e.g. a xoxp pasted under
+    // SLACK_API pre-dual-token), use it for bot-default ops so existing
+    // single-token setups keep working.
     const tokens = this.getSlackTokens();
-    const authToken = opts?.useUserToken ? tokens.user : tokens.bot;
+    const authToken = opts?.useUserToken
+      ? tokens.user
+      : (tokens.bot ?? tokens.user);
 
     if (!authToken) {
       throw new Error(

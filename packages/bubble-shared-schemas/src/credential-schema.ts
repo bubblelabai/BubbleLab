@@ -1646,6 +1646,118 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
             description: 'Read workspace preferences',
             defaultEnabled: true,
           },
+          // User-token only (Slack does not offer this as a bot scope)
+          {
+            scope: 'search:read',
+            description: "Search the user's messages and files",
+            defaultEnabled: false,
+          },
+          // Workspace admin (adminUserScopes) — only granted when the installer is a workspace admin.
+          {
+            scope: 'admin',
+            description: 'Workspace admin access',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.analytics:read',
+            description: 'Read workspace analytics',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.apps:read',
+            description: 'Read installed apps',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.apps:write',
+            description: 'Approve, restrict, or remove apps',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.barriers:read',
+            description: 'Read information barriers',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.barriers:write',
+            description: 'Manage information barriers',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.conversations:read',
+            description: 'Read workspace conversations as admin',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.conversations:write',
+            description: 'Manage workspace conversations as admin',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.invites:read',
+            description: 'Read workspace invite requests',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.invites:write',
+            description: 'Approve or deny workspace invite requests',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.roles:read',
+            description: 'Read admin role assignments',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.roles:write',
+            description: 'Assign or revoke admin roles',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.teams:read',
+            description: 'Read workspace list',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.teams:write',
+            description: 'Create or manage workspaces',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.usergroups:read',
+            description: 'Read user groups as admin',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.usergroups:write',
+            description: 'Manage user groups as admin',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.users:read',
+            description: 'Read workspace member list as admin',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.users:write',
+            description: 'Invite, remove, or modify workspace members',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.workflows:read',
+            description: 'Read workspace workflows',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'admin.workflows:write',
+            description: 'Manage workspace workflows',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'auditlogs:read',
+            description: 'Read Enterprise Grid audit logs',
+            defaultEnabled: false,
+          },
         ],
       },
     },
