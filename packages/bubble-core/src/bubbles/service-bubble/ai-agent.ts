@@ -1512,6 +1512,7 @@ export class AIAgentBubble extends ServiceBubble<
       case 'fireworks':
         return new ChatOpenAI({
           model: modelName,
+          __includeRawResponse: true,
           temperature,
           maxTokens,
           apiKey,
@@ -1520,6 +1521,9 @@ export class AIAgentBubble extends ServiceBubble<
           configuration: {
             baseURL: 'https://api.fireworks.ai/inference/v1',
           },
+          ...(reasoningEffort
+            ? { modelKwargs: { reasoning_effort: reasoningEffort } }
+            : {}),
         });
       default:
         throw new Error(`Unsupported model provider: ${provider}`);

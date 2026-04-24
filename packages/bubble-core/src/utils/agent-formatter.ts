@@ -199,6 +199,21 @@ export function extractThinking(output: LLMResult): string | undefined {
         for (const choice of (
           rawResponse as { choices: Array<Record<string, unknown>> }
         ).choices) {
+          // Fireworks (OpenAI-compatible reasoning models — Kimi, Qwen3, etc.)
+          // surfaces reasoning on `reasoning_content`, distinct from OpenRouter's
+          // `reasoning` field. Both message (non-streaming) and delta
+          // (streaming-aggregated) shapes are checked.
+          const reasoningContent =
+            (choice.delta as Record<string, unknown>)?.reasoning_content ??
+            (choice.message as Record<string, unknown>)?.reasoning_content ??
+            choice.reasoning_content;
+          if (typeof reasoningContent === 'string' && reasoningContent.trim()) {
+            return reasoningContent
+              .replace(/<think>/gi, '')
+              .replace(/<\/think>/gi, '')
+              .trim();
+          }
+
           const reasoning =
             (choice.delta as Record<string, unknown>)?.reasoning ??
             choice.reasoning;
