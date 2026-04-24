@@ -99,6 +99,12 @@ export interface DefineCapabilityOptions {
   hooks?: CapabilityDefinition['hooks'];
   /** Optional model config overrides applied at runtime (e.g., force a specific model or raise maxTokens). */
   modelConfigOverride?: CapabilityModelConfigOverride;
+  /**
+   * When true and this capability runs as a sub-agent, inherit the parent
+   * agent's model + reasoningEffort from executionMeta._pearlChatModelOverride.
+   * Other modelConfigOverride fields (maxTokens, maxIterations) still apply.
+   */
+  inheritParentModel?: boolean;
   /** Short guidance for the main agent on when to delegate to this capability in multi-capability mode. */
   delegationHint?: string | CapabilityDelegationHintFactory;
   /** Hidden capabilities are registered for runtime use but not shown in the UI. */
@@ -146,6 +152,7 @@ export function defineCapability(
         ? options.systemPrompt
         : undefined,
     modelConfigOverride: options.modelConfigOverride,
+    inheritParentModel: options.inheritParentModel,
     delegationHint:
       typeof options.delegationHint === 'string'
         ? options.delegationHint

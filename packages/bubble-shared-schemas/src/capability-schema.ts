@@ -132,6 +132,14 @@ export const CapabilityMetadataSchema = z.object({
   systemPromptAddition: z.string().optional(),
   modelConfigOverride: CapabilityModelConfigOverrideSchema.optional(),
   /**
+   * When true and this capability runs as a sub-agent, inherit the parent
+   * agent's model + reasoningEffort from executionMeta._pearlChatModelOverride
+   * instead of applying the Gemini Flash sub-agent default or
+   * modelConfigOverride.{model,reasoningEffort}. Other override fields
+   * (maxTokens, maxIterations) still apply.
+   */
+  inheritParentModel: z.boolean().optional(),
+  /**
    * Short guidance for the main agent on when to delegate to this capability
    * in multi-capability mode. E.g. "Delegate when the user asks to remember,
    * save notes, or look up documents."
