@@ -93,14 +93,15 @@ export async function applyCapabilityPreprocessing(
       if (override.maxIterations) params.maxIterations = override.maxIterations;
     }
   } else if (caps.length > 1) {
-    // Multi-capability master. Gated on the positive _isPearlMaster marker so
-    // only Pearl's entry point drives the model override — user-built flows
-    // with multi-cap AIAgents keep their configured model.
+    // Multi-capability master. Gated on the positive _isFlowMaster marker so
+    // only top-level flow master agents (Pearl chat / Slack-bot flows) drive
+    // the model override — internal utility agents spawned inside the same
+    // execution keep their configured model.
     const meta = bubbleContext?.executionMeta as
       | Record<string, unknown>
       | undefined;
-    const isPearlMaster = meta?._isPearlMaster === true;
-    if (isPearlMaster) {
+    const isFlowMaster = meta?._isFlowMaster === true;
+    if (isFlowMaster) {
       const overrideModel = meta?._pearlChatModelOverride as string | undefined;
       const overrideReasoning = meta?._pearlReasoningEffort as
         | 'low'

@@ -18,10 +18,7 @@ import {
 } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import {
-  AvailableModels,
-  type AvailableModel,
-} from '@bubblelab/shared-schemas';
+import { AvailableModels } from '@bubblelab/shared-schemas';
 import {
   AvailableTools,
   type AvailableTool,
@@ -42,17 +39,11 @@ import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 import { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
 import { SafeGeminiChat } from '../../utils/safe-gemini-chat.js';
 import {
-  zodSchemaToJsonString,
-  buildJsonSchemaInstruction,
-} from '../../utils/zod-schema.js';
-import {
   getCapability,
   type CapabilityRuntimeContext,
 } from '../../capabilities/index.js';
-import {
-  applyCapabilityPostprocessing,
-  applyCapabilityPreprocessing,
-} from './capability-pipeline.js';
+import { applyCapabilityPostprocessing } from './capability-pipeline.js';
+import { runBeforeAction } from './ai-agent-before-action.js';
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
   toolName: AvailableTool;
@@ -646,366 +637,20 @@ export class AIAgentBubble extends ServiceBubble<
   }
 
   /**
-   * Modify params before execution - centralizes all param transformations
+   * Pre-execution pipeline: classify role, inject Pro context for flow-masters,
+   * apply common setup (caps + capability pipeline + time + JSON mode), and
+   * consume the `_isFlowMaster` marker so children stay clean.
+   *
+   * Implementation lives in `./ai-agent-before-action.ts` to keep this file
+   * focused on lifecycle + execution.
    */
   protected override async beforeAction(): Promise<void> {
-    // Dynamic capability + credential injection (Pearl auto-activation).
-    // Gated on a POSITIVE marker (_isPearlMaster === true) set by Pearl's
-    // entry point. Previously this block ran for any agent whose name didn't
-    // start with "Capability Agent:", which incorrectly included utility
-    // agents spawned inside workflows (e.g. ParseDocumentWorkflow's per-page
-    // OCR agent) and capability tool internals — they'd inherit Pearl's
-    // capabilities and _pearlChatModelOverride, then blow up in capability-
-    // pipeline when their explicit model+credentials were overwritten.
-    const dynamicExecMeta = this.context?.executionMeta as
-      | Record<string, unknown>
-      | undefined;
-    const isSubAgent = this.params.name?.startsWith('Capability Agent:');
-    const isPearlMaster = dynamicExecMeta?._isPearlMaster === true;
-    if (isPearlMaster && !isSubAgent) {
-      // Replace capabilities with dynamic list (Pearl-only, authoritative source)
-      const dynamicCaps = dynamicExecMeta?._dynamicCapabilities as
-        | Array<{
-            id: string;
-            inputs?: Record<string, string | number | boolean | string[]>;
-            context?: string;
-          }>
-        | undefined;
-      if (dynamicCaps?.length) {
-        this.params.capabilities = dynamicCaps.map((c) => ({
-          ...c,
-          inputs: c.inputs ?? {},
-        }));
-      }
-
-      // Inject all user credentials + build pools
-      const dynamicCreds = dynamicExecMeta?._dynamicCredentials as
-        | Record<string, Array<{ id: number; name: string; value: string }>>
-        | undefined;
-      if (dynamicCreds) {
-        for (const [credType, entries] of Object.entries(dynamicCreds)) {
-          if (!entries.length) continue;
-          if (!this.params.credentials) this.params.credentials = {};
-          (this.params.credentials as Record<string, string>)[credType] =
-            entries[0].value;
-          if (entries.length > 1) {
-            if (!this.params.credentialPool)
-              this.params.credentialPool = {} as Record<
-                CredentialType,
-                Array<{ id: number; name: string; value: string }>
-              >;
-            (
-              this.params.credentialPool as Record<
-                string,
-                Array<{ id: number; name: string; value: string }>
-              >
-            )[credType] = entries;
-          }
-        }
-      }
-    }
-
-    // Deduplicate capabilities by id — keep the first occurrence of each
-    if (this.params.capabilities && this.params.capabilities.length > 1) {
-      const seen = new Set<string>();
-      this.params.capabilities = this.params.capabilities.filter((c) => {
-        if (seen.has(c.id)) return false;
-        seen.add(c.id);
-        return true;
-      });
-    }
-
-    // Enforce minimum maxTokens of 10000
-    if (
-      this.params.model.maxTokens === undefined ||
-      this.params.model.maxTokens < 10000
-    ) {
-      this.params.model.maxTokens = 10000;
-    }
-
-    // Auto-enable JSON mode when expectedOutputSchema is provided
-    if (this.params.expectedOutputSchema) {
-      this.params.model.jsonMode = true;
-
-      // Enhance system prompt with JSON schema instructions
-      const schemaString = zodSchemaToJsonString(
-        this.params.expectedOutputSchema
-      );
-      this.params.systemPrompt = `${this.params.systemPrompt}\n\n${buildJsonSchemaInstruction(schemaString)}`;
-    }
-
-    // Inject current UTC time into system prompt
-    const now = new Date().toLocaleString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'UTC',
-      timeZoneName: 'short',
+    await runBeforeAction({
+      params: this.params,
+      context: this.context,
+      resolveCapabilityCredentials:
+        this.resolveCapabilityCredentials.bind(this),
     });
-    this.params.systemPrompt = `${this.params.systemPrompt}\n\n**System time (UTC):** ${now}\nIMPORTANT: The system time above is in UTC. Always interpret and present times from the user's perspective and timezone. If the user's timezone is known (from conversation history, user profile, or context), convert all times accordingly. If unknown, ask the user for their timezone before making time-sensitive decisions.`;
-
-    // Apply capability model overrides and system prompt injections
-    await applyCapabilityPreprocessing(
-      this.params,
-      this.context,
-      this.resolveCapabilityCredentials.bind(this),
-      this.params.credentialPool
-    );
-    // Extract execution metadata (used for conversation history + agent memory)
-    const execMeta = this.context?.executionMeta;
-
-    // Memory injection — tools, prompt, and reflection are built externally (Pro)
-    // and passed via executionMeta. This keeps all memory logic out of OSS.
-    const isCapabilityAgent = this.params.name?.startsWith('Capability Agent:');
-
-    // Custom capability model override for sub-agents (master applies its own at detection time)
-    if (isCapabilityAgent) {
-      const customModelOverride = execMeta?._customCapModelOverride as
-        | {
-            masterModel: string;
-            delegateModel: string;
-            reasoningEffort?: 'low' | 'medium' | 'high';
-          }
-        | undefined;
-      if (customModelOverride) {
-        (this.params.model as Record<string, unknown>).model =
-          customModelOverride.delegateModel;
-        this.params.model.reasoningEffort =
-          customModelOverride.reasoningEffort ?? undefined;
-      }
-    }
-
-    // Inject Slack channel context into system prompt
-    // Skip for capability agents (e.g. memory) — they only need their own prompt
-    if (!isCapabilityAgent) {
-      const slackChannel = execMeta?._slackChannel;
-      if (slackChannel) {
-        this.params.systemPrompt = `${this.params.systemPrompt}\n**Current Slack channel:** ${slackChannel}`;
-      }
-
-      // Inject bot identity and mention format context
-      const botDisplayName = execMeta?._selfBotDisplayName as
-        | string
-        | undefined;
-      const selfBotUserId = execMeta?._selfBotUserId as string | undefined;
-      if (botDisplayName) {
-        let botContext = `**Your Slack identity:** ${botDisplayName}`;
-        if (selfBotUserId) {
-          botContext += ` (user ID: ${selfBotUserId})`;
-        }
-        botContext += `\nIn Slack messages, \`<@userId>\` is a mention — when you see \`<@${selfBotUserId ?? 'your_id'}>\`, that's someone addressing you.`;
-        botContext += `\nConversation messages are prefixed with \`[Name (userId)]\` — this tells you who sent each message. Use these names when addressing users.`;
-        this.params.systemPrompt = `${this.params.systemPrompt}\n${botContext}`;
-      }
-    }
-
-    // Auto-inject trigger conversation history if no explicit conversationHistory was provided
-    // This enables Slack thread context to automatically flow into AI agents
-    // Skip for capability agents (e.g. memory) — they only need their own prompt
-    // Check both legacy path (context.triggerConversationHistory) and new path (executionMeta)
-    if (!isCapabilityAgent && !this.params.conversationHistory?.length) {
-      const convHistory =
-        (execMeta?.triggerConversationHistory as
-          | ConversationMessage[]
-          | undefined) ??
-        (this.context?.triggerConversationHistory as
-          | ConversationMessage[]
-          | undefined);
-      if (convHistory?.length) {
-        this.params.conversationHistory = convHistory;
-      }
-    }
-
-    if (!isCapabilityAgent && this.params.memoryEnabled) {
-      const memoryTools = execMeta?.memoryTools;
-      const memorySystemPrompt = execMeta?.memorySystemPrompt;
-
-      if (memoryTools?.length) {
-        if (!this.params.customTools) {
-          this.params.customTools = [];
-        }
-        this.params.customTools.push(...memoryTools);
-      }
-
-      if (memorySystemPrompt) {
-        this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\n\n${memorySystemPrompt}`;
-      }
-
-      // Operating guidelines (hardcoded by host app, not stored in DB)
-      const operatingGuidelines = execMeta?.operatingGuidelines as
-        | string
-        | undefined;
-      if (operatingGuidelines) {
-        this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\n\n${operatingGuidelines}`;
-      }
-
-      // Initialize callLLM for memory tools that need it (update_memory merge, reflection)
-      const memoryCallLLMInit = execMeta?.memoryCallLLMInit as
-        | ((callLLM: (prompt: string) => Promise<string>) => void)
-        | undefined;
-      if (memoryCallLLMInit) {
-        const memoryModel = ((execMeta?.memoryCallLLMModel as string) ||
-          RECOMMENDED_MODELS.PRO) as AvailableModel;
-        const callLLM = async (prompt: string): Promise<string> => {
-          const memoryAgent = new AIAgentBubble(
-            {
-              message: prompt,
-              systemPrompt:
-                'Respond concisely. Follow the instructions in the user message.',
-              name: 'Capability Agent: Memory',
-              model: {
-                model: memoryModel,
-                temperature: 0,
-                maxTokens: 4096,
-                maxRetries: 2,
-              },
-              credentials: this.params.credentials,
-              maxIterations: 4,
-            },
-            this.context,
-            'memory-agent'
-          );
-          const result = await memoryAgent.action();
-          return result.data?.response ?? '';
-        };
-        memoryCallLLMInit(callLLM);
-      }
-    }
-
-    // Auto-inject image reading tool for Slack bot flows
-    // Slack images are pre-uploaded to R2 in conversation history, so URLs are public
-    if (!isCapabilityAgent && execMeta?._isSlackBot) {
-      const { buildReadImageTool } = await import('./ai-agent-slack-tools.js');
-      const imageTool = buildReadImageTool(this.params.credentials ?? {});
-      if (!this.params.customTools) {
-        this.params.customTools = [];
-      }
-      this.params.customTools.push(imageTool);
-
-      this.params.systemPrompt += `\n\n**Image Reading:** When users share images, the message will include \`[Attached files: ...]\` with image URLs. Use the \`read_image\` tool with these URLs to see and describe the image contents.`;
-    }
-
-    // Inject capability management tools (e.g., Pearl self-management)
-    if (!isCapabilityAgent) {
-      const capabilityTools = execMeta?.capabilityTools as
-        | Array<{
-            name: string;
-            description: string;
-            schema: z.ZodTypeAny;
-            func: (input: Record<string, unknown>) => Promise<string>;
-          }>
-        | undefined;
-
-      if (capabilityTools?.length) {
-        if (!this.params.customTools) {
-          this.params.customTools = [];
-        }
-        this.params.customTools.push(...capabilityTools);
-      }
-
-      const capabilitySystemPrompt = execMeta?.capabilitySystemPrompt as
-        | string
-        | undefined;
-      if (capabilitySystemPrompt) {
-        this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\n\n${capabilitySystemPrompt}`;
-      }
-    }
-
-    // Custom capability detection — /name pattern in message injects stored prompt
-    const customCaps = execMeta?._availableCustomCapabilities as
-      | Record<
-          string,
-          {
-            systemPrompt: string;
-            name: string;
-            effort?: 'none' | 'run-only' | 'low' | 'medium' | 'high';
-          }
-        >
-      | undefined;
-    if (customCaps && !isCapabilityAgent) {
-      // Match /command at start of message (optionally preceded by Slack mention)
-      // Slack may wrap the command in backticks (code formatting), so strip them
-      const match = this.params.message.match(
-        /^(?:<@[A-Z0-9]+>\s*)?`?\/([a-z0-9](?:[a-z0-9-]*[a-z0-9])?)`?\b\s*([\s\S]*)$/
-      );
-      if (match) {
-        const cap = customCaps[match[1]];
-        if (cap) {
-          const effort = cap.effort || 'medium';
-
-          // run-only: replace entire system prompt — skip all injected context
-          // (memory, guidelines, capability management) that bloats the prompt
-          if (effort === 'run-only') {
-            this.params.systemPrompt = cap.systemPrompt;
-          } else {
-            this.params.systemPrompt += `\n\n---\n\n[Custom Capability: ${match[1]}]\n${cap.systemPrompt}`;
-          }
-          this.params.message =
-            match[2].trim() || `(user invoked /${match[1]})`;
-
-          // Set model override based on effort level
-          const effortPresets: Record<
-            string,
-            {
-              masterModel: string;
-              delegateModel: string;
-              reasoningEffort?: 'low' | 'medium' | 'high';
-              provider?: string[];
-            }
-          > = {
-            none: {
-              masterModel: RECOMMENDED_MODELS.ANTHROPIC_FAST,
-              delegateModel: RECOMMENDED_MODELS.GOOGLE_FAST,
-            },
-            'run-only': {
-              masterModel: 'google/gemini-3.1-flash-lite-preview',
-              delegateModel: 'google/gemini-3.1-flash-lite-preview',
-            },
-            low: {
-              masterModel: RECOMMENDED_MODELS.ANTHROPIC_FAST,
-              delegateModel: RECOMMENDED_MODELS.ANTHROPIC_FAST,
-            },
-            medium: {
-              masterModel: RECOMMENDED_MODELS.ANTHROPIC_FLAGSHIP,
-              delegateModel: RECOMMENDED_MODELS.GOOGLE_FLAGSHIP,
-              reasoningEffort: 'medium',
-            },
-            high: {
-              masterModel: RECOMMENDED_MODELS.ANTHROPIC_BEST,
-              delegateModel: RECOMMENDED_MODELS.GOOGLE_BEST,
-              reasoningEffort: 'high',
-            },
-          };
-          const preset = effortPresets[effort];
-          execMeta!._customCapModelOverride = preset;
-
-          // Apply master model override immediately (sub-agents apply theirs in their own beforeAction)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (this.params.model as Record<string, unknown>).model =
-            preset.masterModel;
-          this.params.model.reasoningEffort =
-            preset.reasoningEffort ?? undefined;
-          if (preset.provider) {
-            this.params.model.provider = preset.provider;
-          }
-
-          // run-only: strip all tools except run-flow — the cheap model gets
-          // confused by 20+ tools and picks the wrong one (e.g. list-flows)
-          if (effort === 'run-only') {
-            this.params.customTools = (this.params.customTools ?? []).filter(
-              (t) => t.name === 'run-flow'
-            );
-            this.params.tools = [];
-            this.params.capabilities = [];
-            this.params.model.maxTokens = 20000;
-            this.params.conversationHistory = []; // Strip thread history — run-only is stateless
-          }
-        }
-      }
-    }
   }
 
   protected async performAction(
@@ -3433,11 +3078,19 @@ export class AIAgentBubble extends ServiceBubble<
           }
         }
 
-        // Clear pre-approval flag after resume repair executed the tool directly.
-        // This prevents the agent loop from approving a duplicate call if the LLM
-        // re-emits the same tool invocation.
-        if (approvalAiMsgIndex >= 0 && resumeExecMeta?._approvedAction) {
-          delete resumeExecMeta._approvedAction;
+        // Clear resume state + pre-approval flag after V1 resume repair.
+        // CRITICAL: Must delete `_resumeAgentState` from executionMeta so that
+        // any subagent spawned later in this execution (e.g. via use-capability
+        // after the master's approved tool runs) does NOT re-enter this V1 path
+        // with the master's saved messages — that would seed the subagent's
+        // initial messages with the master's get_capabilities, list-credentials,
+        // etc., causing the subagent to hallucinate access to master-only tools
+        // like flow-assistant. Subagents share executionMeta with the master.
+        if (resumeExecMeta) {
+          delete resumeExecMeta._resumeAgentState;
+          if (approvalAiMsgIndex >= 0) {
+            delete resumeExecMeta._approvedAction;
+          }
         }
 
         this._trace('v1-resume', `DONE`, {
