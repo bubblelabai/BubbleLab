@@ -178,7 +178,14 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       .optional()
       .default(false)
       .describe(
-        'Post as the installing user (using xoxp) instead of as the bot. Default false (bot posts as the Pearl app). When true, the message appears from the installing user in Slack — requires a Slack install that granted user-scope chat:write, and when `channel` is a user id the DM is opened via the user token so the message lands in the real user-to-user DM thread. `username`/`icon_url`/`icon_emoji` are ignored when as_user=true (they only affect bot-token posts).'
+        'Post as the installing user (xoxp) instead of as the bot. Default false. Requires user-scope chat:write on the install. `username`/`icon_url`/`icon_emoji` are ignored when true.'
+      ),
+    force_footer: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'Force the Bubble Lab attribution footer to appear even when `as_user=true`. Default false: footer shows on bot posts, hidden on user posts.'
       ),
   }),
 
@@ -1851,6 +1858,7 @@ Comprehensive Slack integration for messaging and workspace management.
       unfurl_links,
       unfurl_media,
       as_user,
+      force_footer,
     } = params;
     // Bot-identity customization knobs are ignored when posting as the user —
     // the installing user already has their own display name and avatar, and
@@ -1890,9 +1898,14 @@ Comprehensive Slack integration for messaging and workspace management.
       finalText = text;
     }
 
-    // Build "Powered by BubbleLab" footer from execution metadata
+    // Build "Powered by BubbleLab" footer from execution metadata.
+    // Hidden on user-token posts so DMs/messages look native; force_footer=true
+    // overrides this to keep attribution even when posting as the user.
     const executionMeta = context?.executionMeta;
-    const footerBlocks = SlackBubble.buildFooterBlocks(executionMeta);
+    const shouldShowFooter = !as_user || force_footer;
+    const footerBlocks = shouldShowFooter
+      ? SlackBubble.buildFooterBlocks(executionMeta)
+      : [];
 
     // Check if we should replace a thinking placeholder message
     const thinkingTs = executionMeta?._thinkingMessageTs;
