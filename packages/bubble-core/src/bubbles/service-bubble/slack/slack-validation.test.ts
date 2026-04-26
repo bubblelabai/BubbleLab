@@ -1,3 +1,5 @@
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { CredentialType } from '@bubblelab/shared-schemas';
 import { SlackBubble } from './slack.js';
 
 describe('Slack Bubble Result Schema Validation', () => {
@@ -165,6 +167,129 @@ describe('Slack Bubble Result Schema Validation', () => {
 
       expect(dmBubble.currentParams.channel).toBe('U1234567890');
       expect(dmBubble.currentParams.text).toBe('Hello via DM!');
+    });
+
+    describe('send_message footer_mode', () => {
+      const executionMeta = {
+        studioBaseUrl: 'https://studio.test',
+        flowId: 42,
+        executionId: 7,
+        _flowName: 'Footer Test Flow',
+      };
+
+      const mockSlackPost = () => {
+        const fetchMock = vi.fn(async () => ({
+          ok: true,
+          json: async () => ({
+            ok: true,
+            channel: 'C1234567890',
+            ts: '1234567890.123456',
+            message: {
+              type: 'message',
+              ts: '1234567890.123456',
+              user: 'U1234567890',
+              text: '**Hello**',
+            },
+          }),
+        }));
+        vi.stubGlobal('fetch', fetchMock);
+        return fetchMock;
+      };
+
+      const getPostMessageBody = (
+        fetchMock: ReturnType<typeof mockSlackPost>
+      ) => {
+        const postCall = fetchMock.mock.calls.find(([url]) =>
+          String(url).includes('/chat.postMessage')
+        );
+        expect(postCall).toBeDefined();
+        return JSON.parse(String(postCall![1]?.body)) as {
+          blocks?: Array<Record<string, unknown>>;
+        };
+      };
+
+      const hasFooter = (body: { blocks?: Array<Record<string, unknown>> }) =>
+        body.blocks?.some(
+          (block) =>
+            block.type === 'context' &&
+            JSON.stringify(block).includes('Footer Test Flow')
+        ) ?? false;
+
+      afterEach(() => {
+        vi.unstubAllGlobals();
+      });
+
+      test('defaults to showing footer for bot posts', async () => {
+        const fetchMock = mockSlackPost();
+        const bubble = new SlackBubble(
+          {
+            operation: 'send_message',
+            channel: 'C1234567890',
+            text: '**Hello**',
+            credentials: { [CredentialType.SLACK_CRED]: 'xoxb-test' },
+          },
+          { executionMeta }
+        );
+
+        await bubble.action();
+
+        expect(hasFooter(getPostMessageBody(fetchMock))).toBe(true);
+      });
+
+      test('defaults to hiding footer for as_user posts', async () => {
+        const fetchMock = mockSlackPost();
+        const bubble = new SlackBubble(
+          {
+            operation: 'send_message',
+            channel: 'C1234567890',
+            text: '**Hello**',
+            as_user: true,
+            credentials: { [CredentialType.SLACK_CRED]: 'xoxp-test' },
+          },
+          { executionMeta }
+        );
+
+        await bubble.action();
+
+        expect(hasFooter(getPostMessageBody(fetchMock))).toBe(false);
+      });
+
+      test('can force footer on for as_user posts', async () => {
+        const fetchMock = mockSlackPost();
+        const bubble = new SlackBubble(
+          {
+            operation: 'send_message',
+            channel: 'C1234567890',
+            text: '**Hello**',
+            as_user: true,
+            footer_mode: 'always',
+            credentials: { [CredentialType.SLACK_CRED]: 'xoxp-test' },
+          },
+          { executionMeta }
+        );
+
+        await bubble.action();
+
+        expect(hasFooter(getPostMessageBody(fetchMock))).toBe(true);
+      });
+
+      test('can hide footer for bot posts', async () => {
+        const fetchMock = mockSlackPost();
+        const bubble = new SlackBubble(
+          {
+            operation: 'send_message',
+            channel: 'C1234567890',
+            text: '**Hello**',
+            footer_mode: 'never',
+            credentials: { [CredentialType.SLACK_CRED]: 'xoxb-test' },
+          },
+          { executionMeta }
+        );
+
+        await bubble.action();
+
+        expect(hasFooter(getPostMessageBody(fetchMock))).toBe(false);
+      });
     });
 
     test('should validate get_user_info result', () => {

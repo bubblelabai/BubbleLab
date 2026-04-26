@@ -180,12 +180,12 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       .describe(
         'Post as the installing user (xoxp) instead of as the bot. Default false. Requires user-scope chat:write on the install. `username`/`icon_url`/`icon_emoji` are ignored when true.'
       ),
-    force_footer: z
-      .boolean()
+    footer_mode: z
+      .enum(['auto', 'always', 'never'])
       .optional()
-      .default(false)
+      .default('auto')
       .describe(
-        'Force the Bubble Lab attribution footer to appear even when `as_user=true`. Default false: footer shows on bot posts, hidden on user posts.'
+        'Controls the Bubble Lab attribution footer. auto shows it for bot posts and hides it for as_user posts; always forces it on; never hides it.'
       ),
   }),
 
@@ -1858,7 +1858,7 @@ Comprehensive Slack integration for messaging and workspace management.
       unfurl_links,
       unfurl_media,
       as_user,
-      force_footer,
+      footer_mode,
     } = params;
     // Bot-identity customization knobs are ignored when posting as the user —
     // the installing user already has their own display name and avatar, and
@@ -1899,10 +1899,10 @@ Comprehensive Slack integration for messaging and workspace management.
     }
 
     // Build "Powered by BubbleLab" footer from execution metadata.
-    // Hidden on user-token posts so DMs/messages look native; force_footer=true
-    // overrides this to keep attribution even when posting as the user.
+    // By default, bot posts keep the footer while user-token posts look native.
     const executionMeta = context?.executionMeta;
-    const shouldShowFooter = !as_user || force_footer;
+    const shouldShowFooter =
+      footer_mode === 'always' || (footer_mode === 'auto' && !as_user);
     const footerBlocks = shouldShowFooter
       ? SlackBubble.buildFooterBlocks(executionMeta)
       : [];
