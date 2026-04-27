@@ -52,7 +52,8 @@ export type CapabilityId =
   | 'clerk-assistant'
   | 'granola-assistant'
   | 'memberful-assistant'
-  | 'luma-assistant';
+  | 'luma-assistant'
+  | 'zoom-recording-insights';
 
 /**
  * Schema for a provider entry in a capability's metadata.

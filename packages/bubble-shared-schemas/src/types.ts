@@ -140,6 +140,9 @@ export enum CredentialType {
 
   // Memberful Credentials
   MEMBERFUL_CRED = 'MEMBERFUL_CRED',
+
+  // Zoom Credentials
+  ZOOM_CRED = 'ZOOM_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -232,4 +235,5 @@ export type BubbleName =
   | 'clerk'
   | 'granola'
   | 'memberful'
-  | 'luma';
+  | 'luma'
+  | 'zoom';

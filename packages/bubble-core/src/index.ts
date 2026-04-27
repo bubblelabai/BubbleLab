@@ -147,6 +147,14 @@ export {
   type MemberfulParamsInput,
   type MemberfulResult,
 } from './bubbles/service-bubble/memberful/index.js';
+export {
+  ZoomBubble,
+  ZoomParamsSchema,
+  ZoomResultSchema,
+  type ZoomParams,
+  type ZoomParamsInput,
+  type ZoomResult,
+} from './bubbles/service-bubble/zoom/index.js';
 export { ConfluenceBubble } from './bubbles/service-bubble/confluence/index.js';
 export type { ConfluenceParamsInput } from './bubbles/service-bubble/confluence/index.js';
 export { AshbyBubble } from './bubbles/service-bubble/ashby/index.js';
