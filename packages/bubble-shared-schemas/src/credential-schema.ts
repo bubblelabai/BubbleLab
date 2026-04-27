@@ -726,6 +726,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Granola API Key',
       credentialConfigurations: {},
     },
+    [CredentialType.ZOOM_CRED]: {
+      label: 'Zoom',
+      description:
+        'OAuth connection to Zoom for meetings, cloud recordings, transcripts, and users',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Zoom Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -814,6 +822,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.CLERK_API_KEY]: '', // User-provided Secret Key, no env var
   [CredentialType.GRANOLA_API_KEY]: 'GRANOLA_API_KEY',
   [CredentialType.MEMBERFUL_CRED]: '', // Multi-field credential (subdomain + apiKey), no single env var
+  [CredentialType.ZOOM_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -866,7 +875,8 @@ export type OAuthProvider =
   | 'salesforce'
   | 'asana'
   | 'discord'
-  | 'docusign';
+  | 'docusign'
+  | 'zoom';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -2593,6 +2603,107 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       prompt: 'login',
     },
   },
+  zoom: {
+    name: 'zoom',
+    displayName: 'Zoom',
+    credentialTypes: {
+      [CredentialType.ZOOM_CRED]: {
+        displayName: 'Zoom',
+        defaultScopes: [
+          'meeting:write:meeting',
+          'meeting:read:meeting',
+          'meeting:read:summary',
+          'meeting:read:past_meeting',
+          'meeting:read:list_past_instances',
+          'meeting:read:list_meetings',
+          'cloud_recording:read:list_user_recordings',
+          'cloud_recording:read:content',
+          'cloud_recording:read:list_recording_files',
+          'cloud_recording:read:recording',
+          'cloud_recording:read:meeting_transcript',
+          'user:read:email',
+          'user:read:user',
+          'zoomapp:inmeeting',
+        ],
+        description:
+          'Access Zoom for managing meetings, cloud recordings, transcripts, and users',
+        scopeDescriptions: [
+          {
+            scope: 'meeting:write:meeting',
+            description: 'Create, update, and delete meetings',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'meeting:read:meeting',
+            description: 'Read details of a single meeting',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'meeting:read:summary',
+            description: "Read a meeting's AI Companion summary",
+            defaultEnabled: true,
+          },
+          {
+            scope: 'meeting:read:past_meeting',
+            description: 'Read details of a past meeting',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'meeting:read:list_past_instances',
+            description: 'List past instances of a recurring meeting',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'meeting:read:list_meetings',
+            description: "List a user's meetings",
+            defaultEnabled: true,
+          },
+          {
+            scope: 'cloud_recording:read:list_user_recordings',
+            description: "List a user's cloud recordings",
+            defaultEnabled: true,
+          },
+          {
+            scope: 'cloud_recording:read:content',
+            description: 'Read cloud recording file content (download)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'cloud_recording:read:list_recording_files',
+            description: "Return all of a meeting's recording files",
+            defaultEnabled: true,
+          },
+          {
+            scope: 'cloud_recording:read:recording',
+            description: 'Read details of a single cloud recording',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'cloud_recording:read:meeting_transcript',
+            description: "Read a meeting's transcript",
+            defaultEnabled: true,
+          },
+          {
+            scope: 'user:read:email',
+            description: "Verify a user's email",
+            defaultEnabled: true,
+          },
+          {
+            scope: 'user:read:user',
+            description: 'Read the authenticated user profile',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'zoomapp:inmeeting',
+            description:
+              'Required dependency from other scopes (no API access used)',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+    authorizationParams: {},
+  },
 };
 
 /**
@@ -2968,6 +3079,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   granola: [CredentialType.GRANOLA_API_KEY],
   memberful: [CredentialType.MEMBERFUL_CRED],
   luma: [],
+  zoom: [CredentialType.ZOOM_CRED],
 };
 
 export interface CredentialSiblingEntry {
