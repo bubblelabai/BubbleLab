@@ -100,10 +100,46 @@ jobs:
         env:
           CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY || 'test-encryption-key-that-is-32-chars-long-for-testing' }}
 
-  publish:
-    needs: test
+  auth-check:
     runs-on: ubuntu-latest
-    # Only run on push to main
+    # Only run on push to main (same gate as publish)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Verify npm publish auth
+        run: |
+          NPMRC="$RUNNER_TEMP/auth.npmrc"
+          printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" > "$NPMRC"
+          export NPM_CONFIG_USERCONFIG="$NPMRC"
+
+          echo "NPM_TOKEN length: ${#NPM_TOKEN} (expected 40)"
+          echo "NPM_TOKEN prefix: ${NPM_TOKEN:0:4} (expected npm_)"
+          echo "userconfig size: $(wc -c < "$NPMRC") bytes (expected ~74)"
+
+          probe=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $NPM_TOKEN" \
+            https://registry.npmjs.org/-/whoami)
+          echo "curl-bearer whoami: HTTP $probe"
+
+          who=$(npm whoami 2>&1) && echo "npm whoami: $who" || { echo "npm whoami failed: $who"; exit 1; }
+
+          if [ "$who" != "zhubzy" ]; then
+            echo "❌ unexpected npm user: $who"
+            exit 1
+          fi
+          echo "✅ npm publish auth verified"
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish:
+    needs: [test, auth-check]
+    runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
@@ -111,22 +147,20 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          fetch-depth: 2 # Need previous commit to compare versions
 
-      - name: Check if version changed
+      - name: Check if version differs from registry
         id: version_check
         run: |
-          # Compare bubble-core version in current commit vs previous
-          PREV_VERSION=$(git show HEAD~1:packages/bubble-core/package.json 2>/dev/null | jq -r .version || echo "0.0.0")
+          REGISTRY_VERSION=$(curl -fsSL https://registry.npmjs.org/@bubblelab/bubble-core | jq -r '."dist-tags".latest // "0.0.0"')
           CURR_VERSION=$(jq -r .version packages/bubble-core/package.json)
-          echo "Previous version: $PREV_VERSION"
-          echo "Current version: $CURR_VERSION"
-          if [ "$PREV_VERSION" != "$CURR_VERSION" ]; then
-            echo "✅ Version changed! Will publish."
+          echo "Registry version: $REGISTRY_VERSION"
+          echo "Current version:  $CURR_VERSION"
+          if [ "$REGISTRY_VERSION" != "$CURR_VERSION" ]; then
+            echo "✅ Version differs from registry! Will publish."
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "version=$CURR_VERSION" >> $GITHUB_OUTPUT
           else
-            echo "⏭️ Version unchanged. Skipping publish."
+            echo "⏭️ Version matches registry. Skipping publish."
             echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
@@ -154,6 +188,9 @@ jobs:
       - name: Publish packages
         if: steps.version_check.outputs.changed == 'true'
         run: |
+          NPMRC="$RUNNER_TEMP/publish.npmrc"
+          printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" > "$NPMRC"
+          export NPM_CONFIG_USERCONFIG="$NPMRC"
           echo "📦 Publishing version ${{ steps.version_check.outputs.version }}"
           pnpm --filter "@bubblelab/ts-scope-manager" publish --access public --no-git-checks
           pnpm --filter "@bubblelab/shared-schemas" publish --access public --no-git-checks
@@ -161,4 +198,4 @@ jobs:
           pnpm --filter "@bubblelab/bubble-runtime" publish --access public --no-git-checks
           pnpm --filter "create-bubblelab-app" publish --access public --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
