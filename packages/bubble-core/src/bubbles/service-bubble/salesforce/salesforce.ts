@@ -38,12 +38,34 @@ export class SalesforceBubble<
   static readonly longDescription = `
     Salesforce CRM integration for querying and searching CRM records.
 
-    Features:
-    - Retrieve Account and Contact records by Salesforce ID
-    - Search Accounts and Contacts with flexible SOQL WHERE conditions
-    - Run arbitrary SOQL queries for any Salesforce object
-    - Account-level field lookup by business ID or Salesforce ID
-    - Support for custom fields and objects via SOQL
+    Operations:
+    - get_account / get_contact: retrieve a record by Salesforce ID
+    - search_accounts / search_contacts: SOQL WHERE-clause search
+    - query: run arbitrary SOQL against any object
+    - describe_object: list a sObject's fields with both API name AND user-facing label
+    - list_objects: list all sObjects in the org with API name AND label
+
+    IMPORTANT — label vs API name:
+    Salesforce fields and objects have a backend API name (used in SOQL, e.g.
+    "Treasury_Status__c") that differs from the user-facing label shown in the UI
+    (e.g. "Saving Status"). Users almost always describe fields by their UI label,
+    not the API name. Custom fields (suffixed __c) are especially prone to this.
+
+    When the user references a field or object whose API name is NOT obviously a
+    standard Salesforce field (e.g. Id, Name, Industry, BillingCity, Email,
+    AnnualRevenue, AccountNumber, Type, OwnerId), you MUST first call
+    describe_object (or list_objects for object discovery) to fetch the
+    label→apiName mapping, then construct your SOQL using the apiName. Do not
+    guess custom field API names from labels — call describe_object first.
+
+    If multiple fields plausibly match the user's term, ask a clarification
+    question rather than guessing.
+
+    Result shapes:
+    - describe_object → { object_name, object_label, fields: [{ apiName, label, type, custom, picklistValues?, referenceTo? }] }
+    - list_objects → { objects: [{ apiName, label, custom, queryable }] }
+    - get_account / get_contact → { record: {...} }
+    - search_accounts / search_contacts / query → { records: [...], totalSize, done }
 
     Security Features:
     - OAuth 2.0 authentication with Salesforce
@@ -197,6 +219,14 @@ export class SalesforceBubble<
             return await this.runQuery(
               p as Extract<SalesforceParams, { operation: 'query' }>
             );
+          case 'describe_object':
+            return await this.describeObject(
+              p as Extract<SalesforceParams, { operation: 'describe_object' }>
+            );
+          case 'list_objects':
+            return await this.listObjects(
+              p as Extract<SalesforceParams, { operation: 'list_objects' }>
+            );
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -335,6 +365,88 @@ export class SalesforceBubble<
       records: data.records,
       totalSize: data.totalSize,
       done: data.done,
+      error: '',
+    };
+  }
+
+  private async describeObject(
+    params: Extract<SalesforceParams, { operation: 'describe_object' }>
+  ): Promise<Extract<SalesforceResult, { operation: 'describe_object' }>> {
+    const { object_name } = params;
+
+    const data = (await this.sfRequest(
+      `/services/data/${SALESFORCE_API_VERSION}/sobjects/${encodeURIComponent(object_name)}/describe`
+    )) as {
+      name: string;
+      label: string;
+      fields: Array<{
+        name: string;
+        label: string;
+        type: string;
+        custom: boolean;
+        picklistValues?: Array<{ value: string; active: boolean }>;
+        referenceTo?: string[];
+      }>;
+    };
+
+    const fields = data.fields.map((f) => {
+      const picklistValues = f.picklistValues
+        ?.filter((p) => p.active)
+        .map((p) => p.value);
+      return {
+        apiName: f.name,
+        label: f.label,
+        type: f.type,
+        custom: f.custom,
+        ...(picklistValues && picklistValues.length > 0
+          ? { picklistValues }
+          : {}),
+        ...(f.referenceTo && f.referenceTo.length > 0
+          ? { referenceTo: f.referenceTo }
+          : {}),
+      };
+    });
+
+    return {
+      operation: 'describe_object',
+      success: true,
+      object_name: data.name,
+      object_label: data.label,
+      fields,
+      error: '',
+    };
+  }
+
+  private async listObjects(
+    params: Extract<SalesforceParams, { operation: 'list_objects' }>
+  ): Promise<Extract<SalesforceResult, { operation: 'list_objects' }>> {
+    const { include_custom_only } = params;
+
+    const data = (await this.sfRequest(
+      `/services/data/${SALESFORCE_API_VERSION}/sobjects`
+    )) as {
+      sobjects: Array<{
+        name: string;
+        label: string;
+        custom: boolean;
+        queryable: boolean;
+      }>;
+    };
+
+    const objects = data.sobjects
+      .filter((o) => o.queryable)
+      .filter((o) => (include_custom_only ? o.custom : true))
+      .map((o) => ({
+        apiName: o.name,
+        label: o.label,
+        custom: o.custom,
+        queryable: o.queryable,
+      }));
+
+    return {
+      operation: 'list_objects',
+      success: true,
+      objects,
       error: '',
     };
   }

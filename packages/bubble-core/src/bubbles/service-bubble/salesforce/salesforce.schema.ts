@@ -104,7 +104,72 @@ export const SalesforceParamsSchema = z.discriminatedUnion('operation', [
       ),
     credentials: credentialsField,
   }),
+
+  // Describe an sObject — return its fields with API name + UI label
+  z.object({
+    operation: z
+      .literal('describe_object')
+      .describe(
+        'Return all fields of a Salesforce object with both API name and user-facing label. Use this to resolve label-vs-API-name mismatches (especially custom fields like "Saving Status" → Treasury_Status__c) before constructing SOQL.'
+      ),
+    object_name: z
+      .string()
+      .min(1, 'Object name is required')
+      .describe(
+        'API name of the sObject to describe (e.g. "Account", "Contact", "Opportunity", or a custom object like "MyCustomObject__c")'
+      ),
+    credentials: credentialsField,
+  }),
+
+  // List all sObjects available in the org
+  z.object({
+    operation: z
+      .literal('list_objects')
+      .describe(
+        'List all sObjects in the connected Salesforce org with their API name and label. Use this when the user references an object by its UI label and the API name is not obvious.'
+      ),
+    include_custom_only: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'If true, only return custom objects (suffixed __c). Defaults to false (returns all queryable objects).'
+      ),
+    credentials: credentialsField,
+  }),
 ]);
+
+// Compact field metadata returned by describe_object
+const SalesforceFieldMetadataSchema = z.object({
+  apiName: z
+    .string()
+    .describe('API/backend name of the field (use this in SOQL)'),
+  label: z.string().describe('User-facing label shown in the Salesforce UI'),
+  type: z
+    .string()
+    .describe('Salesforce field type (e.g. "string", "picklist")'),
+  custom: z.boolean().describe('Whether this is a custom field (suffixed __c)'),
+  picklistValues: z
+    .array(z.string())
+    .optional()
+    .describe('For picklist fields, the allowed values'),
+  referenceTo: z
+    .array(z.string())
+    .optional()
+    .describe('For reference/lookup fields, the sObject(s) referenced'),
+});
+
+// Compact sObject metadata returned by list_objects
+const SalesforceObjectMetadataSchema = z.object({
+  apiName: z.string().describe('API name of the sObject (use this in SOQL)'),
+  label: z.string().describe('User-facing label shown in the Salesforce UI'),
+  custom: z
+    .boolean()
+    .describe('Whether this is a custom object (suffixed __c)'),
+  queryable: z
+    .boolean()
+    .describe('Whether this object can be queried via SOQL'),
+});
 
 // Salesforce record — flexible schema since fields vary by query
 const SalesforceRecordSchema = z
@@ -147,6 +212,20 @@ export const SalesforceResultSchema = z.discriminatedUnion('operation', [
     records: z.array(z.record(z.string(), z.unknown())).optional(),
     totalSize: z.number().optional(),
     done: z.boolean().optional(),
+    error: z.string(),
+  }),
+  z.object({
+    operation: z.literal('describe_object'),
+    success: z.boolean(),
+    object_name: z.string().optional(),
+    object_label: z.string().optional(),
+    fields: z.array(SalesforceFieldMetadataSchema).optional(),
+    error: z.string(),
+  }),
+  z.object({
+    operation: z.literal('list_objects'),
+    success: z.boolean(),
+    objects: z.array(SalesforceObjectMetadataSchema).optional(),
     error: z.string(),
   }),
 ]);

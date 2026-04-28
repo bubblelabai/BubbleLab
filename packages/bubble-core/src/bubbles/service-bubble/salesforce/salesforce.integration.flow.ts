@@ -125,6 +125,38 @@ export class SalesforceIntegrationTest extends BubbleFlow<'webhook/http'> {
         : queryResult.error,
     });
 
+    // 6. Describe Account — verify label + API name come back paired
+    const describeResult = await new SalesforceBubble({
+      operation: 'describe_object',
+      object_name: 'Account',
+    }).action();
+
+    results.push({
+      operation: 'describe_object',
+      success: describeResult.success,
+      details: describeResult.success
+        ? `Account has ${describeResult.fields?.length ?? 0} fields; sample: ${describeResult.fields
+            ?.slice(0, 3)
+            .map((f) => `${f.label} (${f.apiName})`)
+            .join(', ')}`
+        : describeResult.error,
+    });
+
+    // 7. List objects — confirm we can enumerate sObjects with labels
+    const listResult = await new SalesforceBubble({
+      operation: 'list_objects',
+    }).action();
+
+    results.push({
+      operation: 'list_objects',
+      success: listResult.success,
+      details: listResult.success
+        ? `Found ${listResult.objects?.length ?? 0} queryable objects (${
+            listResult.objects?.filter((o) => o.custom).length ?? 0
+          } custom)`
+        : listResult.error,
+    });
+
     return { testResults: results };
   }
 }
