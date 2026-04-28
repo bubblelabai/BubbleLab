@@ -311,7 +311,7 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
     operation: z
       .literal('get_conversation_history')
       .describe(
-        'Retrieve message history from a channel or direct message. Bot must be a member (use list_channels with `is_member` filter, or join_channel first). Required scopes: channels:history (public), groups:history (private), im:history (DMs), mpim:history (group DMs)'
+        'Retrieve message history from a channel or direct message. Tries the installing user token (xoxp) first and falls back to the bot token (xoxb), so reads work for any channel the user OR the bot can see — no need to invite the bot just to read. Required scopes: channels:history (public), groups:history (private), im:history (DMs), mpim:history (group DMs); same scopes on whichever token is used.'
       ),
     channel: z
       .string()
@@ -1745,7 +1745,8 @@ Comprehensive Slack integration for messaging and workspace management.
         exclude_archived: 'true',
         limit: '1000', // Get a large batch to find the channel
       },
-      'GET'
+      'GET',
+      opts
     );
 
     if (!response.ok) {
@@ -2230,7 +2231,7 @@ Comprehensive Slack integration for messaging and workspace management.
 
     if (cursor) queryParams.cursor = cursor;
 
-    const response = await this.makeSlackApiCall(
+    const response = await this.tryWithTokenFallback(
       'conversations.list',
       queryParams,
       'GET'
@@ -2251,7 +2252,7 @@ Comprehensive Slack integration for messaging and workspace management.
               ).next_cursor,
             }
           : undefined,
-      error: !response.ok ? JSON.stringify(response, null, 2) : '',
+      error: !response.ok ? (response as SlackApiError).error : '',
       success: response.ok,
     };
   }
@@ -2266,18 +2267,19 @@ Comprehensive Slack integration for messaging and workspace management.
       { operation: 'get_channel_info' }
     >;
 
-    // Resolve channel name to ID if needed
-    const resolvedChannel = await this.resolveChannelId(channel);
+    // Resolve channel name to ID if needed (read-side: prefer user token)
+    const resolvedChannel = await this.resolveChannelIdForRead(channel);
 
     const queryParams: Record<string, string> = {
       channel: resolvedChannel,
       include_locale: include_locale.toString(),
     };
 
-    const response = await this.makeSlackApiCall(
+    const response = await this.tryWithTokenFallback(
       'conversations.info',
       queryParams,
-      'GET'
+      'GET',
+      { channelHint: channel }
     );
 
     return {
@@ -2287,7 +2289,7 @@ Comprehensive Slack integration for messaging and workspace management.
         response.ok && response.channel
           ? SlackChannelSchema.parse(response.channel)
           : undefined,
-      error: !response.ok ? JSON.stringify(response, null, 2) : '',
+      error: !response.ok ? (response as SlackApiError).error : '',
       success: response.ok,
     };
   }
@@ -2307,10 +2309,11 @@ Comprehensive Slack integration for messaging and workspace management.
       include_locale: include_locale.toString(),
     };
 
-    const response = await this.makeSlackApiCall(
+    const response = await this.tryWithTokenFallback(
       'users.info',
       queryParams,
-      'GET'
+      'GET',
+      { scopeKind: 'user' }
     );
 
     return {
@@ -2320,7 +2323,7 @@ Comprehensive Slack integration for messaging and workspace management.
         response.ok && response.user
           ? SlackUserSchema.parse(response.user)
           : undefined,
-      error: !response.ok ? JSON.stringify(response, null, 2) : '',
+      error: !response.ok ? (response as SlackApiError).error : '',
       success: response.ok,
     };
   }
@@ -2342,10 +2345,11 @@ Comprehensive Slack integration for messaging and workspace management.
 
     if (cursor) queryParams.cursor = cursor;
 
-    const response = await this.makeSlackApiCall(
+    const response = await this.tryWithTokenFallback(
       'users.list',
       queryParams,
-      'GET'
+      'GET',
+      { scopeKind: 'user' }
     );
 
     return {
@@ -2363,7 +2367,7 @@ Comprehensive Slack integration for messaging and workspace management.
               ).next_cursor,
             }
           : undefined,
-      error: !response.ok ? JSON.stringify(response, null, 2) : '',
+      error: !response.ok ? (response as SlackApiError).error : '',
       success: response.ok,
     };
   }
@@ -2379,8 +2383,9 @@ Comprehensive Slack integration for messaging and workspace management.
         { operation: 'get_conversation_history' }
       >;
 
-    // Resolve channel name to ID if needed
-    const resolvedChannel = await this.resolveChannelId(channel);
+    // Read-side: prefer user token both for channel resolution and the history fetch
+    // so we can read channels the bot wasn't invited to (the user is in).
+    const resolvedChannel = await this.resolveChannelIdForRead(channel);
 
     const queryParams: Record<string, string> = {
       channel: resolvedChannel,
@@ -2392,10 +2397,11 @@ Comprehensive Slack integration for messaging and workspace management.
     if (oldest) queryParams.oldest = oldest;
     if (cursor) queryParams.cursor = cursor;
 
-    const response = await this.makeSlackApiCall(
+    const response = await this.tryWithTokenFallback(
       'conversations.history',
       queryParams,
-      'GET'
+      'GET',
+      { channelHint: channel }
     );
 
     return {
@@ -2414,7 +2420,7 @@ Comprehensive Slack integration for messaging and workspace management.
               ).next_cursor,
             }
           : undefined,
-      error: !response.ok ? JSON.stringify(response, null, 2) : '',
+      error: !response.ok ? (response as SlackApiError).error : '',
       success: response.ok,
     };
   }
@@ -2427,17 +2433,9 @@ Comprehensive Slack integration for messaging and workspace management.
     const { channel, ts, latest, oldest, inclusive, limit, cursor } =
       parsed as Extract<SlackParamsParsed, { operation: 'get_thread_replies' }>;
 
-    // If the channel looks like a DM (D…) AND the credential has a user token, route
-    // via xoxp. Bot tokens only see DMs the bot participates in, so user↔user DM threads
-    // return channel_not_found on xoxb. xoxp sees DMs the installing user is part of.
-    const isDmChannel = /^[D][A-Z0-9]+$/i.test(channel);
-    const tokens = this.getSlackTokens();
-    const useUserToken = isDmChannel && !!tokens.user;
-
-    // Resolve channel name to ID if needed (same token as the actual read)
-    const resolvedChannel = await this.resolveChannelId(channel, {
-      useUserToken,
-    });
+    // Read-side: prefer user token (sees DMs and channels the user is in without
+    // bot membership), fall back to bot. Replaces the older DM-only heuristic.
+    const resolvedChannel = await this.resolveChannelIdForRead(channel);
 
     const queryParams: Record<string, string> = {
       channel: resolvedChannel,
@@ -2450,11 +2448,11 @@ Comprehensive Slack integration for messaging and workspace management.
     if (limit !== undefined) queryParams.limit = limit.toString();
     if (cursor) queryParams.cursor = cursor;
 
-    const response = await this.makeSlackApiCall(
+    const response = await this.tryWithTokenFallback(
       'conversations.replies',
       queryParams,
       'GET',
-      { useUserToken }
+      { channelHint: channel }
     );
 
     return {
@@ -2473,7 +2471,7 @@ Comprehensive Slack integration for messaging and workspace management.
               ).next_cursor,
             }
           : undefined,
-      error: !response.ok ? JSON.stringify(response, null, 2) : '',
+      error: !response.ok ? (response as SlackApiError).error : '',
       success: response.ok,
     };
   }
@@ -2818,6 +2816,20 @@ Comprehensive Slack integration for messaging and workspace management.
       unfurl_media,
       as_user,
     } = params;
+
+    // Mirror send_message: fast-fail with a clear, actionable error when the
+    // caller asked for as_user but the credential has no user token. Without
+    // this guard the user sees a generic thrown "no user token" error.
+    if (as_user && !this.getSlackTokens().user) {
+      return {
+        operation: 'schedule_message',
+        ok: false,
+        error:
+          'as_user=true but this Slack connection has no user token (xoxp). Reconnect Slack so the install grants chat:write user-scope — then retry.',
+        success: false,
+      };
+    }
+
     // Bot-identity knobs are ignored when scheduling as the user — mirrors send_message.
     const username = as_user ? undefined : params.username;
     const icon_emoji = as_user ? undefined : params.icon_emoji;
@@ -2877,17 +2889,18 @@ Comprehensive Slack integration for messaging and workspace management.
   ): Promise<Extract<SlackResult, { operation: 'get_file_info' }>> {
     const { file_id } = params;
 
-    const response = await this.makeSlackApiCall(
+    const response = await this.tryWithTokenFallback(
       'files.info',
       { file: file_id },
-      'GET'
+      'GET',
+      { scopeKind: 'file' }
     );
 
     if (!response.ok) {
       return {
         operation: 'get_file_info',
         ok: false,
-        error: JSON.stringify(response, null, 2),
+        error: (response as SlackApiError).error,
         success: false,
       };
     }
@@ -3335,10 +3348,10 @@ Comprehensive Slack integration for messaging and workspace management.
   }
 
   protected chooseCredential(): string | undefined {
-    // Backward-compat shim — existing SlackBubble operations post as the bot, so they
-    // read the bot side of the dual-token payload. Ops that explicitly need the user
-    // token should call `getSlackTokens().user` directly. Falls back to the user token
-    // when no bot token exists so legacy xoxp-only SLACK_API setups keep working.
+    // Used by `download_file` (raw fetch needs a Bearer string outside
+    // `makeSlackApiCall`). Reads now go through `tryWithTokenFallback`, and
+    // writes pass an explicit `useUserToken` to `makeSlackApiCall`. Bot
+    // preferred; falls back to user when the credential is xoxp-only.
     const { bot, user } = this.getSlackTokens();
     return bot ?? user;
   }
@@ -3445,6 +3458,235 @@ Comprehensive Slack integration for messaging and workspace management.
       }
 
       return data;
+    }
+  }
+
+  /**
+   * Read-side helper: try the user token (xoxp) first, then fall back to the bot
+   * token (xoxb) on membership / scope errors. The user token can read any channel
+   * the installing user is in without the bot needing to be invited; the bot token
+   * is the safety net when only bot scopes were granted.
+   *
+   * On final failure the returned `error` is a human-actionable message that
+   * incorporates which token failed with which error — far more useful than the
+   * raw Slack error code alone.
+   */
+  // Errors that are recoverable by trying the *other* token. Membership/scope
+  // failures are intrinsic to the identity that issued the call; auth-state and
+  // rate-limit failures are intrinsic to the *token instance* — the bot token
+  // has independent state, so it's worth retrying.
+  private static readonly FALLBACK_ERRORS = new Set([
+    'not_in_channel',
+    'channel_not_found',
+    'missing_scope',
+    'not_allowed_token_type',
+    'invalid_auth',
+    'token_revoked',
+    'account_inactive',
+    'ratelimited',
+  ]);
+
+  private async tryWithTokenFallback(
+    endpoint: string,
+    params: Record<string, unknown>,
+    method: 'GET' | 'POST' = 'POST',
+    opts?: { channelHint?: string; scopeKind?: 'channel' | 'user' | 'file' }
+  ): Promise<SlackApiResponse | SlackApiError> {
+    const tokens = this.getSlackTokens();
+
+    let userErr: string | undefined;
+    let botErr: string | undefined;
+
+    if (tokens.user) {
+      try {
+        const r = await this.makeSlackApiCall(endpoint, params, method, {
+          useUserToken: true,
+        });
+        if (r.ok) return r;
+        userErr = (r as SlackApiError).error;
+        if (!SlackBubble.FALLBACK_ERRORS.has(userErr)) {
+          return r;
+        }
+      } catch (e) {
+        userErr = e instanceof Error ? e.message : String(e);
+      }
+    }
+
+    if (tokens.bot) {
+      try {
+        const r = await this.makeSlackApiCall(endpoint, params, method);
+        if (r.ok) return r;
+        botErr = (r as SlackApiError).error;
+      } catch (e) {
+        botErr = e instanceof Error ? e.message : String(e);
+      }
+    }
+
+    return {
+      ok: false,
+      error: this.composeReadError({
+        user: userErr,
+        bot: botErr,
+        hasUserToken: !!tokens.user,
+        hasBotToken: !!tokens.bot,
+        channelHint: opts?.channelHint,
+        scopeKind: opts?.scopeKind ?? 'channel',
+      }),
+    };
+  }
+
+  private composeReadError(args: {
+    user?: string;
+    bot?: string;
+    hasUserToken: boolean;
+    hasBotToken: boolean;
+    channelHint?: string;
+    scopeKind: 'channel' | 'user' | 'file';
+  }): string {
+    const where = args.channelHint ? ` for ${args.channelHint}` : '';
+    const isMissing = (e?: string) =>
+      e === 'missing_scope' || e === 'not_allowed_token_type';
+    const isMembership = (e?: string) =>
+      e === 'not_in_channel' || e === 'channel_not_found';
+    const isNotFound = (e?: string) => e === 'channel_not_found';
+    const isAuth = (e?: string) =>
+      e === 'invalid_auth' || e === 'token_revoked' || e === 'account_inactive';
+
+    // Channel doesn't exist at all — distinct from "exists but neither token is in it".
+    if (
+      args.scopeKind === 'channel' &&
+      isNotFound(args.user) &&
+      isNotFound(args.bot)
+    ) {
+      return `Channel${where ? ` ${args.channelHint}` : ''} was not found in this workspace — verify the channel name or ID.`;
+    }
+
+    const reconnectHint =
+      args.scopeKind === 'channel'
+        ? 'Reconnect Slack to grant channels:history (and groups:history for private channels).'
+        : args.scopeKind === 'user'
+          ? 'Reconnect Slack to grant users:read.'
+          : 'Reconnect Slack to grant files:read.';
+
+    // Both tokens attempted, both failed.
+    if (args.hasUserToken && args.hasBotToken) {
+      if (isAuth(args.user) && !args.bot) {
+        // Shouldn't happen — auth on user means we still try bot; defensive.
+        return `Your Slack user token is invalid (${args.user}). Reconnect Slack.`;
+      }
+      if (isAuth(args.user) && isAuth(args.bot)) {
+        return `Both Slack tokens are invalid (user: ${args.user}, bot: ${args.bot}). Reconnect Slack.`;
+      }
+      if (isMembership(args.user) && isMembership(args.bot)) {
+        if (args.scopeKind === 'channel') {
+          return `Neither your user account nor the bot can access this channel${where}. Invite the bot (e.g. via join_channel), or join the channel as the installing user.`;
+        }
+        return `Neither token can find this resource${where}.`;
+      }
+      if (isMissing(args.user) || isMissing(args.bot)) {
+        return `Slack rejected this read on scope grounds (user: ${args.user ?? 'n/a'}, bot: ${args.bot ?? 'n/a'}). ${reconnectHint}`;
+      }
+      return `Slack rejected this read on both tokens (user: ${args.user ?? 'n/a'}, bot: ${args.bot ?? 'n/a'}).`;
+    }
+
+    // Only bot token tried.
+    if (!args.hasUserToken && args.hasBotToken) {
+      if (isMembership(args.bot) && args.scopeKind === 'channel') {
+        return `The bot isn't in this channel${where}. Either invite the bot, or reconnect Slack to grant a user token (xoxp) so reads can fall back to your account.`;
+      }
+      if (isMissing(args.bot)) {
+        return `Bot token is missing the scope needed${where}. Have a workspace admin update the Slack app permissions, or reconnect Slack to grant a user token.`;
+      }
+      if (isAuth(args.bot)) {
+        return `Slack bot token is invalid (${args.bot}). Reconnect Slack.`;
+      }
+      return `Slack error from bot token: ${args.bot ?? 'unknown'}.`;
+    }
+
+    // Only user token tried (xoxp-only credential).
+    if (args.hasUserToken && !args.hasBotToken) {
+      if (isMembership(args.user) && args.scopeKind === 'channel') {
+        return `You aren't a member of this channel${where}. Join it first, or reconnect Slack with bot scopes so the bot can read.`;
+      }
+      if (isMissing(args.user)) {
+        return `Your user token is missing the scope needed${where}. ${reconnectHint}`;
+      }
+      if (isAuth(args.user)) {
+        return `Slack user token is invalid (${args.user}). Reconnect Slack.`;
+      }
+      return `Slack error from user token: ${args.user ?? 'unknown'}.`;
+    }
+
+    return 'No Slack token is configured for this credential. Reconnect Slack.';
+  }
+
+  /**
+   * Resolve a channel name/ID for a *read* operation: prefer the user token (which
+   * sees every channel the installing user is in, even without the bot being
+   * invited) and fall back to the bot token if user-side resolution fails or no
+   * user token is configured. If both fail, the thrown error includes both
+   * underlying errors so the caller can see what really happened.
+   */
+  private async resolveChannelIdForRead(channelInput: string): Promise<string> {
+    // Direct channel/group/DM ID — no API call needed.
+    if (/^[CGD][A-Z0-9]+$/i.test(channelInput)) {
+      return channelInput;
+    }
+    const tokens = this.getSlackTokens();
+
+    // User ID — open the user-to-user DM. Try user token first; fall back to
+    // bot token if the user side fails (e.g. install lacks im:write user
+    // scope but bot can still open a bot↔user DM).
+    if (/^[UW][A-Z0-9]+$/i.test(channelInput)) {
+      let userErr: Error | undefined;
+      if (tokens.user) {
+        try {
+          return await this.openDmConversation(channelInput, {
+            useUserToken: true,
+          });
+        } catch (e) {
+          userErr = e instanceof Error ? e : new Error(String(e));
+        }
+      }
+      if (tokens.bot) {
+        try {
+          return await this.openDmConversation(channelInput);
+        } catch (e) {
+          const botErr = e instanceof Error ? e.message : String(e);
+          throw new Error(
+            userErr
+              ? `Could not open DM with ${channelInput}: user-token: ${userErr.message}; bot-token: ${botErr}`
+              : `Could not open DM with ${channelInput}: ${botErr}`
+          );
+        }
+      }
+      throw (
+        userErr ??
+        new Error(`No Slack token available to open DM with ${channelInput}`)
+      );
+    }
+
+    // Channel name — try user-token resolution first, then bot. Surface both
+    // errors if both fail so callers don't silently lose the user-side reason.
+    let userErr: Error | undefined;
+    if (tokens.user) {
+      try {
+        return await this.resolveChannelId(channelInput, {
+          useUserToken: true,
+        });
+      } catch (e) {
+        userErr = e instanceof Error ? e : new Error(String(e));
+      }
+    }
+    try {
+      return await this.resolveChannelId(channelInput);
+    } catch (e) {
+      const botErr = e instanceof Error ? e.message : String(e);
+      throw new Error(
+        userErr
+          ? `Could not resolve channel "${channelInput}": user-token: ${userErr.message}; bot-token: ${botErr}`
+          : botErr
+      );
     }
   }
 }
