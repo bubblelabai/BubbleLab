@@ -32,6 +32,15 @@ export interface CredentialPoolEntry {
   id: number;
   name: string;
   value: string;
+  /** True when the user marked this credential as the default for its type. */
+  isDefault?: boolean;
+  /**
+   * Per-credential-type display hints surfaced to the master agent's prompt
+   * (e.g. `{ workspace: "Bubble Lab", authMethod: "oauth", hasUserToken: "yes" }`).
+   * Populated by an extractor in Pro that reads `userCredentials.metadata`.
+   * Display-only — capability runtime code should not branch on these.
+   */
+  attributes?: Record<string, string>;
 }
 
 /**

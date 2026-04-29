@@ -1,6 +1,8 @@
 import type { BubbleContext } from '../../types/bubble.js';
 import {
   RECOMMENDED_MODELS,
+  getCanonicalCredentialType,
+  getSiblingCredentialTypes,
   type CredentialType,
   type CredentialPoolEntry,
 } from '@bubblelab/shared-schemas';
@@ -161,28 +163,60 @@ export async function applyCapabilityPreprocessing(
             ...(def.metadata.optionalCredentials ?? []),
           ];
           if (allCredTypes.length > 0) {
+            const declaredSet = new Set<CredentialType>(allCredTypes);
             const credLines: string[] = [];
             for (const credType of allCredTypes) {
               const isSet = !!resolvedCreds[credType];
               const pool = credentialPool?.[credType];
-              if (isSet && pool && pool.length > 1) {
+
+              if (!isSet) {
+                // Sibling-aware suppression: when this cap declared a paired
+                // sibling type (e.g. AIRTABLE_OAUTH + AIRTABLE_CRED) and the
+                // other one is set, omit this redundant "✗ NOT SET" row.
+                // When neither sibling is set, emit only the canonical row
+                // so the master sees one entry instead of two.
+                const otherSiblings = getSiblingCredentialTypes(
+                  credType
+                ).filter((s) => s !== credType && declaredSet.has(s));
+                if (otherSiblings.length > 0) {
+                  if (otherSiblings.some((s) => !!resolvedCreds[s])) continue;
+                  const canonical = getCanonicalCredentialType(credType);
+                  if (credType !== canonical && declaredSet.has(canonical))
+                    continue;
+                }
+                credLines.push(
+                  `${credType}: ✗ NOT SET — use initiate-credential-creation to connect`
+                );
+                continue;
+              }
+
+              const formatEntry = (
+                e: CredentialPoolEntry,
+                maxNameLen: number
+              ): string => {
+                const safeName = e.name
+                  .replace(/[\n\r]/g, ' ')
+                  .slice(0, maxNameLen);
+                const defaultTag = e.isDefault ? ' (default)' : '';
+                const attrPairs = e.attributes
+                  ? Object.entries(e.attributes)
+                      .map(([k, v]) => `${k}=${v}`)
+                      .join(', ')
+                  : '';
+                const attrTag = attrPairs ? ` [${attrPairs}]` : '';
+                return `"${safeName}"${defaultTag}${attrTag}`;
+              };
+
+              if (pool && pool.length > 1) {
                 // Multiple accounts available — list them
-                const names = pool
-                  .map(
-                    (e) => `"${e.name.replace(/[\n\r]/g, ' ').slice(0, 100)}"`
-                  )
-                  .join(', ');
+                const names = pool.map((e) => formatEntry(e, 100)).join(', ');
                 credLines.push(
                   `${credType}: ✓ SET (${pool.length} accounts: ${names})`
                 );
-              } else if (isSet) {
-                const name = pool?.[0]?.name;
-                credLines.push(
-                  `${credType}: ✓ SET${name ? ` ("${name.replace(/[\n\r]/g, ' ').slice(0, 80)}")` : ''}`
-                );
               } else {
+                const entry = pool?.[0];
                 credLines.push(
-                  `${credType}: ✗ NOT SET — use initiate-credential-creation to connect`
+                  `${credType}: ✓ SET${entry ? ` (${formatEntry(entry, 80)})` : ''}`
                 );
               }
             }

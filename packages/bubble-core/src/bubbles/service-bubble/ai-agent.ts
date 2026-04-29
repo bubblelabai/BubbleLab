@@ -5,6 +5,8 @@ import {
   CredentialType,
   BUBBLE_CREDENTIAL_OPTIONS,
   RECOMMENDED_MODELS,
+  getCanonicalCredentialType,
+  getSiblingCredentialTypes,
 } from '@bubblelab/shared-schemas';
 import { StateGraph, MessagesAnnotation } from '@langchain/langgraph';
 import { ChatOpenAI } from '@langchain/openai';
@@ -363,6 +365,8 @@ const AIAgentParamsSchema = z.object({
           id: z.number(),
           name: z.string(),
           value: z.string(),
+          isDefault: z.boolean().optional(),
+          attributes: z.record(z.string(), z.string()).optional(),
         })
       )
     )
@@ -1494,44 +1498,75 @@ export class AIAgentBubble extends ServiceBubble<
               ? { ...this.params.credentials }
               : undefined;
 
+            type PoolEntry = { id: number; name: string; value: string };
+            const findInPool = (
+              pool: PoolEntry[] | undefined,
+              selector: string | number
+            ): PoolEntry | undefined => {
+              if (!pool) return undefined;
+              let match: PoolEntry | undefined;
+              if (typeof selector === 'string') {
+                const sel = selector.toLowerCase();
+                match = pool.find((c) => c.name.toLowerCase() === sel);
+                if (!match) {
+                  match = pool.find((c) => c.name.toLowerCase().includes(sel));
+                }
+              }
+              if (!match && typeof selector === 'number') {
+                match = pool.find((c) => c.id === selector);
+              }
+              if (!match && typeof selector === 'string') {
+                const asNum = Number(selector);
+                if (!Number.isNaN(asNum)) {
+                  match = pool.find((c) => c.id === asNum);
+                }
+              }
+              return match;
+            };
+
+            let overrideTypes: string[] | undefined;
             if (
               credentialOverrides &&
               this.params.credentialPool &&
               subAgentCredentials
             ) {
+              overrideTypes = [];
               for (const [credType, credSelector] of Object.entries(
                 credentialOverrides
               )) {
-                const pool =
-                  this.params.credentialPool[credType as CredentialType];
-                if (!pool) continue;
-
-                // Match by name first (string), fall back to ID (number)
-                let match: (typeof pool)[number] | undefined;
-                if (typeof credSelector === 'string') {
-                  const sel = credSelector.toLowerCase();
-                  // Exact match first, then substring (handles "email (label)" format)
-                  match = pool.find((c) => c.name.toLowerCase() === sel);
-                  if (!match) {
-                    match = pool.find((c) =>
-                      c.name.toLowerCase().includes(sel)
+                let matchedType = credType as CredentialType;
+                let match = findInPool(
+                  this.params.credentialPool[matchedType],
+                  credSelector
+                );
+                // Sibling fallback: when the requested type's pool has no
+                // match, walk paired sibling types (e.g. SLACK_CRED ↔
+                // SLACK_API) so the master can route across OAuth/API-key
+                // accounts of the same logical provider.
+                if (!match) {
+                  for (const sibling of getSiblingCredentialTypes(
+                    credType as CredentialType
+                  )) {
+                    if (sibling === matchedType) continue;
+                    const found = findInPool(
+                      this.params.credentialPool[sibling],
+                      credSelector
                     );
-                  }
-                }
-                if (!match && typeof credSelector === 'number') {
-                  match = pool.find((c) => c.id === credSelector);
-                }
-                // Also try parsing string as number for ID fallback
-                if (!match && typeof credSelector === 'string') {
-                  const asNum = Number(credSelector);
-                  if (!Number.isNaN(asNum)) {
-                    match = pool.find((c) => c.id === asNum);
+                    if (found) {
+                      match = found;
+                      matchedType = sibling;
+                      break;
+                    }
                   }
                 }
 
                 if (match) {
-                  subAgentCredentials[credType as CredentialType] = match.value;
+                  subAgentCredentials[matchedType] = match.value;
                 }
+                // Record the resolved real type (or the requested type when
+                // unmatched) so downstream provider routing
+                // (data-analyst/utils.ts) sees what was actually selected.
+                overrideTypes.push(matchedType);
               }
             }
 
@@ -1540,7 +1575,8 @@ export class AIAgentBubble extends ServiceBubble<
             if (credentialOverrides && this.context?.executionMeta) {
               (
                 this.context.executionMeta as Record<string, unknown>
-              )._credentialOverrideTypes = Object.keys(credentialOverrides);
+              )._credentialOverrideTypes =
+                overrideTypes ?? Object.keys(credentialOverrides);
             }
 
             // Dynamic credentials (from manage_capability set_credential) are
@@ -1807,6 +1843,55 @@ export class AIAgentBubble extends ServiceBubble<
     if (capConfig.credentials) {
       for (const [key, value] of Object.entries(capConfig.credentials)) {
         resolved[key as CredentialType] = value;
+      }
+    }
+
+    // Prune non-pinned siblings when a sibling pair is in play and the master
+    // (via use-capability `credentials` override) or a saved-flow capConfig
+    // explicitly pinned a specific sibling type. Without this, capabilities
+    // whose runtime helper does `oauth ?? api` would silently pick the OAuth
+    // default and ignore the pin.
+    const overrideTypes = (
+      this.context?.executionMeta as Record<string, unknown> | undefined
+    )?._credentialOverrideTypes as string[] | undefined;
+    const pinned = new Set<string>([
+      ...Object.keys(capConfig.credentials ?? {}),
+      ...(overrideTypes ?? []),
+    ]);
+    if (pinned.size > 0) {
+      for (const ct of Object.keys(resolved)) {
+        if (pinned.has(ct)) continue;
+        const siblings = getSiblingCredentialTypes(ct as CredentialType);
+        if (siblings.some((s) => pinned.has(s))) {
+          delete resolved[ct as CredentialType];
+        }
+      }
+    }
+
+    // Sibling default pre-prune: when no explicit pin AND a sibling pair is
+    // fully declared AND exactly one sibling type has a credential marked as
+    // user default (`isDefault: true` in the pool), drop the unmarked sibling
+    // so the cap's `oauth ?? api` collapses to the user's preferred auth
+    // method without requiring an override.
+    if (pinned.size === 0 && this.params.credentialPool) {
+      const pool = this.params.credentialPool;
+      const seenCanonicals = new Set<CredentialType>();
+      for (const ct of [...Object.keys(resolved)] as CredentialType[]) {
+        const canonical = getCanonicalCredentialType(ct);
+        if (seenCanonicals.has(canonical)) continue;
+        seenCanonicals.add(canonical);
+        const siblings = getSiblingCredentialTypes(ct);
+        if (siblings.length < 2) continue;
+        const present = siblings.filter((s) => resolved[s] !== undefined);
+        if (present.length < 2) continue;
+        const marked = present.filter((s) =>
+          pool[s]?.some((e) => e.isDefault === true)
+        );
+        if (marked.length === 1) {
+          for (const s of siblings) {
+            if (s !== marked[0]) delete resolved[s as CredentialType];
+          }
+        }
       }
     }
 

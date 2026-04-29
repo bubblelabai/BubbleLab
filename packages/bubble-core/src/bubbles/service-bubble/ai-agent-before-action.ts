@@ -123,19 +123,17 @@ function injectFlowMasterDynamicState(deps: BeforeActionDeps): void {
     if (!entries.length) continue;
     if (!params.credentials) params.credentials = {};
     (params.credentials as Record<string, string>)[credType] = entries[0].value;
-    if (entries.length > 1) {
-      if (!params.credentialPool)
-        params.credentialPool = {} as Record<
-          CredentialType,
-          Array<{ id: number; name: string; value: string }>
-        >;
-      (
-        params.credentialPool as Record<
-          string,
-          Array<{ id: number; name: string; value: string }>
-        >
-      )[credType] = entries;
-    }
+    if (!params.credentialPool)
+      params.credentialPool = {} as Record<
+        CredentialType,
+        Array<{ id: number; name: string; value: string }>
+      >;
+    (
+      params.credentialPool as Record<
+        string,
+        Array<{ id: number; name: string; value: string }>
+      >
+    )[credType] = entries;
   }
 }
 

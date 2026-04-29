@@ -615,8 +615,11 @@ export class BubbleInjector {
           this.injectCredentialsIntoBubble(bubble, credentialMapping);
         }
 
-        // For ai-agent bubbles, build and inject credential pool when
-        // multiple user credentials exist for the same credential type
+        // For ai-agent bubbles, build and inject credential pool so the
+        // master can disambiguate accounts by name. Populated for any
+        // non-empty type, including singletons — the prompt rendering and
+        // sibling-aware use-capability lookup both rely on pool entries
+        // existing.
         if (bubble.bubbleName === 'ai-agent' && userCreds.length > 0) {
           const credsByType = new Map<
             CredentialType,
@@ -637,19 +640,13 @@ export class BubbleInjector {
               value: this.escapeString(uc.secret),
             });
           }
-          // Only inject pool if at least one type has multiple credentials
-          const hasMultiple = Array.from(credsByType.values()).some(
-            (entries) => entries.length > 1
-          );
-          if (hasMultiple) {
+          if (credsByType.size > 0) {
             const pool: Record<
               string,
               Array<{ id: number; name: string; value: string }>
             > = {};
             for (const [credType, entries] of credsByType) {
-              if (entries.length > 1) {
-                pool[credType] = entries;
-              }
+              pool[credType] = entries;
             }
             this.injectCredentialPoolIntoBubble(bubble, pool);
           }
