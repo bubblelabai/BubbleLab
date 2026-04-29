@@ -52,11 +52,11 @@ const ApifyParamsSchema = z.object({
   timeout: z
     .number()
     .min(1000)
-    .max(500000)
+    .max(1800000)
     .optional()
     .default(300000)
     .describe(
-      'Maximum time to wait for actor completion in milliseconds (default: 120000)'
+      'Maximum time to wait for actor completion in milliseconds (default: 300000 = 5 min, max: 1800000 = 30 min). Long-running actors (e.g., apify/instagram-reel-scraper with transcripts) need >300s.'
     ),
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())

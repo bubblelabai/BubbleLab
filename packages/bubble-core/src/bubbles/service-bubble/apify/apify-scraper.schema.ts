@@ -7,6 +7,10 @@ import {
   InstagramHashtagScraperItemSchema,
 } from './actors/instagram-hashtag-scraper.js';
 import {
+  InstagramReelScraperInputSchema,
+  InstagramReelScraperItemSchema,
+} from './actors/instagram-reel-scraper.js';
+import {
   LinkedInProfilePostsInputSchema,
   LinkedInProfilePostsOutputSchema,
 } from './actors/linkedin-profile-posts.js';
@@ -64,6 +68,14 @@ export const APIFY_ACTOR_SCHEMAS = {
     output: InstagramHashtagScraperItemSchema,
     description: 'Scrape Instagram posts by hashtag',
     documentation: 'https://apify.com/apify/instagram-hashtag-scraper',
+    category: 'social-media',
+  },
+  'apify/instagram-reel-scraper': {
+    input: InstagramReelScraperInputSchema,
+    output: InstagramReelScraperItemSchema,
+    description:
+      'Scrape Instagram reels from profiles or direct reel URLs with optional transcript, share counts, and downloaded MP4 URLs',
+    documentation: 'https://apify.com/apify/instagram-reel-scraper',
     category: 'social-media',
   },
   'apimaestro/linkedin-profile-posts': {

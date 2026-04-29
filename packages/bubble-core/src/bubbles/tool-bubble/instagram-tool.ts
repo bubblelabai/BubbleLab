@@ -32,12 +32,51 @@ const InstagramProfileSchema = z.object({
   profilePicUrl: z.string().nullable().describe('Profile picture URL'),
 });
 
+const InstagramReelSchema = z.object({
+  url: z.string().nullable().describe('Reel URL'),
+  shortCode: z.string().nullable().describe('Instagram short code'),
+  caption: z.string().nullable().describe('Reel caption'),
+  ownerUsername: z.string().nullable().describe('Reel owner username'),
+  ownerFullName: z.string().nullable().describe('Reel owner full name'),
+  timestamp: z.string().nullable().describe('Reel timestamp (ISO format)'),
+  videoUrl: z.string().nullable().describe('CDN video URL'),
+  downloadedVideo: z
+    .string()
+    .nullable()
+    .describe(
+      'Direct MP4 download URL — only populated when includeDownloadedVideo=true'
+    ),
+  videoDuration: z.number().nullable().describe('Reel duration in seconds'),
+  videoViewCount: z.number().nullable().describe('Video view count'),
+  videoPlayCount: z.number().nullable().describe('Video play count'),
+  likesCount: z.number().nullable().describe('Number of likes'),
+  commentsCount: z.number().nullable().describe('Number of comments'),
+  sharesCount: z
+    .number()
+    .nullable()
+    .describe('Number of shares — only populated when includeSharesCount=true'),
+  hashtags: z.array(z.string()).nullable().describe('Hashtags in the reel'),
+  mentions: z
+    .array(z.string())
+    .nullable()
+    .describe('User mentions in the reel'),
+  transcript: z
+    .string()
+    .nullable()
+    .describe(
+      'Auto-generated speech transcript — only populated when includeTranscript=true'
+    ),
+  musicArtist: z.string().nullable().describe('Music artist name'),
+  musicTitle: z.string().nullable().describe('Music/song title'),
+  displayUrl: z.string().nullable().describe('Display thumbnail URL'),
+});
+
 // Gemini-compatible single object schema with optional fields
 const InstagramToolParamsSchema = z.object({
   operation: z
-    .enum(['scrapeProfile', 'scrapeHashtag'])
+    .enum(['scrapeProfile', 'scrapeHashtag', 'scrapeReels'])
     .describe(
-      'Operation to perform: scrapeProfile for user profiles, scrapeHashtag for hashtag posts'
+      'Operation to perform: scrapeProfile for user profiles, scrapeHashtag for hashtag posts, scrapeReels for reels (with optional transcript)'
     ),
 
   // Profile scraping fields (optional)
@@ -56,6 +95,50 @@ const InstagramToolParamsSchema = z.object({
       'Hashtags to scrape (for scrapeHashtag operation). Examples: ["ai", "tech"] or ["https://www.instagram.com/explore/tags/ai"]'
     ),
 
+  // Reel scraping fields (optional)
+  targets: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Instagram usernames, profile URLs, profile IDs, or direct reel URLs (for scrapeReels operation). You can mix forms in one array — e.g., ["ryanbailey.cb", "https://www.instagram.com/p/DXIlvPbj2PY/"] pulls reels from a profile AND scrapes a specific reel in one call. Other valid examples: ["ryanbailey.cb"], ["https://www.instagram.com/ryanbailey.cb/"], ["https://www.instagram.com/p/DXIlvPbj2PY/"]'
+    ),
+  includeTranscript: z
+    .boolean()
+    .optional()
+    .describe(
+      'For scrapeReels: extract auto-generated speech transcripts of each reel (paid add-on)'
+    ),
+  includeSharesCount: z
+    .boolean()
+    .optional()
+    .describe(
+      'For scrapeReels: extract number of shares for each reel (paid add-on)'
+    ),
+  includeDownloadedVideo: z
+    .boolean()
+    .optional()
+    .describe(
+      'For scrapeReels: include a direct MP4 download URL (a string URL — NOT video bytes — populated in the `downloadedVideo` field of each reel) for each reel. Paid add-on.'
+    ),
+  skipPinnedPosts: z
+    .boolean()
+    .optional()
+    .describe('For scrapeReels: exclude pinned reels from results'),
+  onlyPostsNewerThan: z
+    .string()
+    .optional()
+    .describe(
+      'For scrapeReels: only return reels posted on or after this date. Accepts YYYY-MM-DD, ISO timestamp, or relative like "1 day" / "2 weeks"'
+    ),
+  timeoutSecs: z
+    .number()
+    .min(60)
+    .max(1800)
+    .optional()
+    .describe(
+      'For scrapeReels: max seconds to wait for the Apify actor (default 600). Bump if you enable includeTranscript on >2 reels — transcript generation adds ~1-2 min per reel.'
+    ),
+
   // Common fields
   limit: z
     .number()
@@ -64,7 +147,7 @@ const InstagramToolParamsSchema = z.object({
     .default(20)
     .optional()
     .describe(
-      'Maximum number of posts to fetch (default: 20 for profiles, 50 for hashtags)'
+      'Maximum number of items to fetch (default: 20 for profiles/reels, 50 for hashtags)'
     ),
 
   credentials: z
@@ -76,13 +159,24 @@ const InstagramToolParamsSchema = z.object({
 // Gemini-compatible single result schema
 const InstagramToolResultSchema = z.object({
   operation: z
-    .enum(['scrapeProfile', 'scrapeHashtag'])
+    .enum(['scrapeProfile', 'scrapeHashtag', 'scrapeReels'])
     .describe('Operation that was performed'),
 
-  // Posts data (always present)
+  // Posts data (only for scrapeProfile / scrapeHashtag)
   posts: z
     .array(InstagramPostSchema)
-    .describe('Array of Instagram posts scraped'),
+    .optional()
+    .describe(
+      'Array of Instagram posts scraped (only for scrapeProfile / scrapeHashtag operations — for scrapeReels see the `reels` field)'
+    ),
+
+  // Reels data (only for scrapeReels operation)
+  reels: z
+    .array(InstagramReelSchema)
+    .optional()
+    .describe(
+      'Reels with reel-specific fields like transcript, video URL, share count (only for scrapeReels operation)'
+    ),
 
   // Profile data (only for scrapeProfile operation)
   profiles: z
@@ -108,8 +202,16 @@ const InstagramToolResultSchema = z.object({
       'List of profile usernames that were scraped (only for scrapeProfile operation)'
     ),
 
+  // Target data (only for scrapeReels operation)
+  scrapedTargets: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'List of inputs that were scraped (only for scrapeReels operation)'
+    ),
+
   // Common fields
-  totalPosts: z.number().describe('Total number of posts scraped'),
+  totalPosts: z.number().describe('Total number of posts/reels scraped'),
   success: z.boolean().describe('Whether the operation was successful'),
   error: z.string().describe('Error message if operation failed'),
 });
@@ -120,6 +222,7 @@ type InstagramToolResult = z.output<typeof InstagramToolResultSchema>;
 type InstagramToolParamsInput = z.input<typeof InstagramToolParamsSchema>;
 export type InstagramPost = z.output<typeof InstagramPostSchema>;
 export type InstagramProfile = z.output<typeof InstagramProfileSchema>;
+export type InstagramReel = z.output<typeof InstagramReelSchema>;
 
 // Helper type to get the result type for a specific operation
 export type InstagramOperationResult<
@@ -157,11 +260,18 @@ export class InstagramTool extends ToolBubble<
        - Get profile information (bio, followers, verified status)
        - Fetch recent posts from specific users
        - Track influencer or brand accounts
-    
+
     2. **scrapeHashtag**: Scrape posts by hashtag
        - Find trending content by hashtag
        - Monitor brand mentions and campaigns
        - Research hashtag performance
+
+    3. **scrapeReels**: Scrape reels from a profile or directly from reel URLs
+       - Get reels with video URLs, view/play counts, hashtags, music info
+       - Optionally extract auto-generated speech transcripts (paid add-on)
+       - Optionally extract share counts and direct MP4 download URLs (paid add-ons)
+       - Filter by date with onlyPostsNewerThan, skip pinned reels with skipPinnedPosts
+       - **Latency note**: transcript generation adds ~1-2 min per reel. Default timeout is 10 min (600s); for >5 reels with includeTranscript, bump via the timeoutSecs param.
     
     **WHEN TO USE THIS TOOL:**
     - **Any Instagram scraping task** - profiles, posts, hashtags, engagement data
@@ -245,12 +355,28 @@ export class InstagramTool extends ToolBubble<
         );
       }
 
+      if (
+        operation === 'scrapeReels' &&
+        (!this.params.targets || this.params.targets.length === 0)
+      ) {
+        if (this.params.profiles && this.params.profiles.length > 0) {
+          return this.createErrorResult(
+            'scrapeReels uses the `targets` field, not `profiles`. Move your input to `targets` — it accepts usernames, profile URLs, profile IDs, or direct reel URLs.'
+          );
+        }
+        return this.createErrorResult(
+          'Targets array is required for scrapeReels operation. Pass usernames, profile URLs, or direct reel URLs in the `targets` field.'
+        );
+      }
+
       const result = await (async (): Promise<InstagramToolResult> => {
         switch (operation) {
           case 'scrapeProfile':
             return await this.handleScrapeProfile(this.params);
           case 'scrapeHashtag':
             return await this.handleScrapeHashtag(this.params);
+          case 'scrapeReels':
+            return await this.handleScrapeReels(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -272,10 +398,12 @@ export class InstagramTool extends ToolBubble<
 
     return {
       operation: operation || 'scrapeProfile',
-      posts: [],
+      posts: operation === 'scrapeReels' ? undefined : [],
+      reels: operation === 'scrapeReels' ? [] : undefined,
       profiles: operation === 'scrapeProfile' ? [] : undefined,
       scrapedProfiles: operation === 'scrapeProfile' ? [] : undefined,
       scrapedHashtags: operation === 'scrapeHashtag' ? [] : undefined,
+      scrapedTargets: operation === 'scrapeReels' ? [] : undefined,
       totalPosts: 0,
       success: false,
       error: errorMessage,
@@ -328,6 +456,65 @@ export class InstagramTool extends ToolBubble<
       totalPosts: result.totalPosts,
       success: result.success,
       error: result.error,
+    };
+  }
+
+  /**
+   * Handle scrapeReels operation
+   */
+  private async handleScrapeReels(
+    params: InstagramToolParams
+  ): Promise<InstagramToolResult> {
+    const targets = params.targets!;
+
+    const scrape_reels_apify = new ApifyBubble<'apify/instagram-reel-scraper'>(
+      {
+        actorId: 'apify/instagram-reel-scraper',
+        input: {
+          username: targets,
+          resultsLimit: params.limit || 20,
+          skipPinnedPosts: params.skipPinnedPosts ?? false,
+          includeSharesCount: params.includeSharesCount ?? false,
+          includeTranscript: params.includeTranscript ?? false,
+          includeDownloadedVideo: params.includeDownloadedVideo ?? false,
+          ...(params.onlyPostsNewerThan
+            ? { onlyPostsNewerThan: params.onlyPostsNewerThan }
+            : {}),
+        },
+        waitForFinish: true,
+        timeout: (params.timeoutSecs ?? 600) * 1000,
+        credentials: params.credentials,
+        limit: params.limit || 20,
+      },
+      this.context,
+      'scrape_reels_apify'
+    );
+
+    const apifyResult = await scrape_reels_apify.action();
+
+    if (!apifyResult.data.success) {
+      return {
+        operation: 'scrapeReels',
+        reels: [],
+        scrapedTargets: targets,
+        totalPosts: 0,
+        success: false,
+        error:
+          apifyResult.data.error ||
+          'Failed to scrape Instagram reels. Please try again.',
+      };
+    }
+
+    const items = apifyResult.data.items || [];
+    const reels = this.extractReels(items);
+
+    return {
+      operation: 'scrapeReels',
+      reels,
+      scrapedTargets: targets,
+      totalPosts: reels.length,
+      success: true,
+      error: '',
     };
   }
 
@@ -598,6 +785,51 @@ export class InstagramTool extends ToolBubble<
     }
 
     return profiles;
+  }
+
+  /**
+   * Extract reels from reel scraper results
+   * Reel scraper returns reels directly (not nested under profiles)
+   */
+  private extractReels(
+    items: ActorOutput<'apify/instagram-reel-scraper'>[]
+  ): InstagramReel[] {
+    const reels: InstagramReel[] = [];
+
+    for (const item of items) {
+      if (typeof item !== 'object' || item === null) continue;
+
+      const anyItem = item as Record<string, unknown>;
+      const music = (anyItem.musicInfo ?? null) as Record<
+        string,
+        unknown
+      > | null;
+
+      reels.push({
+        url: (anyItem.url as string) || null,
+        shortCode: (anyItem.shortCode as string) || null,
+        caption: (anyItem.caption as string) || null,
+        ownerUsername: (anyItem.ownerUsername as string) || null,
+        ownerFullName: (anyItem.ownerFullName as string) || null,
+        timestamp: (anyItem.timestamp as string) || null,
+        videoUrl: (anyItem.videoUrl as string) || null,
+        downloadedVideo: (anyItem.downloadedVideo as string) || null,
+        videoDuration: (anyItem.videoDuration as number) ?? null,
+        videoViewCount: (anyItem.videoViewCount as number) ?? null,
+        videoPlayCount: (anyItem.videoPlayCount as number) ?? null,
+        likesCount: (anyItem.likesCount as number) ?? null,
+        commentsCount: (anyItem.commentsCount as number) ?? null,
+        sharesCount: (anyItem.sharesCount as number) ?? null,
+        hashtags: (anyItem.hashtags as string[]) || null,
+        mentions: (anyItem.mentions as string[]) || null,
+        transcript: (anyItem.transcript as string) || null,
+        musicArtist: (music?.artist_name as string) || null,
+        musicTitle: (music?.song_name as string) || null,
+        displayUrl: (anyItem.displayUrl as string) || null,
+      });
+    }
+
+    return reels;
   }
 
   /**
