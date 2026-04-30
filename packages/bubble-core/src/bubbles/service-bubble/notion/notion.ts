@@ -335,7 +335,11 @@ const NotionParamsSchema = z.discriminatedUnion('operation', [
     children: z
       .array(z.unknown())
       .optional()
-      .describe('Array of block objects for page content'),
+      .describe(
+        'Array of Notion block objects for page content. Same format as `append_block_children.children`. ' +
+          'For tables, the table block must include `children: [table_row, ...]` inline; ' +
+          "`table_width` must equal every row's cell count."
+      ),
     icon: FileObjectSchema.or(
       z.object({
         type: z.literal('emoji'),
@@ -675,7 +679,21 @@ const NotionParamsSchema = z.discriminatedUnion('operation', [
       .array(z.unknown())
       .min(1)
       .max(100)
-      .describe('Array of block objects to append (max 100)'),
+      .describe(
+        'Array of Notion block objects to append (max 100). ' +
+          'Each block is `{ object: "block", type: "<type>", "<type>": { ... } }`. ' +
+          'Common examples:\n' +
+          '- Paragraph: { object: "block", type: "paragraph", paragraph: { rich_text: [{ type: "text", text: { content: "hello" } }] } }\n' +
+          '- Heading: { object: "block", type: "heading_2", heading_2: { rich_text: [{ type: "text", text: { content: "Title" } }] } }\n' +
+          "- Table (rows MUST be supplied inline as children; table_width must equal every row's cell count): " +
+          '{ object: "block", type: "table", table: { table_width: 2, has_column_header: true, has_row_header: false, ' +
+          'children: [ ' +
+          '{ object: "block", type: "table_row", table_row: { cells: [ [{ type: "text", text: { content: "Name" } }], [{ type: "text", text: { content: "Status" } }] ] } }, ' +
+          '{ object: "block", type: "table_row", table_row: { cells: [ [{ type: "text", text: { content: "Task A" } }], [{ type: "text", text: { content: "Done" } }] ] } } ' +
+          '] } }. ' +
+          'You cannot append rows to an empty table later — always include all rows in the initial create call. ' +
+          'For an empty cell, use `cells: [..., [], ...]` (an empty array) — Notion rejects rich_text items with empty content strings.'
+      ),
     after: z.string().optional().describe('ID of block to append after'),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
