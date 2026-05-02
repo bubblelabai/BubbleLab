@@ -415,8 +415,9 @@ describe('OlostepBubble', () => {
 
       const res = await bubble.action();
 
-      // Implementation gracefully handles malformed JSON by returning raw text
+      // Graceful fallback: parses raw text, returns success with raw content
       expect(res.data.operation).toBe('scrape');
+      expect(res.success).toBe(true);
     });
 
     it('should handle missing credentials gracefully', async () => {

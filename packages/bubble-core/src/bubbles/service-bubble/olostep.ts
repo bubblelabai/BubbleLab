@@ -566,7 +566,9 @@ export class OlostepBubble extends ServiceBubble<OlostepParams, OlostepResult> {
       const errorMessage =
         typeof json?.error === 'string'
           ? json.error
-          : json?.error?.message || json?.message;
+          : json?.error?.message ||
+            json?.message ||
+            (typeof json?.raw === 'string' ? json.raw : undefined);
       throw new Error(errorMessage || `HTTP ${response.status}`);
     }
 
