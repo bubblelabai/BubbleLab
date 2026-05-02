@@ -87,6 +87,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.NOTION_API]: 'Notion',
     [CredentialType.INSFORGE_BASE_URL]: 'InsForge',
     [CredentialType.INSFORGE_API_KEY]: 'InsForge',
+    [CredentialType.OLOSTEP_API_KEY]: 'Olostep',
     [CredentialType.CUSTOM_AUTH_KEY]: 'Custom',
     [CredentialType.AMAZON_CRED]: 'Amazon',
     [CredentialType.BROWSERBASE_CRED]: 'BrowserBase',

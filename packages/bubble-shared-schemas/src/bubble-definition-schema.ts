@@ -50,6 +50,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.NOTION_API]: {},
   [CredentialType.INSFORGE_BASE_URL]: {},
   [CredentialType.INSFORGE_API_KEY]: {},
+  [CredentialType.OLOSTEP_API_KEY]: {},
   [CredentialType.CUSTOM_AUTH_KEY]: {},
   [CredentialType.AMAZON_CRED]: {
     proxyServer: BubbleParameterType.STRING,
