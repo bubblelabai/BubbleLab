@@ -221,6 +221,11 @@ async function startGenerationStream(
         `[startGenerationStream] Stream completed successfully for flow ${flowId}`
       );
       pearlStore.getState().setIsCoffeeLoading(false);
+      // Safety net: if no generation_complete/error event was received, clear the
+      // generating state so the UI doesn't stay stuck in a loading loop.
+      if (!pearlStore.getState().generationCompleted) {
+        pearlStore.getState().cancelGenerationStream();
+      }
       return;
     } catch (error) {
       if (abortController.signal.aborted) {

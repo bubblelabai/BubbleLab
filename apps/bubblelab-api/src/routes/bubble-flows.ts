@@ -508,11 +508,13 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
         await stream.writeSSE({
           data: JSON.stringify({
             type: 'error',
-            error:
-              error instanceof Error
-                ? error.message
-                : 'Unknown streaming error',
-            recoverable: false,
+            data: {
+              error:
+                error instanceof Error
+                  ? error.message
+                  : 'Unknown streaming error',
+              recoverable: false,
+            },
           }),
           event: 'error',
         });
@@ -1416,6 +1418,23 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
           // Clear heartbeat and send stream completion
           clearInterval(heartbeatInterval);
 
+          // Emit a proper error event when coffee fails (e.g. missing API key)
+          // before stream_complete so the frontend error handler picks it up.
+          if (!coffeeResult.success) {
+            await stream.writeSSE({
+              data: JSON.stringify({
+                type: 'error',
+                data: {
+                  error:
+                    coffeeResult.error ||
+                    'Flow generation failed. Please check your API key configuration.',
+                  recoverable: false,
+                },
+              }),
+              event: 'error',
+            });
+          }
+
           await stream.writeSSE({
             data: JSON.stringify({
               type: 'stream_complete',
@@ -1690,11 +1709,13 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
         await stream.writeSSE({
           data: JSON.stringify({
             type: 'error',
-            error:
-              error instanceof Error
-                ? error.message
-                : 'Unknown streaming error',
-            recoverable: false,
+            data: {
+              error:
+                error instanceof Error
+                  ? error.message
+                  : 'Unknown streaming error',
+              recoverable: false,
+            },
           }),
           event: 'error',
         });

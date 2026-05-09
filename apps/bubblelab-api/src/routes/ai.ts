@@ -148,9 +148,13 @@ app.openapi(pearlRoute, async (c) => {
       await stream.writeSSE({
         data: JSON.stringify({
           type: 'error',
-          error:
-            error instanceof Error ? error.message : 'Unknown streaming error',
-          recoverable: false,
+          data: {
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Unknown streaming error',
+            recoverable: false,
+          },
         }),
         event: 'error',
       });
