@@ -66,11 +66,16 @@ async function main() {
       name: 'firecrawlApiKey',
       message: 'Enter your Firecrawl API key (optional, press Enter to skip):',
     },
-  ]);
+  ], {
+    onCancel: () => {
+      console.log(pc.yellow('\nOperation cancelled.'));
+      process.exit(0);
+    },
+  });
 
-  if (!response.projectName) {
-    console.log(pc.red('\n❌ Project creation cancelled'));
-    process.exit(1);
+  if (!response.projectName || !response.template || !response.googleApiKey) {
+    console.log(pc.yellow('\nOperation cancelled.'));
+    process.exit(0);
   }
 
   const {
@@ -80,6 +85,13 @@ async function main() {
     googleApiKey,
     firecrawlApiKey,
   } = response;
+
+  const templateDir = path.join(__dirname, '..', 'templates', template);
+  if (!fs.existsSync(templateDir)) {
+    console.log(pc.red(`\n❌ Template "${template}" does not exist.`));
+    process.exit(1);
+  }
+
   const targetDir = path.join(process.cwd(), projectName);
 
   // Check if directory exists
@@ -93,7 +105,6 @@ async function main() {
   fs.mkdirSync(targetDir, { recursive: true });
 
   // Copy template
-  const templateDir = path.join(__dirname, '..', 'templates', template);
   copyDirectory(templateDir, targetDir);
 
   // Update package.json with project name
