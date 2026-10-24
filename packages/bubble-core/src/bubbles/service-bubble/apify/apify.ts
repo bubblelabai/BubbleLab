@@ -13,7 +13,7 @@ import type { ActorId, ActorOutput, ActorInput } from './types.js';
  * Examples:
  * - InstagramTool uses this to run 'apify/instagram-scraper'
  * - RedditTool could use this to run 'apify/reddit-scraper'
- * - LinkedInTool could use this to run 'apify/linkedin-scraper'
+ * - LinkedInTool could use this to run 'harvestapi/linkedin-profile-scraper'
  */
 
 // Define the parameters schema for Apify operations
@@ -93,7 +93,7 @@ const ApifyResultSchema = z.object({
         id: z.string().describe('Actor ID (e.g., "apify/instagram-scraper")'),
         name: z
           .string()
-          .describe('Full actor path (e.g., "beauty/linkedin-jobs-scraper")'),
+          .describe('Full actor path (e.g., "johnvc/linkedin-jobs-api")'),
         description: z
           .string()
           .nullable()
@@ -623,7 +623,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
 
               return {
                 id: actor.id, // raw actor id
-                name: displayPath, // Full path (e.g., "beauty/linkedin-jobs-scraper")
+                name: displayPath, // Full path (e.g., "johnvc/linkedin-jobs-api")
                 description: actor.description || null,
                 inputSchemaUrl,
                 stars: null,
