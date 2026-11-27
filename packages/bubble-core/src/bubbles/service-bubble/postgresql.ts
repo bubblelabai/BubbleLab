@@ -7,6 +7,202 @@ import {
 } from '@bubblelab/shared-schemas';
 import { Pool, type QueryResult } from 'pg';
 
+type SqlScanResult = {
+  sanitized: string;
+  parenCount: number;
+  minParenCount: number;
+  unclosedSingleQuote: boolean;
+  unclosedDoubleQuote: boolean;
+  unclosedBlockComment: boolean;
+  unclosedDollarQuote: boolean;
+  placeholderIndices: Set<number>;
+  maxPlaceholderIndex: number;
+  hasDollarInStringLiteral: boolean;
+};
+
+/**
+ * Single-pass lexical scanner for PostgreSQL queries.
+ * Tracks single-quoted strings (with '' escapes), double-quoted identifiers (with "" escapes),
+ * dollar-quoted strings ($tag$...$tag$), line comments (--...), and nested block comments (/*...*\/).
+ * Returns a sanitized SQL string with comments replaced by spaces and string interiors stripped,
+ * along with lexical balance and distinct positional parameter ($N) metadata.
+ */
+function scanSqlQuery(query: string): SqlScanResult {
+  const out: string[] = [];
+  let parenCount = 0;
+  let minParenCount = 0;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let inLineComment = false;
+  let blockCommentDepth = 0;
+  let dollarTag: string | null = null;
+  let hasDollarInStringLiteral = false;
+  const placeholderIndices = new Set<number>();
+  let maxPlaceholderIndex = 0;
+
+  let i = 0;
+  const n = query.length;
+
+  while (i < n) {
+    const ch = query[i];
+    const next = i + 1 < n ? query[i + 1] : '';
+
+    if (inLineComment) {
+      if (ch === '\n') {
+        inLineComment = false;
+        out.push('\n');
+      }
+      i++;
+      continue;
+    }
+
+    if (blockCommentDepth > 0) {
+      if (ch === '/' && next === '*') {
+        blockCommentDepth++;
+        i += 2;
+        continue;
+      }
+      if (ch === '*' && next === '/') {
+        blockCommentDepth--;
+        if (blockCommentDepth === 0) {
+          out.push(' ');
+        }
+        i += 2;
+        continue;
+      }
+      i++;
+      continue;
+    }
+
+    if (inSingleQuote) {
+      if (ch === "'") {
+        if (next === "'") {
+          // Escaped single quote inside string literal
+          i += 2;
+          continue;
+        }
+        inSingleQuote = false;
+        out.push("'");
+        i++;
+        continue;
+      }
+      if (ch === '$') {
+        hasDollarInStringLiteral = true;
+      }
+      i++;
+      continue;
+    }
+
+    if (inDoubleQuote) {
+      if (ch === '"') {
+        if (next === '"') {
+          // Escaped double quote inside quoted identifier
+          i += 2;
+          continue;
+        }
+        inDoubleQuote = false;
+        out.push('"');
+        i++;
+        continue;
+      }
+      i++;
+      continue;
+    }
+
+    if (dollarTag !== null) {
+      if (ch === '$' && query.startsWith(dollarTag, i)) {
+        i += dollarTag.length;
+        dollarTag = null;
+        out.push("'");
+        continue;
+      }
+      if (ch === '$') {
+        hasDollarInStringLiteral = true;
+      }
+      i++;
+      continue;
+    }
+
+    // Outside strings and comments
+    if (ch === '-' && next === '-') {
+      inLineComment = true;
+      out.push(' ');
+      i += 2;
+      continue;
+    }
+
+    if (ch === '/' && next === '*') {
+      blockCommentDepth = 1;
+      out.push(' ');
+      i += 2;
+      continue;
+    }
+
+    if (ch === "'") {
+      inSingleQuote = true;
+      out.push("'");
+      i++;
+      continue;
+    }
+
+    if (ch === '"') {
+      inDoubleQuote = true;
+      out.push('"');
+      i++;
+      continue;
+    }
+
+    if (ch === '$') {
+      // Positional parameter placeholder: $1, $2, ...
+      const paramMatch = /^\$([1-9]\d*)/.exec(query.slice(i));
+      if (paramMatch) {
+        const idx = Number.parseInt(paramMatch[1], 10);
+        placeholderIndices.add(idx);
+        if (idx > maxPlaceholderIndex) {
+          maxPlaceholderIndex = idx;
+        }
+        out.push(paramMatch[0]);
+        i += paramMatch[0].length;
+        continue;
+      }
+
+      // Dollar-quoted string tag: $$ or $tag$
+      const tagMatch = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/.exec(query.slice(i));
+      if (tagMatch) {
+        dollarTag = tagMatch[0];
+        out.push("'");
+        i += tagMatch[0].length;
+        continue;
+      }
+    }
+
+    if (ch === '(') {
+      parenCount++;
+    } else if (ch === ')') {
+      parenCount--;
+      if (parenCount < minParenCount) {
+        minParenCount = parenCount;
+      }
+    }
+
+    out.push(ch);
+    i++;
+  }
+
+  return {
+    sanitized: out.join(''),
+    parenCount,
+    minParenCount,
+    unclosedSingleQuote: inSingleQuote,
+    unclosedDoubleQuote: inDoubleQuote,
+    unclosedBlockComment: blockCommentDepth > 0,
+    unclosedDollarQuote: dollarTag !== null,
+    placeholderIndices,
+    maxPlaceholderIndex,
+    hasDollarInStringLiteral,
+  };
+}
+
 // Define available SQL operations
 export const SqlOperations = z.enum([
   'SELECT',
@@ -68,7 +264,8 @@ const PostgreSQLParamsSchema = z.object({
         /\butl_/i, // Oracle UTL packages
       ];
 
-      return !suspiciousPatterns.some((pattern) => pattern.test(query));
+      const { sanitized } = scanSqlQuery(query);
+      return !suspiciousPatterns.some((pattern) => pattern.test(sanitized));
     }, 'Query contains potentially dangerous SQL patterns')
     .describe(
       'SQL query to execute against the PostgreSQL database (use parameterized queries with $1, $2, etc.)'
@@ -372,8 +569,13 @@ export class PostgreSQLBubble extends ServiceBubble<
     query: string,
     allowedOperations: SqlOperation[]
   ): void {
-    // Extract the first SQL keyword (operation) from the query
-    const trimmedQuery = query.trim().toUpperCase();
+    const scan = scanSqlQuery(query);
+
+    // Validate parentheses and quote balance first using lexical scan
+    this.validateParenthesesBalance(query, scan);
+
+    // Extract the first SQL keyword (operation) from the comment/string-stripped query
+    const trimmedQuery = scan.sanitized.trim().toUpperCase();
     const firstKeyword = trimmedQuery.split(/\s+/)[0];
 
     // Check if the operation is in the allowed list
@@ -418,27 +620,25 @@ export class PostgreSQLBubble extends ServiceBubble<
         `Query contains potentially dangerous operations. This bubble only supports: ${allowedOperations.join(', ')}`
       );
     }
-
-    // Validate parentheses balance to prevent injection through unclosed strings
-    this.validateParenthesesBalance(query);
   }
 
   /**
    * Validate parameter usage to encourage parameterized queries
    */
   private validateParameterUsage(query: string, parameters: unknown[]): void {
-    // Count parameter placeholders ($1, $2, etc.)
-    const paramPlaceholders = (query.match(/\$\d+/g) || []).length;
+    const scan = scanSqlQuery(query);
 
-    if (paramPlaceholders !== parameters.length) {
+    // Compare parameter count against highest distinct positional placeholder ($1..$N) outside strings/comments
+    const requiredParams = scan.maxPlaceholderIndex;
+
+    if (requiredParams !== parameters.length) {
       throw new Error(
-        `Parameter count mismatch: query has ${paramPlaceholders} placeholders but ${parameters.length} parameters provided`
+        `Parameter count mismatch: query has ${requiredParams} placeholders but ${parameters.length} parameters provided`
       );
     }
 
-    // Warn if query contains string literals with potential variables
-    const hasStringLiterals = /['"][^'"]*\$[^'"]*['"]/.test(query);
-    if (hasStringLiterals) {
+    // Warn if query contains string literals with $ symbols (outside comments)
+    if (scan.hasDollarInStringLiteral) {
       console.warn(
         'Query contains string literals with $ symbols. Consider using parameterized queries.'
       );
@@ -446,40 +646,30 @@ export class PostgreSQLBubble extends ServiceBubble<
   }
 
   /**
-   * Validate parentheses and quotes are balanced
+   * Validate parentheses, quotes, and comments are balanced
    */
-  private validateParenthesesBalance(query: string): void {
-    let parenCount = 0;
-    let singleQuoteCount = 0;
-    let doubleQuoteCount = 0;
-
-    for (const char of query) {
-      switch (char) {
-        case '(':
-          parenCount++;
-          break;
-        case ')':
-          parenCount--;
-          break;
-        case "'":
-          singleQuoteCount++;
-          break;
-        case '"':
-          doubleQuoteCount++;
-          break;
-      }
-    }
-
-    if (parenCount !== 0) {
-      throw new Error('Unbalanced parentheses in query');
-    }
-
-    if (singleQuoteCount % 2 !== 0) {
+  private validateParenthesesBalance(
+    query: string,
+    scan: SqlScanResult = scanSqlQuery(query)
+  ): void {
+    if (scan.unclosedSingleQuote) {
       throw new Error('Unbalanced single quotes in query');
     }
 
-    if (doubleQuoteCount % 2 !== 0) {
+    if (scan.unclosedDoubleQuote) {
       throw new Error('Unbalanced double quotes in query');
+    }
+
+    if (scan.unclosedBlockComment) {
+      throw new Error('Unbalanced block comment in query');
+    }
+
+    if (scan.unclosedDollarQuote) {
+      throw new Error('Unbalanced dollar-quoted string in query');
+    }
+
+    if (scan.parenCount !== 0 || scan.minParenCount < 0) {
+      throw new Error('Unbalanced parentheses in query');
     }
   }
 

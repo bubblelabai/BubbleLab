@@ -246,6 +246,58 @@ describe('PostgreSQLBubble', () => {
         });
       }).not.toThrow();
     });
+
+    test('should ignore apostrophes and parens inside SQL line and block comments', () => {
+      expect(() => {
+        new PostgreSQLBubble({
+          credentials: createTestCredentials(),
+          query: [
+            "-- Sync every community's roster (with unbalanced paren",
+            "/* O'Brien's draft query: doesn't drop anything */",
+            'SELECT id, name FROM members WHERE active = $1',
+          ].join('\n'),
+          parameters: [true],
+        });
+      }).not.toThrow();
+    });
+
+    test('should allow parens, escaped quotes, and $ symbols inside string literals', () => {
+      expect(() => {
+        new PostgreSQLBubble({
+          credentials: createTestCredentials(),
+          query:
+            "SELECT * FROM messages WHERE body = 'a :) smiley' AND author = 'O''Brien' AND price = '$100' AND id = $1",
+          parameters: [42],
+        });
+      }).not.toThrow();
+    });
+
+    test('should allow reused $N placeholders without false parameter count mismatch', () => {
+      expect(() => {
+        new PostgreSQLBubble({
+          credentials: createTestCredentials(),
+          query:
+            'SELECT * FROM users WHERE a = $1 AND b = $2 AND c = $3 AND d = $4 AND (e = $5 OR f = $5)',
+          parameters: ['v1', 'v2', 'v3', 'v4', 'v5'],
+        });
+      }).not.toThrow();
+    });
+
+    test('should reject unclosed block comments and reversed parentheses', () => {
+      expect(() => {
+        new PostgreSQLBubble({
+          credentials: createTestCredentials(),
+          query: 'SELECT * FROM users /* unclosed comment',
+        });
+      }).toThrow(/Unbalanced block comment/);
+
+      expect(() => {
+        new PostgreSQLBubble({
+          credentials: createTestCredentials(),
+          query: 'SELECT )( FROM users',
+        });
+      }).toThrow(/Unbalanced parentheses/);
+    });
   });
 
   describe('Configuration Defaults', () => {
